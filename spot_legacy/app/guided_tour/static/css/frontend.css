@@ -1,0 +1,41 @@
+main {
+  width: 90vw;
+}
+
+#navigation_buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+#navigation_buttons div {
+  margin-right: auto;
+  margin-left: auto;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: row;
+}
+
+#navigation_buttons a {
+  width: 85%;
+}
+
+#controls,
+#emergency_controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#controls a,
+#emergency_controls a {
+  width: 45%;
+}
+
+.modal-content {
+  background-color: #393a3f;
+  color: white;
+}

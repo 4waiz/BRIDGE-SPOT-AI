@@ -1,0 +1,11 @@
+-r requirements.txt
+httpx
+httpcore
+transformers
+torch
+PyPDF2
+pypdf
+pdfminer.six
+sentence-transformers
+openai-whisper
+ruff

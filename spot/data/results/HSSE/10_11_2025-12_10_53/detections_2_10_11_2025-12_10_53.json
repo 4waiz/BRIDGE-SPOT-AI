@@ -1,0 +1,27 @@
+{
+    "result_values": [
+        "First Aid",
+        "Fire Extinguisher"
+    ],
+    "box_vectors": [
+        [
+            [
+                1211.643310546875,
+                364.2733154296875,
+                1354.5589599609375,
+                557.2567749023438
+            ]
+        ],
+        [
+            [
+                971.3865966796875,
+                429.1435546875,
+                1031.301025390625,
+                645.1990356445312
+            ]
+        ]
+    ],
+    "confidences": 0.9927700161933899,
+    "output_text": "1 Fire Extinguisher(s) missing, while First Aid(s) present.",
+    "output_boolean": "NOK"
+}

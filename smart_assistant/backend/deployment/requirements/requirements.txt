@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+openai
+websockets
+tiktoken
+pydub
+azure-cognitiveservices-speech
+pandas
+numpy
+sounddevice
+onnxruntime
+openwakeword
+python-dotenv

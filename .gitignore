@@ -1,0 +1,47 @@
+# Node / JS
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.pnp.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+.python-version
+
+# Environments
+.env
+*.env
+.venv/
+venv/
+env/
+spot/venv/
+spot_legacy/venv/
+smart_assistant/backend/venv/
+
+# Logs & temp
+*.log
+logs/
+tmp/
+temp/
+smart_assistant/backend/log/
+smart_assistant/backend/app/data/smartassistant/log/
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Build artifacts
+dist/
+build/
+coverage/
+
+# Misc
+*.bak
+*.tmp

@@ -1,0 +1,12 @@
+{
+    "result_values": "1",
+    "box_vectors": [
+        0,
+        0,
+        220,
+        220
+    ],
+    "confidences": 0.699733316898346,
+    "output_text": "Emergency exit path is unblocked",
+    "output_boolean": "OK"
+}

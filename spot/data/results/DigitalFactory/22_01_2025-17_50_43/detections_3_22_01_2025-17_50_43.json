@@ -1,0 +1,12 @@
+{
+    "result_values": "0",
+    "box_vectors": [
+        0,
+        0,
+        220,
+        220
+    ],
+    "confidences": 0.6533088684082031,
+    "output_text": "Robotino not found",
+    "output_boolean": "NOK"
+}

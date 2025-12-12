@@ -1,0 +1,30 @@
+{
+    "result_values": [
+        "Fire Extinguisher",
+        "Fire Extinguisher"
+    ],
+    "box_vectors": [
+        [
+            [
+                1027.677978515625,
+                486.93182373046875,
+                1107.191162109375,
+                737.68896484375
+            ]
+        ],
+        [
+            [
+                893.8258666992188,
+                488.9111022949219,
+                1007.880615234375,
+                741.3056640625
+            ]
+        ]
+    ],
+    "confidences": [
+        0.6509153842926025,
+        0.3588337302207947
+    ],
+    "output_text": "Server room door is closed. 2 fire extinguishers found.",
+    "output_boolean": "OK"
+}

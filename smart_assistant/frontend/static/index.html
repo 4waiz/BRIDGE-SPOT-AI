@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bridge Spot AI Audio Assistant</title>
+    <link rel="icon" href="/static/icon/cropped-Bridge_favicon-32x32.png" sizes="32x32">
+    <link rel="icon" href="/static/icon/cropped-Bridge_favicon-192x192.png" sizes="192x192">
+    <link rel="stylesheet" href="/static/css/style.css?v=240423">
+</head>
+
+<body id="body">
+    <div id="start-screen" class="container">
+        <div id="avatar_page" class="start_page">
+            <h1>
+                Welcome to the smart assistant
+            </h1>
+            <h2>
+                Choose your assistant
+            </h2>
+            <div class="avatar_option">
+                <p class="avatar-name">Zara</p>
+                <img id="image_zara" class="avatar-image" src="/static/avatar/images/zara.png" loading="lazy">
+            </div>
+            <div class="avatar_option">
+                <p class="avatar-name">Muhammad</p>
+                <img id="image_muhammad" class="avatar-image" src="/static/avatar/images/muhammad.png" loading="lazy">
+            </div>
+            <div class="avatar_option">
+                <p class="avatar-name">Anna</p>
+                <img id="image_anna" class="avatar-image" src="/static/avatar/images/anna.png" loading="lazy">
+            </div>
+            <div class="avatar_option">
+                <p class="avatar-name">Leo</p>
+                <img id="image_leo" class="avatar-image" src="/static/avatar/images/leo.png" loading="lazy">
+            </div>
+            <div class="avatar_option">
+                <p class="avatar-name">Zola</p>
+                <img id="image_zola" class="avatar-image" src="/static/avatar/images/zola.png" loading="lazy">
+            </div>
+            <div class="avatar_option">
+                <p class="avatar-name">Amari</p>
+                <img id="image_amari" class="avatar-image" src="/static/avatar/images/amari.png" loading="lazy">
+            </div>
+            <div class="avatar_option">
+                <p class="avatar-name">Aki</p>
+                <img id="image_aki" class="avatar-image" src="/static/avatar/images/aki.png" loading="lazy">
+            </div>
+            <div class="avatar_option">
+                <p class="avatar-name">Wei</p>
+                <img id="image_wei" class="avatar-image" src="/static/avatar/images/wei.png" loading="lazy">
+            </div>
+            <div class="avatar_option">
+                <p class="avatar-name">Rose</p>
+                <img id="image_rose" class="avatar-image" src="/static/avatar/images/rose.png" loading="lazy">
+            </div>
+            <div class="avatar_option">
+                <p class="avatar-name">Tom</p>
+                <img id="image_tom" class="avatar-image" src="/static/avatar/images/tom.png" loading="lazy">
+            </div>
+            <div class="avatar_option">
+                <p class="avatar-name">Maya</p>
+                <img id="image_maya" class="avatar-image" src="/static/avatar/images/maya.png" loading="lazy">
+            </div>
+            <div class="avatar_option">
+                <p class="avatar-name">Shonith</p>
+                <img id="image_shonith" class="avatar-image" src="/static/avatar/images/shonith.png" loading="lazy">
+            </div>
+        </div>
+        <div id="language_page" class="start_page">
+            <h1>
+                Choose your language
+            </h1>
+            <div id="start_language_multilingual" class="language_option">
+                <img class="flag" src="/static/icon/flags/earth.png" id="earth_icon" loading="lazy">Multilingual
+            </div>
+            <div id="start_language_en" class="language_option">
+                <img class="flag" src="/static/icon/flags/uk.png" loading="lazy">English
+            </div>
+            <div id="start_language_ar" class="language_option">
+                <img class="flag" src="/static/icon/flags/uae.png" loading="lazy">العربية
+            </div>
+            <div id="start_language_hi" class="language_option">
+                <img class="flag" src="/static/icon/flags/india.png" loading="lazy">हिंदी
+            </div>
+            <div id="start_language_de" class="language_option">
+                <img class="flag" src="/static/icon/flags/germany.png" loading="lazy">Deutsch
+            </div>
+            <div id="start_language_es" class="language_option">
+                <img class="flag" src="/static/icon/flags/spain.png" loading="lazy">español
+            </div>
+            <div id="start_language_pt" class="language_option">
+                <img class="flag" src="/static/icon/flags/brazil.png" loading="lazy">Português
+            </div>
+            <div id="start_language_sv" class="language_option">
+                <img class="flag" src="/static/icon/flags/sweden.png" loading="lazy">svenska
+            </div>
+            <div id="start_language_nl" class="language_option">
+                <img class="flag" src="/static/icon/flags/netherlands.png" loading="lazy">Nederlands
+            </div>
+            <div id="start_language_ru" class="language_option">
+                <img class="flag" src="/static/icon/flags/russia.png" loading="lazy">русский
+            </div>
+            <div id="start_language_fr" class="language_option">
+                <img class="flag" src="/static/icon/flags/france.png" loading="lazy">français
+            </div>
+            <div id="start_language_zh" class="language_option">
+                <img class="flag" src="/static/icon/flags/china.png" loading="lazy">中文
+            </div>
+            <div id="checkbox_wrapper">
+                <input type="checkbox" id="start-screen_checkbox">
+                <label for="start-screen_checkbox">Do not ask again</label>
+            </div>
+        </div>
+    </div>
+    <div id="settings-container">
+        <img id="settings-btn" src="/static/icon/settings.png">
+    </div>
+    <div id="brands">
+        <a id="logo_bridge" href="/">
+            <img class="logo" src="/static/icon/logo.png">
+        </a>
+        <a id="logo_lif" href="/">
+            <img class="logo" src="/static/icon/lif.png">
+        </a>
+    </div>
+    <div id="menu">
+        <div class="sub_menu" id="start_menu">
+            <div class="option start" id="avatar">
+                <p>Avatar</p>
+                <p class="arrow">&gt;</p>
+            </div>
+            <div class="option start" id="language">
+                <p>Language</p>
+                <p class="arrow">&gt;</p>
+            </div>
+            <div class="option start" id="playback-speed">
+                <p>Playback Speed</p>
+                <p class="arrow">&gt;</p>
+            </div>
+            <div class="option start" id="autostop">
+                <p>Autostop</p>
+                <p class="arrow">&gt;</p>
+            </div>
+            <div class="option start" id="creativity">
+                <p>Creativity</p>
+                <p class="arrow">&gt;</p>
+            </div>
+            <div class="option start" id="gpt-model">
+                <p>GPT-Model</p>
+                <p class="arrow">&gt;</p>
+            </div>
+            <div class="option start" id="prompt">
+                <p>System prompt</p>
+                <p class="arrow">&gt;</p>
+            </div>
+            <div class="option start" id="content">
+                <p>Content</p>
+                <p class="arrow">&gt;</p>
+            </div>
+            <div class="option start" id="show-start-menu">
+                <p>Start menu</p>
+                <p class="arrow">&gt;</p>
+            </div>
+            <div class="option start" id="stt">
+                <p>STT-Model</p>
+                <p class="arrow">&gt;</p>
+            </div>
+            <div class="option start" id="reset">
+                <p>Reset settings</p>
+                <p class="arrow">&gt;</p>
+            </div>
+        </div>
+        <div class="sub_menu" id="avatar_menu">
+            <div class="option" id="avatar_back">
+                <p class="arrow">&lt;</p>
+                <p>Avatar</p>
+            </div>
+            <div class="sub_options" id="avatar_options">
+                <div class="option avatar" id="avatar_zara">Zara</div>
+                <div class="option avatar" id="avatar_muhammad">Muhammad</div>
+                <div class="option avatar" id="avatar_anna">Anna</div>
+                <div class="option avatar" id="avatar_leo">Leo</div>
+                <div class="option avatar" id="avatar_zola">Zola</div>
+                <div class="option avatar" id="avatar_amari">Amari</div>
+                <div class="option avatar" id="avatar_aki">Aki</div>
+                <div class="option avatar" id="avatar_wei">Wei</div>
+                <div class="option avatar" id="avatar_rose">Rose</div>
+                <div class="option avatar" id="avatar_tom">Tom</div>
+                <div class="option avatar" id="avatar_maya">Maya</div>
+                <div class="option avatar" id="avatar_shonith">Shonith</div>
+            </div>
+        </div>
+        <div class="sub_menu" id="language_menu">
+            <div class="option" id="language_back">
+                <p class="arrow">&lt;</p>
+                <p>Language</p>
+            </div>
+            <div class="sub_options" id="avatar_options">
+                <div class="option" id="language_multilingual">Multilingual</div>
+                <div class="option" id="language_en">English</div>
+                <div class="option" id="language_ar">العربية</div>
+                <div class="option" id="language_hi">हिंदी</div>
+                <div class="option" id="language_de">Deutsch</div>
+                <div class="option" id="language_es">español</div>
+                <div class="option" id="language_pt">Português</div>
+                <div class="option" id="language_sv">svenska</div>
+                <div class="option" id="language_nl">Nederlands</div>
+                <div class="option" id="language_ru">русский</div>
+                <div class="option" id="language_fr">français</div>
+                <div class="option" id="language_zh">中文</div>
+            </div>
+        </div>
+        <div class="sub_menu" id="playback-speed_menu">
+            <div class="option" id="playback-speed_back">
+                <p class="arrow">&lt;</p>
+                <p>Playback-speed</p>
+            </div>
+            <div class="sub_options" id="playback-speed_options">
+                <div class="option" id="playback-speed_0.25">0.25</div>
+                <div class="option" id="playback-speed_0.50">0.50</div>
+                <div class="option" id="playback-speed_0.75">0.75</div>
+                <div class="option" id="playback-speed_1.00">1.00</div>
+                <div class="option" id="playback-speed_1.25">1.25</div>
+                <div class="option" id="playback-speed_1.50">1.50</div>
+                <div class="option" id="playback-speed_1.75">1.75</div>
+                <div class="option" id="playback-speed_2.00">2.00</div>
+            </div>
+        </div>
+        <div class="sub_menu" id="autostop_menu">
+            <div class="option" id="autostop_back">
+                <p class="arrow">&lt;</p>
+                <p>Stop after</p>
+            </div>
+            <form id="autostop_form">
+                Positive Threshold &lt; 1<textarea id="autostop_positive" class="textbox autostop_input" form="autostop_form" maxlength="5"></textarea>
+                Negative Threshold &lt; 1<textarea id="autostop_negative" class="textbox autostop_input" form="autostop_form" maxlength="5"></textarea>
+                Stop after seconds &gt; 0<textarea id="autostop_seconds" class="textbox autostop_input" form="autostop_form" maxlength="5"></textarea>
+                <div id="autostop_save" class="save">Save</div>
+            </form>
+        </div>
+        <div class="sub_menu" id="creativity_menu">
+            <div class="option" id="creativity_back">
+                <p class="arrow">&lt;</p>
+                <p>Creativity</p>
+            </div>
+            <div class="sub_options" id="creativity_options">
+                <div class="option" id="creativity_low">low</div>
+                <div class="option" id="creativity_medium">medium</div>
+                <div class="option" id="creativity_high">high</div>
+            </div>
+        </div>
+        <div class="sub_menu" id="gpt-model_menu">
+            <div class="option" id="gpt-model_back">
+                <p class="arrow">&lt;</p>
+                <p>GPT-Model</p>
+            </div>
+            <div class="sub_options" id="gpt-model_options">
+                <div class="option" id="gpt-model_4o">GPT 4o</div>
+                <div class="option" id="gpt-model_4">GPT 4</div>
+                <div class="option" id="gpt-model_3.5">GPT 3.5</div>
+            </div>
+        </div>
+        <div class="sub_menu" id="prompt_menu">
+            <div class="option" id="prompt_back">
+                <p class="arrow">&lt;</p>
+                <p>System Prompt</p>
+            </div>
+            <form id="prompt_form">
+                <textarea id="prompt_input" class="textbox" form="prompt_form" maxlength="2000" wrap="soft"></textarea>
+                <div id="prompt_save" class="save">Save</div>
+            </form>
+        </div>
+        <div class="sub_menu" id="content_menu">
+            <div class="option" id="content_back">
+                <p class="arrow">&lt;</p>
+                <p>Content</p>
+            </div>
+            <div class="sub_options" id="content_options">
+                <div class="option" id="content_none">None</div>
+                <div class="option" id="content_mslf">mSLF</div>
+                <div class="option" id="content_ss-doe">6&sigma; - DOE</div>
+                <div class="option" id="content_ss-yellow">6&sigma; - Yellow Belt</div>
+            </div>
+        </div>
+        <div class="sub_menu" id="show-start-menu_menu">
+            <div class="option" id="show-start-menu_back">
+                <p class="arrow">&lt;</p>
+                <p>Start menu</p>
+            </div>
+            <div class="sub_options" id="show-start-menu_options">
+                <div class="option" id="show-start-menu_on">On</div>
+                <div class="option" id="show-start-menu_off">Off</div>
+            </div>
+        </div>
+        <div class="sub_menu" id="stt_menu">
+            <div class="option" id="stt_back">
+                <p class="arrow">&lt;</p>
+                <p>Start menu</p>
+            </div>
+            <div class="sub_options" id="stt_options">
+                <div class="option" id="stt_api">API - Large</div>
+                <div class="option" id="stt_tiny">Self-hosted - Tiny</div>
+                <div class="option" id="stt_base">Self-hosted - Base</div>
+                <div class="option" id="stt_small">Self-hosted - Small</div>
+                <div class="option" id="stt_medium">Self-hosted - Medium</div>
+            </div>
+        </div>
+    </div>
+    <div id="main-content">
+        <div class="container">
+            <label>Question Voice</label>
+            <div id="record_btn-container">
+                <img id="record-button">
+            </div>
+            <label>Question Text</label>
+            <div id="question_input" class="textbox">
+                <textarea id="question" placeholder="Type in your question or click on the button and speak." maxlength="8000"></textarea>
+                <img id="send_button" src="/static/icon/send-button.png"/>
+            </div>
+        </div>
+        <div class="container" id="avatar-container">
+            <img id="mute_button" src="/static/icon/speaking-on.png"/>
+            <canvas id="main_avatar"></canvas>
+            <label>Answer</label>
+            <div id="answer-wrapper" class="textbox">
+                <img id="cancel-button" src="/static/icon/cancel-button.png">
+                <div id="answer"></div>
+            </div>
+        </div>
+    </div>
+    <footer></footer>
+    <script src="/static/js/main.js?v=240423"></script>
+</body>
+</html>
+<!-- Changes made by Awaiz Ahmed -->

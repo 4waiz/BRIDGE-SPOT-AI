@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block head %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/frontend.css') }}" />
+{% endblock styles %}
+{% endblock head %}
+{% block content %}
+<div id="main_ui" class="w-100">
+  <div class="d-flex justify-content-end mb-4">
+    <button type="button" class="btn btn-secondary" onclick="show_map_modal()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-gear"
+        viewBox="0 0 16 16">
+        <path
+          d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z" />
+        <path
+          d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z" />
+      </svg>
+    </button>
+  </div>
+  <div class="m-auto">
+    <div id="navigation_buttons">
+      {# <div class="justify-content-center"> #}
+        <div class="my-2 d-flex justify-content-between">
+          <a class="btn btn-spot btn-primary"
+            onclick="request('{{ url_for('routes.navigate_to', station='BASE') }}');">Spot Base</a>
+          <a class="btn btn-spot btn-secondary w-auto"
+            onclick="request('{{ url_for('routes.play_sound', station='BASE') }}');">&#x23F5;</a>
+        </div>
+        <div class="my-2 d-flex justify-content-between">
+          <a class="btn btn-spot btn-primary"
+            onclick="request('{{ url_for('routes.navigate_to', station='INCUBATION_AREA') }}');">Incubation Area</a>
+          <a class="btn btn-spot btn-secondary w-auto"
+            onclick="request('{{ url_for('routes.play_sound', station='INCUBATION_AREA') }}');">&#x23F5;</a>
+        </div>
+        <div class="my-2 d-flex justify-content-between">
+          <a class="btn btn-spot btn-primary"
+            onclick="request('{{ url_for('routes.navigate_to', station='SMART_LEARNING_FACTORY') }}');">Smart Learning
+            Factory</a>
+          <a class="btn btn-spot btn-secondary w-auto"
+            onclick="request('{{ url_for('routes.play_sound', station='SMART_LEARNING_FACTORY') }}');">&#x23F5;</a>
+        </div>
+        <div class="my-2 d-flex justify-content-between">
+          <a class="btn btn-spot btn-primary"
+            onclick="request('{{ url_for('routes.navigate_to', station='EDGE_DIGITAL_FACTORY') }}');">EDGE Digital
+            Factory</a>
+          <a class="btn btn-spot btn-secondary w-auto"
+            onclick="request('{{ url_for('routes.play_sound', station='EDGE_DIGITAL_FACTORY') }}');">&#x23F5;</a>
+        </div>
+        <div class="my-2 d-flex justify-content-between">
+          <a class="btn btn-spot btn-primary"
+            onclick="request('{{ url_for('routes.navigate_to', station='LEAN_AREA') }}');">Lean Area</a>
+          <a class="btn btn-spot btn-secondary w-auto"
+            onclick="request('{{ url_for('routes.play_sound', station='LEAN_AREA') }}');">&#x23F5;</a>
+        </div>
+        <div class="my-2 d-flex justify-content-between">
+          <a class="btn btn-spot btn-primary"
+            onclick="request('{{ url_for('routes.navigate_to', station='ANALYTICS_AREA') }}');">Analytics Area</a>
+          <a class="btn btn-spot btn-secondary w-auto"
+            onclick="request('{{ url_for('routes.play_sound', station='ANALYTICS_AREA') }}');">&#x23F5;</a>
+        </div>
+        {# <div>
+          <a class="btn btn-spot btn-primary btn-block my-2"
+            onclick="request('{{ url_for('routes.navigate_to', station='SIX_SIGMA_AND_AGILE') }}');">Six Sigma and
+            Agile</a>
+        </div> #}
+        {#
+      </div> #}
+    </div>
+    <div id="controls" class="my-2">
+      <a class="btn btn-secondary" onclick="request('{{ url_for('routes.dock') }}');">Dock</a>
+      <a class="btn btn-secondary" onclick="request('{{ url_for('routes.undock') }}');">Undock</a>
+    </div>
+    <div id="emergency_controls" class="my-2">
+      <a class="btn btn-secondary" onclick="request('{{ url_for('routes.release') }}');">Sit down</a>
+      <a class="btn btn-secondary" onclick="request('{{ estop_url }}/allow');">Allow</a>
+    </div>
+    <div class="my-2 justify-content-center">
+      <a class="btn btn-danger w-100" onclick="request('{{ estop_url }}/estop');">E-stop</a>
+    </div>
+  </div>
+</div>
+<div id="spot-modal-loading" class="modal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0">
+      <div class="modal-body text-center">
+        <div class="spinner-border" style="width: 6rem;
+                      height: 6rem" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="row mx-auto justify-content-center">
+          <a class="btn btn-danger my-3 w-100" onclick="request('{{ estop_url }}/estop');">E-stop</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="spot-modal-response" class="modal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div id="spot-modal-response-header" class="modal-header">
+        <h5 class="modal-title m-auto"></h5>
+      </div>
+      <div class="modal-body text-center">
+        <span id="spot-modal-response-text" style="font-size: 25pt"></span>
+      </div>
+      <div class="modal-footer" style="align-items: center;
+                    justify-content: center">
+        <button id="spot-modal-button" class="modal-button btn btn-spot btn-primary btn-lg mx-3"
+          data-bs-dismiss="modal">
+          OK
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="map_modal" class="modal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title m-auto">Switch map</h5>
+        <button type="button" class="btn-close" onclick="close_modal('map_modal')" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Select the location of the Spot docking station to switch the map.</p>
+        <p>Current map: <span id="current_map_code"></span></p>
+      </div>
+      <div class="modal-footer" style="align-items: center; justify-content: center">
+        <button type="button" class="btn btn-primary" onclick="set_map_code('df')">df - Digital Factory</button>
+        <button type="button" class="btn btn-primary" onclick="set_map_code('inc')" disabled>inc - Incubation Area</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+{% block js %}
+<script src="{{ url_for('static', filename='js/frontend.js') }}"></script>
+{% endblock js %}

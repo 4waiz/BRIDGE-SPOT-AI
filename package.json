@@ -1,0 +1,14 @@
+{
+  "name": "bridge-spot-ai",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start:spot": "cd /d \"spot\\\\app\" && ..\\\\venv\\\\Scripts\\\\python.exe main.py",
+    "start:assistant": "cd /d \"smart_assistant\\\\backend\\\\app\" && ..\\\\venv\\\\Scripts\\\\python.exe main_lif.py",
+    "start:frontend": "cd smart_assistant/frontend/static && python -m http.server 3001",
+    "start": "concurrently -n spot,assistant,frontend -c \"blue,magenta,green\" \"npm run start:spot\" \"npm run start:assistant\" \"npm run start:frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

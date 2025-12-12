@@ -1,0 +1,22 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+ultralytics = "*"
+tensorflow = "*"
+torch = "*"
+Pillow = "*"
+fastapi = "*"
+uvicorn = "*"
+asyncio = "*"
+python-dateutil = "*"
+python-dotenv = "*"
+bosdyn-client = "4.1.1"
+
+[dev-packages]
+ruff = "*"
+
+[requires]
+python_version = "3.12"

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Image Display</title>
+    <link rel="stylesheet" type="text/css" href="digital_factory.css">
+    <link rel="stylesheet" type="text/css" href="spinner.css">
+</head>
+<body>     
+    <div id="spinner" class="loading">Loading&#8230;</div>
+
+    <div class="button-container">
+        <button onclick="refresh('DigitalFactory')">Click here to refresh data from Spot</button>
+    </div>
+
+    <hr>
+
+    <div class="container">
+        <div class="image-container">
+            <img class="main_img" id="latest_image_1" src="/latest/DigitalFactory/annotated_image_1.jpg">
+            <p id="latest_text_1"></p>
+            <div class="icon-container" id="icon_container_latest_text_1">
+                <img class="icon tick" src="icons/tick.png">
+                <img class="icon cross" src="icons/cross.png">
+            </div>
+        </div>
+        
+        <div class="image-container">
+            <img class="main_img" id="latest_image_2" src="/latest/DigitalFactory/annotated_image_2.jpg">
+            <p id="latest_text_2"></p>
+            <div class="icon-container" id="icon_container_latest_text_2">
+                <img class="icon tick" src="icons/tick.png">
+                <img class="icon cross" src="icons/cross.png">
+            </div>
+        </div>
+        
+        <div class="image-container">
+            <img class="main_img" id="latest_image_3" src="/latest/DigitalFactory/annotated_image_3.jpg">
+            <p id="latest_text_3"></p>
+            <div class="icon-container" id="icon_container_latest_text_3">
+                <img class="icon tick" src="icons/tick.png">
+                <img class="icon cross" src="icons/cross.png">
+            </div>
+        </div>
+    </div>
+
+    <div id="fullscreen_container" class="fullscreen-container">
+        <img id="fullscreen_image" class="fullscreen-image" onclick="closeFullscreen()">
+        <span class="close-button" onclick="closeFullscreen()">Close</span>
+    </div>
+
+    <script src="digital_factory.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+    "result_values": "1",
+    "box_vectors": [
+        0,
+        0,
+        220,
+        220
+    ],
+    "confidences": 0.9997857213020325,
+    "output_text": "Robotino found",
+    "output_boolean": "OK"
+}
