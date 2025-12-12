@@ -45,3 +45,4 @@ coverage/
 # Misc
 *.bak
 *.tmp
+spot-sdk-4.1.1/python/examples/network_compute_bridge/fire_extinguisher_server/fire_ext.h5
