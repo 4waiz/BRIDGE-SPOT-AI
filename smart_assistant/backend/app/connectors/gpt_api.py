@@ -9,12 +9,18 @@ import settings
 
 
 language_names = {"en": "english", "ar": "arabic", "hi": "hindi", "de": "german", "es": "spanish", "pt": "portuguese", "sv": "swedish", "nl": "dutch", "ru": "russian", "fr": "french", "zh": "chinese"}
+fallback_responses = [
+    "This is a pre-defined answer while the assistant is offline. Add an OPENAI_API_KEY to enable live responses.",
+    "The assistant is running in demo mode without an OpenAI API key, so this is a canned reply.",
+    "Pre-defined response: please set the OPENAI_API_KEY environment variable to get dynamic answers.",
+]
 
 
 class GPT_Chat:
     def __init__(self, user_session):
         self.session = user_session
         self.client = self.session.client
+        self.offline_mode = getattr(self.session, "offline_mode", False)
         self.websocket = self.session.websocket
         self.dialogue = []
         self.name = ""
@@ -70,6 +76,26 @@ class GPT_Chat:
                 }
             )
             logging.info(f"session {self.session.session_id}, request {request.id}: Question: {question}")
+
+            if self.offline_mode or self.client is None:
+                self.dialogue.append({"role": "user", "content": question})
+                fallback_text = self.get_offline_response(question)
+                logging.info(f"session {self.session.session_id}, request {request.id}: Offline mode active, sending predefined response.")
+                await self.session.send_json(
+                    {
+                        "sentence": fallback_text,
+                        "request_id": request.id,
+                    }
+                )
+                await self.session.tts_module.speak(fallback_text, request, play_locally)
+                await self.session.send_json(
+                    {
+                        "finish": "success",
+                        "request_id": request.id,
+                    }
+                )
+                self.dialogue.append({"role": "assistant", "content": fallback_text})
+                return
 
             while self.num_tokens_from_messages() > self.maxtoken:
                 del self.dialogue[1:3]
@@ -201,6 +227,12 @@ class GPT_Chat:
                 if retries == max_retries:
                     raise exc
             logging.error(f"session {self.session.session_id}, request {request.id}: Retrying GPT")
+
+    def get_offline_response(self, question):
+        if not fallback_responses:
+            return "Assistant is running in offline mode. Set OPENAI_API_KEY to enable live answers."
+        index = sum(ord(char) for char in question) % len(fallback_responses) if question else 0
+        return fallback_responses[index]
 
     def num_tokens_from_messages(self):
         num_tokens = 0

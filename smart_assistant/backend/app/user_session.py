@@ -20,8 +20,14 @@ import connectors.gpt_api as gpt_api
 import connectors.speech_to_text as speech_to_text
 import connectors.text_to_speech as text_to_speech
 import numpy as np
-import onnxruntime as ort  # Added for Silero VAD
-import openwakeword
+try:
+    import onnxruntime as ort  # Added for Silero VAD
+except Exception:
+    ort = None
+try:
+    import openwakeword
+except Exception:
+    openwakeword = None
 
 user_session_queue = queue.Queue(100)
 request_queue = queue.Queue(500)
@@ -53,7 +59,12 @@ h_state = np.zeros((2, 1, 64), dtype=np.float32)
 c_state = np.zeros((2, 1, 64), dtype=np.float32)
 
 # Initialize Silero VAD
-onnx_session = ort.InferenceSession(VAD_MODEL_PATH)
+onnx_session = None
+if ort is not None:
+    try:
+        onnx_session = ort.InferenceSession(VAD_MODEL_PATH)
+    except Exception as exc:
+        logging.warning("Silero VAD disabled (onnxruntime init failed): %s", exc)
 
 
 # Voice Activity Detection function
@@ -64,6 +75,8 @@ def is_speech(chunk, sample_rate):
     :param sample_rate: The sample rate of the audio
     :return: Boolean indicating if speech is detected
     """
+    if onnx_session is None:
+        return False
     global h_state, c_state
 
     # Convert audio to float32 and normalize to [-1, 1]
@@ -250,6 +263,9 @@ class Request:
 
     async def server_wwd(self):
         # Ensure models are downloaded (uses buffered models if available)
+        if openwakeword is None or ort is None:
+            logging.warning("Wake word detection disabled (missing openwakeword/onnxruntime).")
+            return
         openwakeword.utils.download_models()
         # Initialize OpenWakeWord with a pre-trained model
         oww_model = openwakeword.Model(
@@ -355,7 +371,19 @@ class UserSession:
         self.language = "multilingual"
 
         # OpenAI client to make requests to STT and GPT
-        self.client = OpenAI()
+        self.offline_mode = False
+        api_key = os.getenv("OPENAI_API_KEY")
+        if api_key:
+            try:
+                self.client = OpenAI(api_key=api_key)
+            except Exception as exc:
+                logging.warning("OpenAI client disabled (invalid API key): %s", exc)
+                self.client = None
+                self.offline_mode = True
+        else:
+            logging.warning("OPENAI_API_KEY not set; using predefined answers.")
+            self.client = None
+            self.offline_mode = True
 
         # Init GPT-API connector
         self.gpt_connector = gpt_api.GPT_Chat(user_session=self)

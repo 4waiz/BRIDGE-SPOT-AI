@@ -125,20 +125,20 @@ body {
   display: flex;
   margin: 0 auto;
   padding: 10px 0;
-  width: 60%;
+  width: 70%;
   height: fit-content;
-  max-width: 300px;
+  max-width: 420px;
   align-items: flex-end;
   justify-content: center;
 }
 
 #logo_bridge {
-  width: 70%;
+  width: 85%;
 }
 
 #logo_lif {
   display: none;
-  width: 45%;
+  width: 60%;
 }
 
 #settings-container {

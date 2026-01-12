@@ -19,8 +19,10 @@ import azure.cognitiveservices.speech as speechsdk
 import numpy as np
 from scipy.signal import resample
 
-SPEECH_KEY = os.environ["SPEECH_KEY"]
-SPEECH_REGION = os.environ["SPEECH_REGION"]
+# Make speech optional so the assistant can start without Azure creds.
+SPEECH_KEY = os.getenv("SPEECH_KEY")
+SPEECH_REGION = os.getenv("SPEECH_REGION")
+AZURE_SPEECH_ENABLED = bool(SPEECH_KEY and SPEECH_REGION)
 
 # Audio configuration
 SAMPLE_RATE = 16000  # Set this to match the audio sample rate of your TTS engine
@@ -139,7 +141,11 @@ class TextToSpeechModule:
         self.websocket = user_session.websocket  # websocket of the current connection
         self.playback_speed = "1"
         self.session = user_session
-        self.speech_config = speechsdk.SpeechConfig(subscription=SPEECH_KEY, region=SPEECH_REGION)
+        self.speech_config = (
+            speechsdk.SpeechConfig(subscription=SPEECH_KEY, region=SPEECH_REGION)
+            if AZURE_SPEECH_ENABLED
+            else None
+        )
         self.gender = "female"
         self.blenddata = []
         self.playback_thread = None
@@ -151,6 +157,9 @@ class TextToSpeechModule:
 
     async def speak(self, text, request, play_locally=False):
         try:
+            if not AZURE_SPEECH_ENABLED:
+                logging.warning("Azure Speech not configured; skipping TTS playback.")
+                return
             # Create SSML
             xml_lang = self.session.language if self.session.language != "multilingual" else "en"
             ssml = f"""<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="http://www.w3.org/2001/mstts" xml:lang="{xml_lang}">

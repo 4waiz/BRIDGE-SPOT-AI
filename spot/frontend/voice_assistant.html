@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spot Voice Assistant</title>
+    <link rel="stylesheet" href="voice_assistant.css">
+</head>
+<body>
+    <!-- Voice Assistant Overlay -->
+    <div id="assistant-overlay" class="assistant-overlay">
+        <div class="assistant-container">
+            <!-- Header with Spot -->
+            <div class="assistant-header">
+                <div class="spot-avatar">
+                    <img src="Spot_qturn.png" alt="Spot Robot" id="spot-image">
+                    <div class="pulse-ring"></div>
+                </div>
+                <h2>Spot Assistant</h2>
+                <p class="wake-word-hint">Say "Hey Spot" to start</p>
+            </div>
+
+            <!-- Status Indicator -->
+            <div id="assistant-status" class="status listening">
+                Listening for "Hey Spot"...
+            </div>
+
+            <!-- Chat Messages Container -->
+            <div id="chat-messages" class="chat-messages">
+                <!-- Messages will be added here dynamically -->
+            </div>
+
+            <!-- Control Buttons -->
+            <div class="assistant-controls">
+                <button onclick="clearChat()" class="control-btn clear-btn" title="Clear Chat">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                    </svg>
+                    Clear
+                </button>
+                <button onclick="stopAssistant()" class="control-btn stop-btn" title="Stop Assistant">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M15 9l-6 6M9 9l6 6"/>
+                    </svg>
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="voice_assistant.js"></script>
+</body>
+</html>

@@ -37,12 +37,24 @@ async def redirect_legacy_url():
 
 # serve static file
 app.mount("/static", StaticFiles(directory=FRONTEND_STATIC_FOLDER), name="static")
+# allow direct asset paths for the frontend dev server
+app.mount("/css", StaticFiles(directory=FRONTEND_STATIC_FOLDER + "/css"), name="static-css")
+app.mount("/js", StaticFiles(directory=FRONTEND_STATIC_FOLDER + "/js"), name="static-js")
+app.mount("/avatar", StaticFiles(directory=FRONTEND_STATIC_FOLDER + "/avatar"), name="static-avatar")
+app.mount("/icon", StaticFiles(directory=FRONTEND_STATIC_FOLDER + "/icon"), name="static-icon")
+app.mount("/sounds", StaticFiles(directory=FRONTEND_STATIC_FOLDER + "/sounds"), name="static-sounds")
 
 
 # redirect to static website
 @app.get("/")
 async def serve_root_file():
     url = FRONTEND_STATIC_FOLDER + "/index.html"
+    return FileResponse(url)
+
+
+@app.get("/pre.json")
+async def serve_preload_file():
+    url = FRONTEND_STATIC_FOLDER + "/pre.json"
     return FileResponse(url)
 
 

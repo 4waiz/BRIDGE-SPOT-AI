@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start:spot": "cd /d \"spot\\\\app\" && ..\\\\venv\\\\Scripts\\\\python.exe main.py",
-    "start:assistant": "cd /d \"smart_assistant\\\\backend\\\\app\" && ..\\\\venv\\\\Scripts\\\\python.exe main_lif.py",
-    "start:frontend": "cd smart_assistant/frontend/static && python -m http.server 3001",
+    "start:spot": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_spot.ps1",
+    "start:assistant": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_assistant.ps1",
+    "start:frontend": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_frontend.ps1",
     "start": "concurrently -n spot,assistant,frontend -c \"blue,magenta,green\" \"npm run start:spot\" \"npm run start:assistant\" \"npm run start:frontend\""
   },
   "devDependencies": {

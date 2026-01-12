@@ -6,7 +6,7 @@ tiktoken
 pydub
 azure-cognitiveservices-speech
 pandas
-numpy
+numpy<2
 sounddevice
 onnxruntime
 openwakeword

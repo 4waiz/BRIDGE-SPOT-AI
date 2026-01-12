@@ -22,10 +22,12 @@
           color="#5bbad5">
     <meta name="msapplication-TileColor" content="#da532c">
     <meta name="theme-color" content="#ffffff">
+    <link rel="stylesheet" href="voice_assistant.css">
 </head>
 <body>
     <header class="header-logo">
-        <img src="bridge.png" alt="Bridge logo">
+        <img class="logo-light" src="bridge.png" alt="Bridge logo">
+        <img class="logo-dark" src="bridge (1).png" alt="Bridge logo">
     </header>
     <div class="container">
         <div class="top-left">
@@ -51,6 +53,60 @@
             <a href="https://192.168.208.117" class="neumorphic-button" target="_blank">Spot Admin</a>
         </div>
     </div>
+    <!-- Demo-only: theme toggle -->
+    <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 1 0 9.79 9.79z"></path>
+        </svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" fill="currentColor"></circle>
+            <path d="M12 2v3m0 14v3m10-10h-3M5 12H2m15.07-7.07-2.12 2.12M8.05 15.95l-2.12 2.12m0-12.02 2.12 2.12m9.02 9.02 2.12 2.12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+        </svg>
+    </button>
+
+    <!-- Voice Assistant Overlay -->
+    <div id="assistant-overlay" class="assistant-overlay">
+        <div class="assistant-container">
+            <!-- Header with Spot -->
+            <div class="assistant-header">
+                <div class="spot-avatar">
+                    <img src="Spot_qturn.png" alt="Spot Robot" id="spot-image">
+                    <div class="pulse-ring"></div>
+                </div>
+                <h2>Spot Assistant</h2>
+                <p class="wake-word-hint">Say "Hey Spot" to start</p>
+            </div>
+
+            <!-- Status Indicator -->
+            <div id="assistant-status" class="status listening">
+                Listening for "Hey Spot"...
+            </div>
+
+            <!-- Chat Messages Container -->
+            <div id="chat-messages" class="chat-messages">
+                <!-- Messages will be added here dynamically -->
+            </div>
+
+            <!-- Control Buttons -->
+            <div class="assistant-controls">
+                <button onclick="clearChat()" class="control-btn clear-btn" title="Clear Chat">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                    </svg>
+                    Clear
+                </button>
+                <button onclick="stopAssistant()" class="control-btn stop-btn" title="Stop Assistant">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M15 9l-6 6M9 9l6 6"/>
+                    </svg>
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="voice_assistant.js"></script>
     <script src="smartassistant.js"></script>
 </body>
 </html>

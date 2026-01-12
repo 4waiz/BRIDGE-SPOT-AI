@@ -1,8 +1,10 @@
 -r requirements.txt
+--index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://pypi.org/simple
+torch==2.3.1
 httpx
 httpcore
 transformers
-torch
 PyPDF2
 pypdf
 pdfminer.six

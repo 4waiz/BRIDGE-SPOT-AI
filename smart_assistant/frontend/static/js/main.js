@@ -20966,6 +20966,16 @@ var firstSetup = true; // specific behaviour for lazy loading
 var audioElement;
 var pingSound;
 var isMuted = false;
+// When true, bypass backend and answer from local canned responses (for offline/demo use).
+var USE_MOCK_RESPONSES = parameters.get("mock") !== "0";
+var mockDataLoaded = false;
+var mockData = {
+  fallback: "I'm running in local demo mode. Ask me about EDGE Group, Boston Dynamics Spot, or general help.",
+  items: []
+};
+var localSpeechRecognition = null;
+var localSpeechActive = false;
+var localSpeechUtterance = null;
 
 // queues for audio and blenddata
 let audioQueue = [];
@@ -20984,12 +20994,14 @@ var negativeThreshold;
 // see whether speech ever started when stopping manually
 var speechStarted;
 
+
 // Check if the current page is served over HTTPS
 var isSecureOrigin = location.protocol === "https:";
 // Choose the appropriate WebSocket protocol based on the current page's protocol
 var socketProtocol = isSecureOrigin ? "wss://" : "ws://";
-// Construct the WebSocket URL dynamically
-var websocketURL = socketProtocol + window.location.host + "/ws/";
+// Construct the WebSocket URL dynamically (assistant backend runs on port 4001)
+var websocketHost = window.location.hostname + ":4001";
+var websocketURL = USE_MOCK_RESPONSES ? null : socketProtocol + websocketHost + "/ws/";
 var websocketMessage;
 
 // helper functions
@@ -21025,8 +21037,292 @@ const concatAudioArrays = (arrays) => {
   return outArray;
 };
 
+function normalizeMockText(value) {
+  return (value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]+/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function loadMockData() {
+  if (mockDataLoaded) {
+    return;
+  }
+  mockDataLoaded = true;
+  const paths = ["pre.json", "/static/pre.json"];
+  let loaded = false;
+  let lastError = null;
+  for (const path of paths) {
+    try {
+      const response = await fetch(path, { cache: "no-store" });
+      if (!response.ok) {
+        continue;
+      }
+      const data = await response.json();
+      if (data && typeof data.fallback === "string") {
+        mockData.fallback = data.fallback;
+      }
+      if (data && Array.isArray(data.items)) {
+        mockData.items = data.items;
+      }
+      loaded = true;
+      break;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (!loaded) {
+    console.warn("Could not load pre.json, using fallback replies.", lastError);
+  }
+}
+
+function getMockReply(questionText) {
+  const normalized = normalizeMockText(questionText);
+  if (!normalized) {
+    return "Please type or speak a question.";
+  }
+  let bestItem = null;
+  let bestScore = 0;
+  for (const item of mockData.items) {
+    const keywords = Array.isArray(item.keywords)
+      ? item.keywords
+      : item.question
+      ? [item.question]
+      : item.q
+      ? [item.q]
+      : [];
+    let score = 0;
+    for (const keyword of keywords) {
+      const key = normalizeMockText(keyword);
+      if (!key) {
+        continue;
+      }
+      if (normalized.includes(key) || key.includes(normalized)) {
+        score += Math.max(1, key.split(" ").length);
+      }
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestItem = item;
+    }
+  }
+  if (bestItem) {
+    return (
+      bestItem.answer ||
+      bestItem.response ||
+      bestItem.a ||
+      mockData.fallback
+    );
+  }
+  return mockData.fallback;
+}
+
+function getSpeechLanguage() {
+  const stored = localStorage.getItem("language") || defaultSettings.language;
+  const key = stored.split("_")[1] || "en";
+  const mapping = {
+    multilingual: "en-US",
+    en: "en-US",
+    ar: "ar-SA",
+    hi: "hi-IN",
+    de: "de-DE",
+    es: "es-ES",
+    pt: "pt-BR",
+    sv: "sv-SE",
+    nl: "nl-NL",
+    ru: "ru-RU",
+    fr: "fr-FR",
+    zh: "zh-CN"
+  };
+  return mapping[key] || "en-US";
+}
+
+function getPlaybackRate() {
+  const stored =
+    localStorage.getItem("playback-speed") || defaultSettings["playback-speed"];
+  const raw = stored.split("_")[1];
+  const rate = parseFloat(raw);
+  if (!Number.isFinite(rate)) {
+    return 1.0;
+  }
+  return Math.max(0.25, Math.min(2.0, rate));
+}
+
+function estimateSpeechDurationSeconds(text, rate) {
+  const normalized = normalizeMockText(text);
+  const words = normalized ? normalized.split(" ").length : 1;
+  const baseSeconds = words / (2.2 * rate);
+  return Math.max(1.0, Math.min(18.0, baseSeconds));
+}
+
+function buildMockBlenddata(durationSeconds) {
+  const targetCount = 52;
+  const jawOpenIndex = 17;
+  const mouthCloseIndex = 18;
+  const mouthFunnelIndex = 19;
+  const mouthPuckerIndex = 20;
+  const mouthSmileLeftIndex = 23;
+  const mouthSmileRightIndex = 24;
+  const frames = Math.max(10, Math.round(durationSeconds * 60));
+  const data = new Array(targetCount);
+  for (let i = 0; i < targetCount; i++) {
+    data[i] = new Array(frames).fill(0);
+  }
+  for (let frame = 0; frame < frames; frame++) {
+    const t = frame / 60;
+    const wave =
+      0.25 + 0.25 * Math.sin(2 * Math.PI * 2.7 * t) + 0.08 * Math.sin(2 * Math.PI * 6.1 * t);
+    const open = Math.min(1, Math.max(0, wave));
+    data[jawOpenIndex][frame] = open;
+    data[mouthCloseIndex][frame] = 0.05;
+    data[mouthFunnelIndex][frame] = 0.08 * (1 - open);
+    data[mouthPuckerIndex][frame] = 0.04;
+    data[mouthSmileLeftIndex][frame] = 0.05;
+    data[mouthSmileRightIndex][frame] = 0.05;
+  }
+  return data;
+}
+
+function selectSpeechVoice(lang) {
+  if (!("speechSynthesis" in window)) {
+    return null;
+  }
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices || voices.length === 0) {
+    return null;
+  }
+  const avatarSetting = localStorage.getItem("avatar") || defaultSettings.avatar;
+  const preferArabic = avatarSetting === "avatar_muhammad" || lang.toLowerCase().startsWith("ar");
+  let match = null;
+  if (preferArabic) {
+    match = voices.find((voice) => voice.lang && voice.lang.toLowerCase().startsWith("ar"));
+  }
+  if (!match) {
+    match = voices.find((voice) => voice.lang && voice.lang.toLowerCase().startsWith(lang.toLowerCase()));
+  }
+  return match || null;
+}
+
+function speakLocalReply(text) {
+  if (isMuted) {
+    return false;
+  }
+  if (!("speechSynthesis" in window)) {
+    console.warn("Speech synthesis is not available in this browser.");
+    return false;
+  }
+  stopLocalSpeech();
+  const rate = getPlaybackRate();
+  const lang = getSpeechLanguage();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = rate;
+  utterance.lang = lang;
+  const voice = selectSpeechVoice(lang);
+  if (voice) {
+    utterance.voice = voice;
+  }
+  const durationSeconds = estimateSpeechDurationSeconds(text, rate);
+  const blenddata = buildMockBlenddata(durationSeconds);
+  utterance.onstart = function () {
+    (0,_avatar_js__WEBPACK_IMPORTED_MODULE_0__.startSpeakingAnimation)(blenddata);
+  };
+  utterance.onend = function () {
+    (0,_avatar_js__WEBPACK_IMPORTED_MODULE_0__.stopSpeakingAnimation)();
+    hideCancelButton();
+  };
+  utterance.onerror = function () {
+    (0,_avatar_js__WEBPACK_IMPORTED_MODULE_0__.stopSpeakingAnimation)();
+    hideCancelButton();
+  };
+  localSpeechUtterance = utterance;
+  window.speechSynthesis.speak(utterance);
+  return true;
+}
+
+function stopLocalSpeech() {
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
+  localSpeechUtterance = null;
+}
+
+function initLocalSpeechRecognition() {
+  if (localSpeechRecognition) {
+    return true;
+  }
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Recognition) {
+    console.warn("Speech recognition is not available in this browser.");
+    return false;
+  }
+  localSpeechRecognition = new Recognition();
+  localSpeechRecognition.interimResults = false;
+  localSpeechRecognition.maxAlternatives = 1;
+  localSpeechRecognition.onresult = function (event) {
+    const transcript =
+      event.results && event.results[0] && event.results[0][0]
+        ? event.results[0][0].transcript
+        : "";
+    if (transcript) {
+      document.getElementById("question").value = transcript;
+      jquery__WEBPACK_IMPORTED_MODULE_3___default()("#question").trigger("input");
+      sendText();
+    } else {
+      document.getElementById("answer").textContent = "I did not catch that. Please try again.";
+      hideCancelButton();
+    }
+  };
+  localSpeechRecognition.onerror = function (event) {
+    console.warn("Speech recognition error:", event.error);
+    document.getElementById("answer").textContent = "Speech recognition error. Please type your question.";
+    hideCancelButton();
+  };
+  localSpeechRecognition.onend = function () {
+    localSpeechActive = false;
+    activateStartButton();
+  };
+  return true;
+}
+
+function startLocalSpeechRecognition() {
+  if (!initLocalSpeechRecognition()) {
+    document.getElementById("answer").textContent =
+      "Speech recognition is not available in this browser. Please type your question.";
+    hideCancelButton();
+    return;
+  }
+  stopLocalSpeech();
+  (0,_avatar_js__WEBPACK_IMPORTED_MODULE_0__.stopSpeakingAnimation)();
+  localSpeechRecognition.lang = getSpeechLanguage();
+  clearQuestion();
+  jquery__WEBPACK_IMPORTED_MODULE_3___default()("#answer").text("");
+  showCancelButton();
+  activateStopButton();
+  localSpeechActive = true;
+  try {
+    localSpeechRecognition.start();
+  } catch (error) {
+    console.warn("Speech recognition start failed:", error);
+    localSpeechActive = false;
+    activateStartButton();
+  }
+}
+
+function stopLocalSpeechRecognition() {
+  if (localSpeechRecognition && localSpeechActive) {
+    try {
+      localSpeechRecognition.stop();
+    } catch (error) {
+      console.warn("Speech recognition stop failed:", error);
+    }
+  }
+  localSpeechActive = false;
+  activateStartButton();
+}
+
 // Establish the WebSocket connection
-var socket = new WebSocket(websocketURL);
+var socket = USE_MOCK_RESPONSES ? null : new WebSocket(websocketURL);
 
 // Create a timeout to create a new session after 10 minutes of no activity
 function startNewSession() {
@@ -21092,6 +21388,9 @@ function update_localStorage() {
 // Start program
 // make sure localstorage is up to date before doing anything settings related
 update_localStorage();
+if (USE_MOCK_RESPONSES) {
+  loadMockData();
+}
 // show start screen if the value is on or null
 if (localStorage.getItem("show-start-menu") !== "show-start-menu_off") {
   activateStartScreen();
@@ -21117,71 +21416,73 @@ if (localStorage.getItem("show-start-menu") !== "show-start-menu_off") {
   playGreeting();
 }
 
-// Handle WebSocket error and open event
-socket.onerror = function (error) {
-  console.error("WebSocket error:", error);
-};
-socket.onopen = function () {
-  console.log("Websocket open");
-};
+// Handle WebSocket events (skip when in mock/offline mode)
+if (socket) {
+  socket.onerror = function (error) {
+    console.error("WebSocket error:", error);
+  };
+  socket.onopen = function () {
+    console.log("Websocket open");
+  };
 
-// Handle Websocket message Events
-socket.onmessage = async function (event) {
-  const data = JSON.parse(event.data);
-  console.log(data);
-  if (data.request_id !== requestId) {
-    return;
-  }
-  if (data.finish) {
-    if (data.finish.slice(0, 5) === "error") {
-      cancel();
-      jquery__WEBPACK_IMPORTED_MODULE_3___default()("#question_input div").remove();
-      jquery__WEBPACK_IMPORTED_MODULE_3___default()("#answer").text("There has been an error. Please try again.");
+  // Handle Websocket message Events
+  socket.onmessage = async function (event) {
+    const data = JSON.parse(event.data);
+    console.log(data);
+    if (data.request_id !== requestId) {
+      return;
     }
-  }
-  if (data.question) {
-    document.getElementById("question").value = data.question;
-    previousQuestion = data.question;
-    // make the question textarea update height to fit the text
-    jquery__WEBPACK_IMPORTED_MODULE_3___default()("#question").trigger("input");
-    // delete question loading animation and add answer loading animation
-    jquery__WEBPACK_IMPORTED_MODULE_3___default()("#question_input div").remove();
-    jquery__WEBPACK_IMPORTED_MODULE_3___default()("#answer").append(
-      "<div class='loading'><div class='line'></div><div class='line'></div><div class='line'></div></div>"
-    );
-  }
-  //Write Down the Answer from the Websocket message
-  if (data.sentence) {
-    let answer = jquery__WEBPACK_IMPORTED_MODULE_3___default()("#answer");
-    // stop the loading animation
-    jquery__WEBPACK_IMPORTED_MODULE_3___default()("#answer div").remove();
-    jquery__WEBPACK_IMPORTED_MODULE_3___default()("#question_input div").remove();
-    //New line if \n in Message
-    let newSentence = data.sentence.replace(/\n/g, "<br>");
-    answer.html(answer.html() + newSentence);
-    /* experimental feature: display of Tex Code
-    if ( newSentence.includes("\)") || newSentence.includes("\]") ) {
-      MathJax.typeset();
-    }*/
-  }
-  // add the Audio from the Websocket message to the queue
-  if (data.audio) {
-    audioQueue.push(data.audio);
-    blenddataQueue.push(data.blenddata);
-  }
+    if (data.finish) {
+      if (data.finish.slice(0, 5) === "error") {
+        cancel();
+        jquery__WEBPACK_IMPORTED_MODULE_3___default()("#question_input div").remove();
+        jquery__WEBPACK_IMPORTED_MODULE_3___default()("#answer").text("There has been an error. Please try again.");
+      }
+    }
+    if (data.question) {
+      document.getElementById("question").value = data.question;
+      previousQuestion = data.question;
+      // make the question textarea update height to fit the text
+      jquery__WEBPACK_IMPORTED_MODULE_3___default()("#question").trigger("input");
+      // delete question loading animation and add answer loading animation
+      jquery__WEBPACK_IMPORTED_MODULE_3___default()("#question_input div").remove();
+      jquery__WEBPACK_IMPORTED_MODULE_3___default()("#answer").append(
+        "<div class='loading'><div class='line'></div><div class='line'></div><div class='line'></div></div>"
+      );
+    }
+    //Write Down the Answer from the Websocket message
+    if (data.sentence) {
+      let answer = jquery__WEBPACK_IMPORTED_MODULE_3___default()("#answer");
+      // stop the loading animation
+      jquery__WEBPACK_IMPORTED_MODULE_3___default()("#answer div").remove();
+      jquery__WEBPACK_IMPORTED_MODULE_3___default()("#question_input div").remove();
+      //New line if \n in Message
+      let newSentence = data.sentence.replace(/\\n/g, "<br>");
+      answer.html(answer.html() + newSentence);
+      /* experimental feature: display of Tex Code
+      if ( newSentence.includes("\\)") || newSentence.includes("\\]") ) {
+        MathJax.typeset();
+      }*/
+    }
+    // add the Audio from the Websocket message to the queue
+    if (data.audio) {
+      audioQueue.push(data.audio);
+      blenddataQueue.push(data.blenddata);
+    }
 
-  if (data.queryResult) {
-    resultpreview.innerHTML += "" + data.queryResult.fulfillmentText;
-    intentInput.value = data.queryResult.intent.displayName;
-    textInput.value = "" + data.queryResult.queryText;
-  }
-};
+    if (data.queryResult) {
+      resultpreview.innerHTML += "" + data.queryResult.fulfillmentText;
+      intentInput.value = data.queryResult.intent.displayName;
+      textInput.value = "" + data.queryResult.queryText;
+    }
+  };
 
-// Handle WebSocket close event
-socket.onclose = function (event) {
-  console.log("WebSocket connection closed with code: " + event.code);
-  cancel();
-};
+  // Handle WebSocket close event
+  socket.onclose = function (event) {
+    console.log("WebSocket connection closed with code: " + event.code);
+    cancel();
+  };
+}
 
 function activateStartScreen() {
   // display the start screen
@@ -21251,6 +21552,10 @@ async function handleLanguageClick() {
 }
 
 async function playGreeting() {
+  if (!socket || socket.readyState !== 1) {
+    console.warn("Skipping greeting because websocket is not connected");
+    return;
+  }
   requestId = Math.floor(Math.random() * 90000 + 10000);
   websocketMessage = {
     session_id: sessionId,
@@ -21259,7 +21564,6 @@ async function playGreeting() {
   };
   socket.send(JSON.stringify(websocketMessage));
   showCancelButton();
-  jquery__WEBPACK_IMPORTED_MODULE_3___default()("#cancel-button").on("click", cancelWithoutAnswerReset);
   audioElement = new Audio();
   await waitForAudio();
 }
@@ -21376,7 +21680,9 @@ function saveSetting() {
       session_id: sessionId,
       prompt: prompt,
     };
-    socket.send(JSON.stringify(websocketMessage));
+    if (!USE_MOCK_RESPONSES && socket && socket.readyState === 1) {
+      socket.send(JSON.stringify(websocketMessage));
+    }
     jquery__WEBPACK_IMPORTED_MODULE_3___default()("#prompt_input").on("click", activateSaveButton);
   } else {
     let values = [];
@@ -21410,7 +21716,9 @@ function saveSetting() {
       negativeThreshold = positiveThreshold;
     }
     // create speech detector again because values have changed
-    createVAD();
+    if (!USE_MOCK_RESPONSES) {
+      createVAD();
+    }
   }
 }
 
@@ -21453,6 +21761,9 @@ function select(category, value) {
 }
 
 function sendSetting(category, value) {
+  if (USE_MOCK_RESPONSES || !socket || socket.readyState !== 1) {
+    return;
+  }
   websocketMessage = {
     session_id: sessionId,
   };
@@ -21462,18 +21773,30 @@ function sendSetting(category, value) {
 
 // select the settings either from localStorage or from default at start of program
 async function selectSettings() {
-  // as selectSettings is called right away while socket is connecting and messages have to be sent through websocket, you have to wait for socket to open
-  while (socket.readyState !== socket.OPEN) {
-    await sleep(10);
+  // still apply local settings even when running in mock/offline mode; only send to backend when available
+  let shouldSendToBackend = !USE_MOCK_RESPONSES && socket;
+  if (shouldSendToBackend) {
+    // as selectSettings is called right away while socket is connecting and messages have to be sent through websocket, you have to wait for socket to open
+    let waitedMs = 0;
+    while (socket.readyState === 0 && waitedMs < 5000) {
+      await sleep(50);
+      waitedMs += 50;
+    }
+    if (socket.readyState !== 1) {
+      console.warn("WebSocket not connected; continuing without backend sync");
+      shouldSendToBackend = false;
+    }
   }
   for (const [category, value] of Object.entries(localStorage)) {
     // catch textfield options manually, others with select function
     if (category === "prompt") {
-      websocketMessage = {
-        session_id: sessionId,
-        prompt: value,
-      };
-      socket.send(JSON.stringify(websocketMessage));
+      if (shouldSendToBackend) {
+        websocketMessage = {
+          session_id: sessionId,
+          prompt: value,
+        };
+        socket.send(JSON.stringify(websocketMessage));
+      }
       // set value of textfield
       document.getElementById("prompt_input").value =
         localStorage.getItem("prompt");
@@ -21493,7 +21816,9 @@ async function selectSettings() {
       document.getElementById("autostop_negative").value = negativeThreshold;
       document.getElementById("autostop_seconds").value = autostopAfterSeconds;
       // create a VAD with the settings
-      createVAD();
+      if (!USE_MOCK_RESPONSES) {
+        createVAD();
+      }
       continue;
     }
     // all other settings are multiple choice
@@ -21505,19 +21830,22 @@ async function selectSettings() {
 function activateStartButton() {
   jquery__WEBPACK_IMPORTED_MODULE_3___default()("#record_btn-container").off("click");
   jquery__WEBPACK_IMPORTED_MODULE_3___default()("#record_btn-container").on("click", startRecording);
-  document.getElementById("record_btn-container").className = "inactive";
-  jquery__WEBPACK_IMPORTED_MODULE_3___default()("#record-button").attr("src", "/static/icon/record-inactive.png");
-}
+document.getElementById("record_btn-container").className = "inactive";
+jquery__WEBPACK_IMPORTED_MODULE_3___default()("#record-button").attr("src", "icon/record-inactive.png");
+}  
 
 function activateStopButton() {
   jquery__WEBPACK_IMPORTED_MODULE_3___default()("#record_btn-container").off("click");
   jquery__WEBPACK_IMPORTED_MODULE_3___default()("#record_btn-container").on("click", stopRecording);
-  document.getElementById("record_btn-container").className = "active";
-  jquery__WEBPACK_IMPORTED_MODULE_3___default()("#record-button").attr("src", "/static/icon/record-active.png");
+document.getElementById("record_btn-container").className = "active";
+jquery__WEBPACK_IMPORTED_MODULE_3___default()("#record-button").attr("src", "icon/record-active.png");
 }
 
 function showCancelButton() {
-  jquery__WEBPACK_IMPORTED_MODULE_3___default()("#cancel-button").css("display", "inline");
+  jquery__WEBPACK_IMPORTED_MODULE_3___default()("#cancel-button")
+    .css("display", "inline")
+    .off("click")
+    .on("click", cancelWithoutAnswerReset);
 }
 
 function hideCancelButton() {
@@ -21527,14 +21855,15 @@ function hideCancelButton() {
 // handle mute button
 document.getElementById("mute_button").addEventListener("click", function () {
   this.src = isMuted
-    ? "/static/icon/speaking-on.png"
-    : "/static/icon/speaking-off.png";
+    ? "icon/speaking-on.png"
+    : "icon/speaking-off.png";
   isMuted = !isMuted;
   // stop audio and animation
   (0,_avatar_js__WEBPACK_IMPORTED_MODULE_0__.stopSpeakingAnimation)();
   if (typeof audioElement !== "undefined") {
     audioElement.pause();
   }
+  stopLocalSpeech();
 });
 
 // function to listen for wake word using porcupine
@@ -21555,7 +21884,7 @@ async function initiateWWD() {
 
 async function wakewordCallback() {
   console.log("wakeword detected");
-  pingSound = new Audio("/static/sounds/ping.mp3");
+  pingSound = new Audio("sounds/ping.mp3");
   pingSound.play();
   cancel();
   await sleep(
@@ -21608,6 +21937,20 @@ async function sendText() {
   jquery__WEBPACK_IMPORTED_MODULE_3___default()("#question").one("focus", clearQuestion);
 
   var valueWebsocket;
+  // offline mock mode: answer locally and skip websocket
+  if (USE_MOCK_RESPONSES) {
+    await loadMockData();
+    var questionText = document.getElementById("question").value || "";
+    var reply = getMockReply(questionText);
+    document.getElementById("answer").textContent = reply;
+    var spoke = speakLocalReply(reply);
+    if (!spoke) {
+      hideCancelButton();
+    }
+    previousQuestion = "";
+    return;
+  }
+
   // send the question
   requestId = Math.floor(Math.random() * 90000 + 10000);
   valueWebsocket = document.getElementById("question").value;
@@ -21616,6 +21959,14 @@ async function sendText() {
     request_id: requestId,
     question: valueWebsocket,
   };
+  if (!socket || socket.readyState !== 1) {
+    console.error("Cannot send question: websocket is not connected");
+    document.getElementById("answer").textContent =
+      "Assistant connection is not ready. Please reload and ensure the backend is running.";
+    hideCancelButton();
+    previousQuestion = "";
+    return;
+  }
   socket.send(JSON.stringify(websocketMessage));
 
   await waitForAudio();
@@ -21623,8 +21974,15 @@ async function sendText() {
 
 // Function to start the recording
 async function startRecording() {
+  if (settingsOpen) {
+    return;
+  }
+  if (USE_MOCK_RESPONSES) {
+    startLocalSpeechRecognition();
+    return;
+  }
   // don't react if settings menu is open or VAD has not been set yet at start of program
-  if (settingsOpen || speechDetector === null) {
+  if (speechDetector === null) {
     return;
   }
   // create a new websocket if necessary
@@ -21637,7 +21995,7 @@ async function startRecording() {
   // cancel prior requests
   cancel();
   // (re)set the necessary variables
-  pingSound = new Audio("/static/sounds/ping.mp3");
+  pingSound = new Audio("sounds/ping.mp3");
   audioElement = new Audio();
   speechStarted = false;
 
@@ -21675,6 +22033,10 @@ async function waitForAudio() {
 
 // stop the recording manually
 function stopRecording() {
+  if (USE_MOCK_RESPONSES) {
+    stopLocalSpeechRecognition();
+    return;
+  }
   if (speechStarted) {
     showCancelButton();
     // get the recorded audio and send it to backend
@@ -21717,13 +22079,17 @@ function cancelWithoutReset() {
   if (typeof audioElement !== "undefined") {
     audioElement.pause();
   }
+  stopLocalSpeech();
+  stopLocalSpeechRecognition();
   // send cancel to backend
-  websocketMessage = {
-    session_id: sessionId,
-    request_id: requestId,
-    cancel: "True",
-  };
-  socket.send(JSON.stringify(websocketMessage));
+  if (!USE_MOCK_RESPONSES && socket && socket.readyState === 1) {
+    websocketMessage = {
+      session_id: sessionId,
+      request_id: requestId,
+      cancel: "True",
+    };
+    socket.send(JSON.stringify(websocketMessage));
+  }
 }
 
 // Function to cancel request without showing start button (looks better when using wwd to cancel and immediately start new request)
@@ -21777,6 +22143,9 @@ async function playAudio() {
 }
 
 async function sendAudio(audioData) {
+  if (USE_MOCK_RESPONSES || !socket || socket.readyState !== 1) {
+    return;
+  }
   jquery__WEBPACK_IMPORTED_MODULE_3___default()("#question").one("focus", clearQuestion);
   // create waiting animation in the question text
   jquery__WEBPACK_IMPORTED_MODULE_3___default()("#question_input").prepend(
@@ -21920,15 +22289,15 @@ var blinkAnimation = new three__WEBPACK_IMPORTED_MODULE_1__.AnimationClip(null, 
 var blinkAction;
 
 // load animations, first the neutral animations, then the waiting animations
-modelLoader.load("/static/avatar/animations/f_neutral.glb", function (gltf) {
+modelLoader.load("avatar/animations/f_neutral.glb", function (gltf) {
   neutralFemaleAnimation = gltf.animations[0];
-  modelLoader.load(`/static/avatar/animations/f_waiting.glb`, function (gltf) {
+  modelLoader.load(`avatar/animations/f_waiting.glb`, function (gltf) {
     waitingFemaleAnimation = gltf.animations[0];
   });
 });
-modelLoader.load(`/static/avatar/animations/m_neutral.glb`, function (gltf) {
+modelLoader.load(`avatar/animations/m_neutral.glb`, function (gltf) {
   neutralMaleAnimation = gltf.animations[0];
-  modelLoader.load(`/static/avatar/animations/m_waiting.glb`, function (gltf) {
+  modelLoader.load(`avatar/animations/m_waiting.glb`, function (gltf) {
     waitingMaleAnimation = gltf.animations[2];
   });
 });
@@ -21993,10 +22362,16 @@ async function setAvatar(selectedAvatar) {
   mixer = new three__WEBPACK_IMPORTED_MODULE_1__.AnimationMixer(scene);
   modelName = selectedAvatar;
   female = femaleNames.includes(modelName);
+  // mirror avatar as static image in answer panel in case WebGL is blocked
+  var assistantImg = document.getElementById("assistant-avatar-img");
+  if (assistantImg) {
+    assistantImg.src = "avatar/images/" + modelName + ".png";
+    assistantImg.style.display = "block";
+  }
   blinkAction = mixer.clipAction(blinkAnimation);
 
   // modelLoader gets the glb model file and three functions, first for when model finished loading, second for during loading (e.g. loading message, currently undefined) and third for error handling
-  modelLoader.load(`/static/avatar/models/${modelName}.glb`, async function(gltf) {
+  modelLoader.load(`avatar/models/${modelName}.glb`, async function(gltf) {
     model = gltf.scene;
     loadingAvatar = false;
     let scaling = female ? 3.2 : 3.05;  // female models are smaller, scales have to match the camera position
@@ -22047,7 +22422,10 @@ async function setAvatar(selectedAvatar) {
 
   }, undefined, function(error) {
       console.log("Error loading the model:" + error);
-      $("#Answer").text("There has been an error loading the avatar. Please reload the site or choose another model.");
+      var answerEl = document.getElementById("answer");
+      if (answerEl) {
+        answerEl.textContent = "There has been an error loading the avatar. Please reload the site or choose another model.";
+      }
   });
 }
 
