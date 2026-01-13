@@ -1,13 +1,40 @@
+@font-face {
+  font-family: "Noto Sans";
+  src: url("../fonts/NotoSans-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --accent: #ff5622;
+  --bg: #121416;
+  --surface: #1b2026;
+  --text: #e6ebf2;
+  --muted: #a3a9b1;
+  --border: #2a3038;
+  --shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  --shadow-hover: 0 22px 48px rgba(0, 0, 0, 0.6);
+  --bg-gradient: radial-gradient(circle at 20% -10%, rgba(255, 86, 34, 0.18), transparent 60%),
+    radial-gradient(circle at 80% 0%, rgba(32, 35, 41, 0.9), transparent 55%);
+  color-scheme: dark;
+}
+
 html {
   min-height: 100%;
+  height: 100%;
   position: relative;
+  background-color: var(--bg);
+  background-image: var(--bg-gradient);
 }
 body {
   min-height: 100%;
+  min-height: 100vh;
   margin: 0;
-  background: #121212;
-  color: rgba(240, 244, 248, 0.9);
-  font-family: "Helvetica", "Arial", sans-serif;
+  background-color: var(--bg);
+  background-image: var(--bg-gradient);
+  color: var(--text);
+  font-family: "Noto Sans", "Segoe UI", "Trebuchet MS", sans-serif;
   font-size: 14px;
   font-weight: 400;
   line-height: 20px;
@@ -62,13 +89,13 @@ body {
   text-align: center;
   width: 100%;
   line-height: normal;
-  color: white;
+  color: var(--text);
 }
 
 #start-screen h2 {
   text-align: center;
   width: 100%;
-  color: rgba(240, 244, 248, 0.9);
+  color: var(--muted);
 }
 
 #avatar_page h2 {
@@ -82,6 +109,11 @@ body {
 .avatar_option {
   width: 40%;
   padding: 2.5%;
+  background: rgba(27, 32, 38, 0.7);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  color: var(--text);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .flag {
@@ -103,6 +135,11 @@ body {
   width: 35%;
   height: 8%;
   font-size: 20px;
+  background: rgba(27, 32, 38, 0.7);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  color: var(--text);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .avatar-name {
@@ -117,8 +154,10 @@ body {
 }
 
 .avatar_option:hover, .language_option:hover {
-  background: rgba(74, 165, 221, 0.6);
-  color: rgba(240, 244, 248, 0.9);
+  background: rgba(255, 86, 34, 0.14);
+  border-color: rgba(255, 86, 34, 0.45);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
 }
 
 #brands {
@@ -130,6 +169,7 @@ body {
   max-width: 560px;
   align-items: center;
   justify-content: center;
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.4));
 }
 
 #logo_bridge {
@@ -162,7 +202,9 @@ body {
   border-radius: 50%;
   padding: 10px;
   margin: 5px auto 30px;
-  border: 3px solid black;
+  border: 1px solid var(--border);
+  background: rgba(27, 32, 38, 0.75);
+  box-shadow: var(--shadow);
   -webkit-box-sizing: border-box;
   -moz-box-sizing: border-box;
   box-sizing: border-box;
@@ -179,11 +221,11 @@ body {
 }
 
 .active {
-  background: rgb(74, 165, 221);
+  background: var(--accent);
 }
 
 .inactive {
-  background: rgba(240, 244, 248, 0.9);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 #settings-btn {
@@ -203,13 +245,17 @@ body {
   max-height: 140px;
   opacity: 0.9;
   display: block;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.35));
 }
 
 #menu {
   display: none;
   position: absolute;
   width: 180px;
-  background: #393a3f;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
   z-index: 1;
 }
 
@@ -248,12 +294,12 @@ body {
 }
 
 .selected {
-  background: rgb(74,165,221);
-  color: #121212;
+  background: rgba(255, 86, 34, 0.25);
+  color: var(--text);
 }
 
 .option:hover {
-  background: rgba(74, 165, 221, 0.6);
+  background: rgba(255, 86, 34, 0.16);
 }
 
 .option:hover p {
@@ -261,19 +307,20 @@ body {
 }
 
 .selected:hover {
-  background: rgb(74, 165, 221);
+  background: rgba(255, 86, 34, 0.3);
 }
 
 .arrow {
-  color: rgb(74, 165, 221);
+  color: var(--accent);
   font-weight: 900;
 }
 
 .textbox {
   padding: 10px;
   width: 100%;
-  background: #c6c5cd;
-  color: black;
+  background: rgba(27, 32, 38, 0.85);
+  color: var(--text);
+  border: 1px solid var(--border);
   border-radius: 5px;
   -webkit-box-sizing: border-box;
   -moz-box-sizing: border-box;
@@ -322,8 +369,10 @@ textarea {
   padding: 8px;
   margin: 0 auto 10px;
   border-radius: 20px;
-  background: #2f3138;
-  color: rgba(240, 244, 248, 0.9);
+  background: rgba(27, 32, 38, 0.9);
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
   text-align: center;
 }
 
@@ -335,7 +384,7 @@ textarea {
   max-width: 1100px;
   flex-direction: row;
   gap: 30px;
-  margin: 80px auto 100px;
+  margin: 120px auto 120px;
 }
 
 .container {
@@ -348,10 +397,12 @@ textarea {
   width: 100%;
   height: 100%;
   padding: 10px;
-  background: #393a3f;
-  color: rgba(74, 165, 221, 0.78);
+  background: rgba(27, 32, 38, 0.92);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-top: none;
   border-radius: 20px;
-  box-shadow: 10px 10px 5px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow);
   -webkit-box-sizing: border-box;
     -moz-box-sizing: border-box;
       box-sizing: border-box;
@@ -364,6 +415,7 @@ textarea {
 #main-content label {
   font-size: larger;
   margin: 10px auto 5px;
+  color: var(--muted);
 }
 
 #mute_button {
@@ -399,6 +451,11 @@ textarea {
   -webkit-box-sizing: border-box;
     -moz-box-sizing: border-box;
       box-sizing: border-box;
+  color: var(--text);
+}
+
+#question::placeholder {
+  color: var(--muted);
 }
 
 textarea:focus {
@@ -423,6 +480,7 @@ textarea:focus {
   -webkit-box-sizing: border-box;
     -moz-box-sizing: border-box;
       box-sizing: border-box;
+  color: var(--text);
 }
 
 #cancel-button {
@@ -441,6 +499,7 @@ footer {
   padding: 20px;
   font-size: larger;
   font-weight: bold;
+  color: var(--muted);
 }
 
 @media screen and (orientation:portrait) {
@@ -481,7 +540,7 @@ footer {
   border-radius: 15px;
   margin: 0 2px;
   margin-top: 5px;
-  background-color: rgb(74, 165, 221);
+  background-color: var(--accent);
 }
 
 #question_input .loading {
