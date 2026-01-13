@@ -11,6 +11,7 @@ class SpotVoiceAssistant {
         this.synthesis = window.speechSynthesis;
         this.wakeWord = 'hey spot';
         this.backendUrl = 'http://localhost:5000';
+        this.openAiRetryAt = 0;
         this.useBryceVoice = false;  // Will be set to true if backend is available
         this.audioContext = null;
 
@@ -173,7 +174,7 @@ class SpotVoiceAssistant {
         }, 15000);
     }
 
-    handleQuery(query) {
+    async handleQuery(query) {
         if (query.length < 2) return;
 
         this.isProcessing = true;
@@ -184,7 +185,7 @@ class SpotVoiceAssistant {
         this.updateStatus('Thinking...', 'processing');
 
         // Find matching answer
-        const answer = this.findAnswer(query);
+        const answer = await this.getAnswer(query);
 
         // Add Spot's response to chat
         setTimeout(() => {
@@ -196,6 +197,43 @@ class SpotVoiceAssistant {
             this.isProcessing = false;
             this.updateStatus('Listening for "Hey Spot"...', 'listening');
         }, 500);
+    }
+
+    async getAnswer(query) {
+        const localAnswer = this.findAnswer(query);
+        if (!localAnswer) {
+            return "I'm sorry, my knowledge base is not loaded yet.";
+        }
+
+        if (!navigator.onLine || Date.now() < this.openAiRetryAt) {
+            return localAnswer;
+        }
+
+        try {
+            const response = await fetch(`${this.backendUrl}/chat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: query })
+            });
+
+            if (!response.ok) {
+                throw new Error(`OpenAI request failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const answer = data && data.answer ? data.answer.trim() : '';
+            if (!answer) {
+                throw new Error('OpenAI returned an empty response');
+            }
+
+            return answer;
+        } catch (error) {
+            console.log('OpenAI unavailable, using local knowledge base:', error);
+            this.openAiRetryAt = Date.now() + 30000;
+            return localAnswer;
+        }
     }
 
     findAnswer(query) {

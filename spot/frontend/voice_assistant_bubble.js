@@ -11,6 +11,10 @@ class SpotBubbleAssistant {
         this.synthesis = window.speechSynthesis;
         this.wakeWord = 'hey spot';
         this.conversationHistory = [];
+        this.backendUrl = 'http://localhost:5000';
+        this.openAiRetryAt = 0;
+        this.useBryceVoice = false;  // Will be set to true if backend is available
+        this.audioContext = null;
 
         // Initialize Speech Recognition
         if ('webkitSpeechRecognition' in window) {
@@ -25,6 +29,30 @@ class SpotBubbleAssistant {
 
         this.setupRecognition();
         this.loadQADatabase();
+        this.checkBackendAvailability();
+        this.initAudioContext();
+    }
+
+    initAudioContext() {
+        // Initialize Web Audio API context for playing backend audio
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    async checkBackendAvailability() {
+        try {
+            const response = await fetch(`${this.backendUrl}/health`, {
+                method: 'GET',
+                timeout: 2000
+            });
+            const data = await response.json();
+            if (data.status === 'healthy') {
+                this.useBryceVoice = true;
+                console.log('✓ Bryce voice backend is available');
+            }
+        } catch (error) {
+            console.log('✗ Bryce voice backend not available, using browser voices');
+            this.useBryceVoice = false;
+        }
     }
 
     setupRecognition() {
@@ -146,7 +174,7 @@ class SpotBubbleAssistant {
         }, 15000);
     }
 
-    handleQuery(query) {
+    async handleQuery(query) {
         if (query.length < 2) return;
 
         this.isProcessing = true;
@@ -160,7 +188,7 @@ class SpotBubbleAssistant {
         this.showTypingIndicator();
 
         // Find matching answer
-        const answer = this.findAnswer(query);
+        const answer = await this.getAnswer(query);
 
         // Display Spot's response after a short delay
         setTimeout(() => {
@@ -174,6 +202,43 @@ class SpotBubbleAssistant {
                 this.updateBubbleStatus('listening', '🎤 Say "Hey Spot" for another question');
             }, 1000);
         }, 1000);
+    }
+
+    async getAnswer(query) {
+        const localAnswer = this.findAnswer(query);
+        if (!localAnswer) {
+            return "I'm sorry, my knowledge base is not loaded yet.";
+        }
+
+        if (!navigator.onLine || Date.now() < this.openAiRetryAt) {
+            return localAnswer;
+        }
+
+        try {
+            const response = await fetch(`${this.backendUrl}/chat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: query })
+            });
+
+            if (!response.ok) {
+                throw new Error(`OpenAI request failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const answer = data && data.answer ? data.answer.trim() : '';
+            if (!answer) {
+                throw new Error('OpenAI returned an empty response');
+            }
+
+            return answer;
+        } catch (error) {
+            console.log('OpenAI unavailable, using local knowledge base:', error);
+            this.openAiRetryAt = Date.now() + 30000;
+            return localAnswer;
+        }
     }
 
     findAnswer(query) {
@@ -224,24 +289,109 @@ class SpotBubbleAssistant {
         return match ? match.answer : "I'm not sure how to answer that. Try asking about Spot robots, inspections, or basic questions!";
     }
 
-    speak(text) {
+    async speak(text) {
+        // Use Bryce voice if backend is available, otherwise fall back to browser voices
+        if (this.useBryceVoice) {
+            await this.speakWithBryce(text);
+        } else {
+            this.speakWithBrowser(text);
+        }
+    }
+
+    async speakWithBryce(text) {
+        try {
+            console.log('Speaking with Bryce voice:', text);
+            this.updateBubbleStatus('speaking', '🔊 Speaking with Bryce voice...');
+            this.addSoundWaveAnimation();
+
+            // Call backend TTS API
+            const response = await fetch(`${this.backendUrl}/tts-base64`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: text })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Backend TTS failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // Decode base64 audio
+            const audioData = atob(data.audio);
+            const arrayBuffer = new ArrayBuffer(audioData.length);
+            const view = new Uint8Array(arrayBuffer);
+            for (let i = 0; i < audioData.length; i++) {
+                view[i] = audioData.charCodeAt(i);
+            }
+
+            // Decode and play audio
+            const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+            const source = this.audioContext.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(this.audioContext.destination);
+
+            source.onended = () => {
+                console.log('Finished speaking (Bryce)');
+                this.removeSoundWaveAnimation();
+            };
+
+            source.start(0);
+
+        } catch (error) {
+            console.error('Error with Bryce voice, falling back to browser:', error);
+            this.useBryceVoice = false;  // Disable for this session
+            this.speakWithBrowser(text);
+        }
+    }
+
+    speakWithBrowser(text) {
         this.synthesis.cancel();
 
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
+        utterance.rate = 0.95;  // Slightly slower for clarity
+        utterance.pitch = 0.85; // Lower pitch for a deeper, more professional voice
         utterance.volume = 1.0;
         utterance.lang = 'en-US';
 
         const voices = this.synthesis.getVoices();
-        const preferredVoice = voices.find(voice =>
-            voice.name.includes('Google') ||
-            voice.name.includes('Microsoft') ||
-            voice.name.includes('Male')
-        );
 
-        if (preferredVoice) {
-            utterance.voice = preferredVoice;
+        // Priority order for voice selection - professional male voices
+        const voicePreferences = [
+            'Microsoft David',           // Windows - deep male voice
+            'Microsoft Mark',            // Windows - professional male
+            'Google US English Male',    // Chrome - clear male voice
+            'Microsoft Guy',             // Windows - natural male
+            'Alex',                      // macOS - high quality male
+            'Daniel',                    // macOS - British male
+        ];
+
+        // Find the first available voice from preferences
+        let selectedVoice = null;
+        for (const prefName of voicePreferences) {
+            selectedVoice = voices.find(voice =>
+                voice.name.includes(prefName)
+            );
+            if (selectedVoice) {
+                console.log('Selected voice:', selectedVoice.name);
+                break;
+            }
+        }
+
+        // If no preferred voice found, try any male voice
+        if (!selectedVoice) {
+            selectedVoice = voices.find(voice =>
+                voice.name.toLowerCase().includes('male') ||
+                voice.name.toLowerCase().includes('david') ||
+                voice.name.toLowerCase().includes('mark')
+            );
+        }
+
+        if (selectedVoice) {
+            utterance.voice = selectedVoice;
+            console.log('Using voice:', selectedVoice.name);
         }
 
         utterance.onstart = () => {
