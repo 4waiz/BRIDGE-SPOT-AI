@@ -13,6 +13,10 @@ class SimpleSpotAssistant {
         this.wakeWords = ['hey spot', 'hi spot']; // Support both "Hey Spot" and "Hi Spot"
         this.activeTimeout = null;
         this.lastSpeechTime = null;
+        this.backendUrl = 'http://localhost:5000';
+        this.openAiRetryAt = 0;
+        this.useBryceVoice = false;  // Will be set to true if backend is available
+        this.audioContext = null;
 
         // Initialize Speech Recognition
         if ('webkitSpeechRecognition' in window) {
@@ -27,6 +31,30 @@ class SimpleSpotAssistant {
 
         this.setupRecognition();
         this.loadQADatabase();
+        this.checkBackendAvailability();
+        this.initAudioContext();
+    }
+
+    initAudioContext() {
+        // Initialize Web Audio API context for playing backend audio
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    async checkBackendAvailability() {
+        try {
+            const response = await fetch(`${this.backendUrl}/health`, {
+                method: 'GET',
+                timeout: 2000
+            });
+            const data = await response.json();
+            if (data.status === 'healthy') {
+                this.useBryceVoice = true;
+                console.log('✓ Bryce voice backend is available');
+            }
+        } catch (error) {
+            console.log('✗ Bryce voice backend not available, using browser voices');
+            this.useBryceVoice = false;
+        }
     }
 
     setupRecognition() {
@@ -194,7 +222,7 @@ class SimpleSpotAssistant {
         }, 300); // Reduced from 800ms to 300ms
     }
 
-    handleQuery(query) {
+    async handleQuery(query) {
         if (query.length < 10) {
             console.log('Query too short, ignoring:', query);
             return;
@@ -212,7 +240,7 @@ class SimpleSpotAssistant {
 
         this.showTyping();
 
-        const answer = this.findAnswer(query);
+        const answer = await this.getAnswer(query);
 
         // Don't respond if no valid answer (likely noise)
         if (!answer) {
@@ -234,6 +262,43 @@ class SimpleSpotAssistant {
                 this.resetActiveTimeout();
             });
         }, 400);
+    }
+
+    async getAnswer(query) {
+        const localAnswer = this.findAnswer(query);
+        if (!localAnswer) {
+            return null;
+        }
+
+        if (!navigator.onLine || Date.now() < this.openAiRetryAt) {
+            return localAnswer;
+        }
+
+        try {
+            const response = await fetch(`${this.backendUrl}/chat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: query })
+            });
+
+            if (!response.ok) {
+                throw new Error(`OpenAI request failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const answer = data && data.answer ? data.answer.trim() : '';
+            if (!answer) {
+                throw new Error('OpenAI returned an empty response');
+            }
+
+            return answer;
+        } catch (error) {
+            console.log('OpenAI unavailable, using local knowledge base:', error);
+            this.openAiRetryAt = Date.now() + 30000;
+            return localAnswer;
+        }
     }
 
     findAnswer(query) {
@@ -296,9 +361,98 @@ class SimpleSpotAssistant {
         return match ? match.answer : "I'm not sure about that. Try asking about Spot, inspections, or basic questions!";
     }
 
-    speak(text, onComplete) {
+    async speak(text, onComplete) {
+        // Use Bryce voice if backend is available, otherwise fall back to browser voices
+        if (this.useBryceVoice) {
+            await this.speakWithBryce(text, onComplete);
+        } else {
+            this.speakWithBrowser(text, onComplete);
+        }
+    }
+
+    async speakWithBryce(text, onComplete) {
+        try {
+            console.log('Speaking with Bryce voice:', text);
+            this.isSpeaking = true;
+
+            // CRITICAL: Stop recognition while speaking to prevent feedback loop
+            const wasListening = this.isListening;
+            let recognitionWasStopped = false;
+
+            if (this.recognition && wasListening) {
+                try {
+                    this.recognition.stop();
+                    recognitionWasStopped = true;
+                    console.log('Paused recognition to prevent feedback');
+                } catch (e) {
+                    console.log('Error stopping recognition (may already be stopped):', e);
+                }
+            }
+
+            // Call backend TTS API
+            const response = await fetch(`${this.backendUrl}/tts-base64`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: text })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Backend TTS failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // Decode base64 audio
+            const audioData = atob(data.audio);
+            const arrayBuffer = new ArrayBuffer(audioData.length);
+            const view = new Uint8Array(arrayBuffer);
+            for (let i = 0; i < audioData.length; i++) {
+                view[i] = audioData.charCodeAt(i);
+            }
+
+            // Decode and play audio
+            const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+            const source = this.audioContext.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(this.audioContext.destination);
+
+            source.onended = () => {
+                console.log('Finished speaking (Bryce)');
+                this.isSpeaking = false;
+
+                // Restart recognition after speaking
+                if (recognitionWasStopped && wasListening && this.isListening) {
+                    setTimeout(() => {
+                        try {
+                            this.recognition.start();
+                            console.log('Resumed recognition after speaking');
+                        } catch (e) {
+                            if (!e.message || !e.message.includes('already started')) {
+                                console.log('Error restarting recognition:', e);
+                            }
+                        }
+                    }, 500);
+                }
+
+                if (onComplete) {
+                    onComplete();
+                }
+            };
+
+            source.start(0);
+
+        } catch (error) {
+            console.error('Error with Bryce voice, falling back to browser:', error);
+            this.useBryceVoice = false;  // Disable for this session
+            this.speakWithBrowser(text, onComplete);
+        }
+    }
+
+    speakWithBrowser(text, onComplete) {
         this.synthesis.cancel();
-        this.isSpeaking = true; // Mark as speaking
+        this.isSpeaking = true;
 
         // CRITICAL: Stop recognition while speaking to prevent feedback loop
         const wasListening = this.isListening;
@@ -315,72 +469,48 @@ class SimpleSpotAssistant {
         }
 
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 0.9; // Natural speaking pace
-        utterance.pitch = 0.95; // Slightly lower for more natural tone
+        utterance.rate = 0.95;  // Slightly slower for clarity
+        utterance.pitch = 0.85; // Lower pitch for a deeper, more professional voice
         utterance.volume = 1.0;
         utterance.lang = 'en-US';
 
         const voices = this.synthesis.getVoices();
 
-        // Priority order for most natural voices:
-        // 1. Google US English (most natural)
-        // 2. Microsoft English voices (good quality)
-        // 3. Premium/Natural voices
-        // 4. Any English voice
+        // Priority order for voice selection - professional male voices
+        const voicePreferences = [
+            'Microsoft David',           // Windows - deep male voice
+            'Microsoft Mark',            // Windows - professional male
+            'Google US English Male',    // Chrome - clear male voice
+            'Microsoft Guy',             // Windows - natural male
+            'Alex',                      // macOS - high quality male
+            'Daniel',                    // macOS - British male
+        ];
 
-        let preferredVoice = voices.find(voice =>
-            voice.lang === 'en-US' &&
-            (voice.name.includes('Google US English') || voice.name.includes('Google'))
-        );
+        // Find the first available voice from preferences
+        let selectedVoice = null;
+        for (const prefName of voicePreferences) {
+            selectedVoice = voices.find(voice =>
+                voice.name.includes(prefName)
+            );
+            if (selectedVoice) {
+                console.log('Selected voice:', selectedVoice.name);
+                break;
+            }
+        }
 
-        // Try Microsoft David or Zira (natural male/female voices)
-        if (!preferredVoice) {
-            preferredVoice = voices.find(voice =>
-                voice.lang === 'en-US' &&
-                (voice.name.includes('David') || voice.name.includes('Zira') || voice.name.includes('Mark'))
+        // If no preferred voice found, try any male voice
+        if (!selectedVoice) {
+            selectedVoice = voices.find(voice =>
+                voice.name.toLowerCase().includes('male') ||
+                voice.name.toLowerCase().includes('david') ||
+                voice.name.toLowerCase().includes('mark')
             );
         }
 
-        // Try Microsoft Natural voices
-        if (!preferredVoice) {
-            preferredVoice = voices.find(voice =>
-                voice.lang.startsWith('en') &&
-                voice.name.toLowerCase().includes('natural')
-            );
+        if (selectedVoice) {
+            utterance.voice = selectedVoice;
+            console.log('Using voice:', selectedVoice.name);
         }
-
-        // Try any high-quality Microsoft voice
-        if (!preferredVoice) {
-            preferredVoice = voices.find(voice =>
-                voice.lang === 'en-US' && voice.name.includes('Microsoft')
-            );
-        }
-
-        // Try any cloud/remote voice (usually better quality)
-        if (!preferredVoice) {
-            preferredVoice = voices.find(voice =>
-                voice.lang.startsWith('en') && voice.localService === false
-            );
-        }
-
-        // Fall back to any English voice
-        if (!preferredVoice) {
-            preferredVoice = voices.find(voice =>
-                voice.lang.startsWith('en')
-            );
-        }
-
-        if (preferredVoice) {
-            utterance.voice = preferredVoice;
-            console.log('Using voice:', preferredVoice.name, '| Local:', preferredVoice.localService);
-        } else {
-            console.log('No preferred voice found, using default');
-        }
-
-        // Add natural pauses for punctuation
-        utterance.onboundary = (event) => {
-            // This helps with more natural speech flow
-        };
 
         // When speech ends, mark as not speaking and call callback
         utterance.onend = () => {
@@ -388,19 +518,17 @@ class SimpleSpotAssistant {
             this.isSpeaking = false;
 
             // CRITICAL: Restart recognition after speaking to resume listening
-            // Only restart if we were the ones who stopped it
             if (recognitionWasStopped && wasListening && this.isListening) {
                 setTimeout(() => {
                     try {
                         this.recognition.start();
                         console.log('Resumed recognition after speaking');
                     } catch (e) {
-                        // Ignore "already started" errors - that's fine
                         if (!e.message || !e.message.includes('already started')) {
                             console.log('Error restarting recognition:', e);
                         }
                     }
-                }, 500); // 500ms delay to ensure speaker output has stopped
+                }, 500);
             }
 
             if (onComplete) {
