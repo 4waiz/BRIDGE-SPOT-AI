@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spot Bubble Assistant Test</title>
+    <link rel="stylesheet" href="voice_assistant_bubble.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* Simulated robot container */
+        .robot-display {
+            text-align: center;
+            position: relative;
+        }
+
+        .robot-image {
+            width: 400px;
+            height: auto;
+            filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.3));
+        }
+
+        .start-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #ff5722, #ff8a50);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 16px 32px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(255, 87, 34, 0.4);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .start-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(255, 87, 34, 0.6);
+        }
+
+        .start-button:active {
+            transform: translateY(0);
+        }
+
+        .instructions-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 20px 24px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            max-width: 350px;
+            z-index: 1000;
+        }
+
+        .instructions-panel h3 {
+            margin: 0 0 12px 0;
+            color: #ff5722;
+            font-size: 18px;
+        }
+
+        .instructions-panel ol {
+            margin: 0;
+            padding-left: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .instructions-panel li {
+            margin: 6px 0;
+        }
+
+        .info-badge {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 12px 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            z-index: 1000;
+        }
+
+        .sample-questions {
+            position: fixed;
+            top: 80px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            max-width: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .sample-questions h4 {
+            margin: 0 0 12px 0;
+            color: #2196f3;
+            font-size: 16px;
+        }
+
+        .sample-questions ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sample-questions li {
+            padding: 6px 8px;
+            margin: 4px 0;
+            background: #f0f0f0;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #555;
+        }
+
+        .sample-questions li::before {
+            content: "💬 ";
+            margin-right: 6px;
+        }
+
+        @media (max-width: 768px) {
+            .robot-image {
+                width: 280px;
+            }
+
+            .instructions-panel,
+            .sample-questions {
+                position: static;
+                margin: 20px;
+            }
+
+            .start-button {
+                top: auto;
+                bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Info Badge -->
+    <div class="info-badge">
+        🤖 Spot Bubble Assistant Demo
+    </div>
+
+    <!-- Start Button -->
+    <button class="start-button" onclick="startAssistant()">
+        🎤 Start Voice Assistant
+    </button>
+
+    <!-- Sample Questions -->
+    <div class="sample-questions">
+        <h4>💡 Try asking:</h4>
+        <ul>
+            <li>What is your name?</li>
+            <li>What can you do?</li>
+            <li>Tell me about Spot</li>
+            <li>Can you climb stairs?</li>
+            <li>What is digital factory?</li>
+            <li>What is HSSE?</li>
+            <li>What is 10 times 10?</li>
+            <li>How fast can you move?</li>
+            <li>Who made you?</li>
+            <li>Tell me a joke</li>
+        </ul>
+    </div>
+
+    <!-- Robot Display -->
+    <div class="robot-display">
+        <img src="Spot_qturn.png" alt="Spot Robot" class="robot-image">
+    </div>
+
+    <!-- Instructions Panel -->
+    <div class="instructions-panel">
+        <h3>📋 How to Use</h3>
+        <ol>
+            <li>Click the "Start Voice Assistant" button</li>
+            <li>Allow microphone access when prompted</li>
+            <li>Say <strong>"Hey Spot"</strong> clearly</li>
+            <li>Wait for Spot to greet you</li>
+            <li>Ask your question naturally</li>
+            <li>Watch the chat bubble appear over Spot!</li>
+        </ol>
+    </div>
+
+    <!-- Voice Assistant Chat Bubble -->
+    <div id="chat-bubble-container" class="chat-bubble-container">
+        <div class="wake-word-floating">💬 Say "Hey Spot" to talk!</div>
+        <div class="speech-bubble">
+            <!-- Conversation History (mini) -->
+            <div id="conversation-mini" class="conversation-mini"></div>
+
+            <!-- Main Message Display -->
+            <div id="bubble-message" class="bubble-message">
+                Say "Hey Spot" to start a conversation!
+            </div>
+
+            <!-- Sound wave when speaking -->
+            <div id="sound-wave-container"></div>
+
+            <!-- User Input Display -->
+            <div class="bubble-input-container">
+                <div id="bubble-user-input" class="bubble-user-input">
+                    Your question will appear here
+                </div>
+            </div>
+
+            <!-- Status Indicator -->
+            <div id="bubble-status" class="bubble-status listening">
+                🎤 Listening for "Hey Spot"...
+            </div>
+
+            <!-- Control Buttons -->
+            <div class="bubble-controls">
+                <button onclick="clearChat()" class="bubble-control-btn" title="Clear Chat">
+                    🗑️ Clear
+                </button>
+                <button onclick="stopAssistant()" class="bubble-control-btn close-btn" title="Close Assistant">
+                    ❌ Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="voice_assistant_bubble.js"></script>
+</body>
+</html>

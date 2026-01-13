@@ -1,0 +1,403 @@
+/* Voice Assistant with Chat Bubble Over Robot */
+
+/* Main chat bubble container positioned over Spot image */
+.chat-bubble-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+    pointer-events: none;
+    display: none;
+}
+
+.chat-bubble-container.active {
+    display: block;
+    animation: bubbleFadeIn 0.4s ease;
+}
+
+@keyframes bubbleFadeIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+/* Speech bubble styling */
+.speech-bubble {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 24px;
+    padding: 20px 24px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    min-width: 300px;
+    max-width: 500px;
+    position: relative;
+    pointer-events: auto;
+    margin-bottom: 40px;
+    border: 3px solid rgba(255, 87, 34, 0.3);
+}
+
+/* Dark theme support */
+[data-theme="dark"] .speech-bubble {
+    background: linear-gradient(135deg, #2d2d44 0%, #1e1e2e 100%);
+    border-color: rgba(255, 87, 34, 0.5);
+    color: white;
+}
+
+/* Bubble tail pointing to Spot */
+.speech-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 30px solid transparent;
+    border-right: 30px solid transparent;
+    border-top: 30px solid #ffffff;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+}
+
+[data-theme="dark"] .speech-bubble::after {
+    border-top-color: #1e1e2e;
+}
+
+/* Message display area */
+.bubble-message {
+    font-size: 18px;
+    line-height: 1.6;
+    color: #333;
+    margin-bottom: 12px;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+[data-theme="dark"] .bubble-message {
+    color: #ffffff;
+}
+
+/* User input area */
+.bubble-input-container {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .bubble-input-container {
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.bubble-user-input {
+    background: #f0f0f0;
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 16px;
+    color: #666;
+    text-align: center;
+    font-style: italic;
+    margin-bottom: 12px;
+}
+
+[data-theme="dark"] .bubble-user-input {
+    background: #16213e;
+    color: #aaa;
+}
+
+/* Status indicator */
+.bubble-status {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 20px;
+    display: inline-block;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.bubble-status.listening {
+    background: linear-gradient(90deg, #3498db, #2980b9);
+    color: white;
+}
+
+.bubble-status.active {
+    background: linear-gradient(90deg, #2ecc71, #27ae60);
+    color: white;
+    animation: statusPulse 1.5s ease infinite;
+}
+
+.bubble-status.speaking {
+    background: linear-gradient(90deg, #ff5722, #ff8a50);
+    color: white;
+    animation: statusPulse 1.5s ease infinite;
+}
+
+.bubble-status.processing {
+    background: linear-gradient(90deg, #f39c12, #e67e22);
+    color: white;
+}
+
+@keyframes statusPulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* Typing indicator animation */
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 20px;
+}
+
+.typing-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ff5722;
+    animation: typingBounce 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.typing-dot:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typingBounce {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.7;
+    }
+    30% {
+        transform: translateY(-15px);
+        opacity: 1;
+    }
+}
+
+/* Control buttons inside bubble */
+.bubble-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    justify-content: center;
+}
+
+.bubble-control-btn {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.bubble-control-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+}
+
+.bubble-control-btn.close-btn {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+}
+
+.bubble-control-btn.close-btn:hover {
+    box-shadow: 0 6px 16px rgba(231, 76, 60, 0.5);
+}
+
+/* Microphone icon animation when listening */
+.mic-icon {
+    font-size: 24px;
+    animation: micPulse 2s ease infinite;
+}
+
+@keyframes micPulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+}
+
+/* Wake word hint floating above */
+.wake-word-floating {
+    position: absolute;
+    top: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 87, 34, 0.95);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    animation: floatingHint 3s ease-in-out infinite;
+}
+
+@keyframes floatingHint {
+    0%, 100% {
+        transform: translateX(-50%) translateY(0);
+    }
+    50% {
+        transform: translateX(-50%) translateY(-10px);
+    }
+}
+
+/* Conversation history (minimal) */
+.conversation-mini {
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: 12px;
+}
+
+[data-theme="dark"] .conversation-mini {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.conversation-mini::-webkit-scrollbar {
+    width: 6px;
+}
+
+.conversation-mini::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 3px;
+}
+
+.conversation-mini::-webkit-scrollbar-thumb {
+    background: rgba(255, 87, 34, 0.3);
+    border-radius: 3px;
+}
+
+.mini-message {
+    font-size: 14px;
+    padding: 8px 12px;
+    margin: 6px 0;
+    border-radius: 12px;
+    line-height: 1.4;
+}
+
+.mini-message.user {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    text-align: right;
+    margin-left: 20%;
+}
+
+.mini-message.spot {
+    background: linear-gradient(135deg, #ff5722, #ff8a50);
+    color: white;
+    text-align: left;
+    margin-right: 20%;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .speech-bubble {
+        min-width: 280px;
+        max-width: 90vw;
+        padding: 16px 20px;
+    }
+
+    .bubble-message {
+        font-size: 16px;
+        min-height: 50px;
+    }
+
+    .chat-bubble-container {
+        top: 45%;
+    }
+}
+
+/* Animation when Spot speaks */
+.bubble-speaking-animation {
+    animation: bubbleBounce 0.6s ease-in-out;
+}
+
+@keyframes bubbleBounce {
+    0%, 100% {
+        transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.05);
+    }
+}
+
+/* Sound wave visualization */
+.sound-wave {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 30px;
+    margin: 10px 0;
+}
+
+.sound-bar {
+    width: 4px;
+    background: linear-gradient(180deg, #ff5722, #ff8a50);
+    border-radius: 2px;
+    animation: soundWave 0.8s ease-in-out infinite;
+}
+
+.sound-bar:nth-child(1) { animation-delay: 0s; }
+.sound-bar:nth-child(2) { animation-delay: 0.1s; }
+.sound-bar:nth-child(3) { animation-delay: 0.2s; }
+.sound-bar:nth-child(4) { animation-delay: 0.3s; }
+.sound-bar:nth-child(5) { animation-delay: 0.4s; }
+
+@keyframes soundWave {
+    0%, 100% {
+        height: 10px;
+    }
+    50% {
+        height: 30px;
+    }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+    .speech-bubble::after,
+    .typing-dot,
+    .mic-icon,
+    .wake-word-floating,
+    .bubble-speaking-animation,
+    .sound-bar {
+        animation: none;
+    }
+}
+
+/* Focus states */
+.bubble-control-btn:focus-visible {
+    outline: 3px solid rgba(255, 255, 255, 0.6);
+    outline-offset: 2px;
+}

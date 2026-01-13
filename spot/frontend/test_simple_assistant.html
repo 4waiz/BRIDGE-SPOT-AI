@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Spot Assistant Test</title>
+    <link rel="stylesheet" href="voice_assistant_simple.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .robot-container {
+            text-align: center;
+            position: relative;
+        }
+
+        .robot-image {
+            width: 350px;
+            height: auto;
+            filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.3));
+        }
+
+        .start-button {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, #ff5722, #ff8a50);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 16px 32px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(255, 87, 34, 0.4);
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .start-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(255, 87, 34, 0.6);
+        }
+
+        .instructions {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 16px 32px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 500px;
+        }
+
+        .instructions h3 {
+            margin: 0 0 8px 0;
+            color: #ff5722;
+            font-size: 18px;
+        }
+
+        .instructions p {
+            margin: 4px 0;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .instructions strong {
+            color: #333;
+        }
+
+        @media (max-width: 768px) {
+            .robot-image {
+                width: 250px;
+            }
+
+            .start-button {
+                top: 20px;
+                right: 20px;
+                padding: 12px 24px;
+                font-size: 16px;
+            }
+
+            .instructions {
+                bottom: 20px;
+                padding: 12px 20px;
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Start Button -->
+    <button class="start-button" onclick="startAssistant()">
+        🎤 Start Voice Assistant
+    </button>
+
+    <!-- Robot Display -->
+    <div class="robot-container">
+        <img src="Spot_qturn.png" alt="Spot Robot" class="robot-image">
+    </div>
+
+    <!-- Instructions -->
+    <div class="instructions">
+        <h3>🎤 Voice Assistant</h3>
+        <p>1. Click "Start Voice Assistant"</p>
+        <p>2. Say <strong>"Hey Spot"</strong> or <strong>"Hi Spot"</strong></p>
+        <p>3. Ask your question</p>
+        <p>4. Watch the speech bubble appear!</p>
+    </div>
+
+    <!-- Simple Speech Bubble -->
+    <div id="simple-chat-bubble" class="simple-chat-bubble">
+        <div class="bubble-content">
+            <button class="bubble-close" onclick="stopAssistant()" title="Close">✕</button>
+            <div id="bubble-text" class="bubble-text">
+                Say "Hey Spot" or "Hi Spot" to start...
+            </div>
+        </div>
+    </div>
+
+    <script src="voice_assistant_simple.js"></script>
+</body>
+</html>
