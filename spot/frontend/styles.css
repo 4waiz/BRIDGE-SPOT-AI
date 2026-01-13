@@ -164,16 +164,6 @@ body {
     display: block;
 }
 
-.header-logo::after {
-    content: "";
-    display: block;
-    width: 3rem;
-    height: 0.2rem;
-    margin: 0.45rem auto 0;
-    border-radius: 999px;
-    background-color: var(--accent);
-    box-shadow: 0 8px 16px rgba(255, 86, 34, 0.25);
-}
 
 .top-left,
 .top-right,
