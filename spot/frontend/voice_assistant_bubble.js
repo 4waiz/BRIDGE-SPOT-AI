@@ -3,18 +3,25 @@
 
 class SpotBubbleAssistant {
     constructor() {
-        this.qaDatabase = null;
         this.isListening = false;
         this.isProcessing = false;
         this.wakeWordDetected = false;
         this.recognition = null;
         this.synthesis = window.speechSynthesis;
-        this.wakeWord = 'hey spot';
+        this.wakeWords = ['hey spot', 'hi spot'];
         this.conversationHistory = [];
         this.backendUrl = 'http://localhost:5000';
-        this.openAiRetryAt = 0;
-        this.useBryceVoice = false;  // Will be set to true if backend is available
+        this.useBryceVoice = false;  // Backend TTS availability
+        this.useBackendStt = false;  // Backend STT availability
         this.audioContext = null;
+        this.micStream = null;
+        this.micSource = null;
+        this.micAnalyser = null;
+        this.mediaRecorder = null;
+        this.isRecording = false;
+        this.silenceThreshold = 0.02;
+        this.silenceDurationMs = 900;
+        this.maxRecordMs = 8000;
 
         // Initialize Speech Recognition
         if ('webkitSpeechRecognition' in window) {
@@ -28,7 +35,6 @@ class SpotBubbleAssistant {
         }
 
         this.setupRecognition();
-        this.loadQADatabase();
         this.checkBackendAvailability();
         this.initAudioContext();
     }
@@ -36,6 +42,152 @@ class SpotBubbleAssistant {
     initAudioContext() {
         // Initialize Web Audio API context for playing backend audio
         this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    async ensureMicStream() {
+        if (this.micStream) {
+            return;
+        }
+        this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        this.micSource = this.audioContext.createMediaStreamSource(this.micStream);
+        this.micAnalyser = this.audioContext.createAnalyser();
+        this.micAnalyser.fftSize = 2048;
+        this.micSource.connect(this.micAnalyser);
+    }
+
+    startSilenceMonitor(onSilence) {
+        if (!this.micAnalyser) {
+            return () => {};
+        }
+        const data = new Uint8Array(this.micAnalyser.fftSize);
+        let silenceMs = 0;
+        let lastTime = performance.now();
+        let active = true;
+        const tick = () => {
+            if (!active || !this.isRecording) {
+                return;
+            }
+            this.micAnalyser.getByteTimeDomainData(data);
+            let sum = 0;
+            for (let i = 0; i < data.length; i++) {
+                const value = (data[i] - 128) / 128;
+                sum += value * value;
+            }
+            const rms = Math.sqrt(sum / data.length);
+            const now = performance.now();
+            const delta = now - lastTime;
+            lastTime = now;
+            if (rms < this.silenceThreshold) {
+                silenceMs += delta;
+            } else {
+                silenceMs = 0;
+            }
+            if (silenceMs >= this.silenceDurationMs) {
+                onSilence();
+                return;
+            }
+            requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+        return () => {
+            active = false;
+        };
+    }
+
+    async captureQueryAudio() {
+        await this.ensureMicStream();
+        this.isRecording = true;
+        const recorder = new MediaRecorder(this.micStream, { mimeType: 'audio/webm' });
+        this.mediaRecorder = recorder;
+        const chunks = [];
+        recorder.ondataavailable = (event) => {
+            if (event.data && event.data.size > 0) {
+                chunks.push(event.data);
+            }
+        };
+        const stopPromise = new Promise((resolve) => {
+            recorder.onstop = resolve;
+        });
+        recorder.start(250);
+        const stopSilenceMonitor = this.startSilenceMonitor(() => {
+            if (recorder.state === 'recording') {
+                recorder.stop();
+            }
+        });
+        const maxTimer = setTimeout(() => {
+            if (recorder.state === 'recording') {
+                recorder.stop();
+            }
+        }, this.maxRecordMs);
+        await stopPromise;
+        clearTimeout(maxTimer);
+        stopSilenceMonitor();
+        this.isRecording = false;
+        this.mediaRecorder = null;
+        if (!chunks.length) {
+            return null;
+        }
+        return new Blob(chunks, { type: recorder.mimeType });
+    }
+
+    async transcribeWithBackend(audioBlob) {
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'query.webm');
+        const response = await fetch(`${this.backendUrl}/stt`, {
+            method: 'POST',
+            body: formData
+        });
+        if (!response.ok) {
+            throw new Error(`Backend STT failed: ${response.status}`);
+        }
+        const data = await response.json();
+        return data && data.text ? data.text.trim() : '';
+    }
+
+    async listenForQuery() {
+        if (this.isProcessing || this.isRecording) {
+            return;
+        }
+        if (!this.useBackendStt) {
+            return;
+        }
+        try {
+            if (this.recognition && this.isListening) {
+                try {
+                    this.recognition.stop();
+                } catch (e) {
+                    console.log('Recognition stop error:', e);
+                }
+            }
+            const audioBlob = await this.captureQueryAudio();
+            if (!audioBlob) {
+                this.resumeWakeWordListening();
+                return;
+            }
+            const transcript = await this.transcribeWithBackend(audioBlob);
+            if (!transcript) {
+                this.resumeWakeWordListening();
+                return;
+            }
+            this.handleQuery(transcript);
+        } catch (error) {
+            console.error('Backend STT failed:', error);
+            this.useBackendStt = false;
+            this.resumeWakeWordListening();
+        }
+    }
+
+    resumeWakeWordListening() {
+        this.wakeWordDetected = false;
+        if (this.isListening && this.recognition) {
+            try {
+                this.recognition.start();
+            } catch (e) {
+                if (!e.message || !e.message.includes('already started')) {
+                    console.log('Recognition start error:', e);
+                }
+            }
+        }
     }
 
     async checkBackendAvailability() {
@@ -47,11 +199,13 @@ class SpotBubbleAssistant {
             const data = await response.json();
             if (data.status === 'healthy') {
                 this.useBryceVoice = true;
-                console.log('✓ Bryce voice backend is available');
+                this.useBackendStt = true;
+                console.log('OpenAI voice backend is available');
             }
         } catch (error) {
-            console.log('✗ Bryce voice backend not available, using browser voices');
+            console.log('OpenAI voice backend not available, using browser voices');
             this.useBryceVoice = false;
+            this.useBackendStt = false;
         }
     }
 
@@ -62,8 +216,8 @@ class SpotBubbleAssistant {
         this.recognition.maxAlternatives = 1;
 
         this.recognition.onstart = () => {
-            console.log('Voice recognition started. Say "Hey Spot" to activate.');
-            this.updateBubbleStatus('listening', '🎤 Say "Hey Spot" to start');
+            console.log('Voice recognition started. Say "Hey Spot" or "Hi Spot" to activate.');
+            this.updateBubbleStatus('listening', '🎤 Say "Hey Spot" or "Hi Spot" to start');
         };
 
         this.recognition.onresult = (event) => {
@@ -73,10 +227,11 @@ class SpotBubbleAssistant {
 
             if (!this.wakeWordDetected) {
                 // Check for wake word
-                if (transcript.includes(this.wakeWord)) {
+                const wakeWordFound = this.wakeWords.some(wakeWord => transcript.includes(wakeWord));
+                if (wakeWordFound) {
                     this.handleWakeWord();
                 }
-            } else {
+            } else if (!this.useBackendStt) {
                 // Process user query after wake word
                 if (!this.isProcessing) {
                     this.handleQuery(transcript);
@@ -110,18 +265,6 @@ class SpotBubbleAssistant {
         };
     }
 
-    async loadQADatabase() {
-        try {
-            const response = await fetch('spot_qa_database.json');
-            const data = await response.json();
-            this.qaDatabase = data.conversations;
-            console.log(`Loaded ${this.qaDatabase.length} Q&A pairs`);
-        } catch (error) {
-            console.error('Error loading Q&A database:', error);
-            this.showError('Failed to load knowledge base');
-        }
-    }
-
     start() {
         if (!this.recognition) {
             this.showError('Speech recognition not available');
@@ -132,7 +275,7 @@ class SpotBubbleAssistant {
         try {
             this.recognition.start();
             this.showBubble();
-            this.updateBubbleStatus('listening', '🎤 Listening for "Hey Spot"...');
+            this.updateBubbleStatus('listening', '🎤 Listening for "Hey Spot" or "Hi Spot"...');
         } catch (e) {
             console.log('Recognition already started or error:', e);
         }
@@ -143,6 +286,13 @@ class SpotBubbleAssistant {
         this.wakeWordDetected = false;
         if (this.recognition) {
             this.recognition.stop();
+        }
+        if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+            try {
+                this.mediaRecorder.stop();
+            } catch (e) {
+                console.log('Recorder stop error:', e);
+            }
         }
         this.synthesis.cancel();
         this.hideBubble();
@@ -163,13 +313,16 @@ class SpotBubbleAssistant {
             this.displayMessage(greeting, 'spot');
             this.speak(greeting);
             this.updateBubbleStatus('active', '🎧 Listening to your question...');
+            if (this.useBackendStt) {
+                this.listenForQuery();
+            }
         }, 800);
 
         // Reset wake word after 15 seconds if no query
         setTimeout(() => {
             if (this.wakeWordDetected && !this.isProcessing) {
-                this.wakeWordDetected = false;
-                this.updateBubbleStatus('listening', '🎤 Say "Hey Spot" to start');
+                this.updateBubbleStatus('listening', '🎤 Say "Hey Spot" or "Hi Spot" to start');
+                this.resumeWakeWordListening();
             }
         }, 15000);
     }
@@ -197,23 +350,14 @@ class SpotBubbleAssistant {
 
             // Reset for next wake word
             setTimeout(() => {
-                this.wakeWordDetected = false;
                 this.isProcessing = false;
-                this.updateBubbleStatus('listening', '🎤 Say "Hey Spot" for another question');
+                this.updateBubbleStatus('listening', '🎤 Say "Hey Spot" or "Hi Spot" for another question');
+                this.resumeWakeWordListening();
             }, 1000);
         }, 1000);
     }
 
     async getAnswer(query) {
-        const localAnswer = this.findAnswer(query);
-        if (!localAnswer) {
-            return "I'm sorry, my knowledge base is not loaded yet.";
-        }
-
-        if (!navigator.onLine || Date.now() < this.openAiRetryAt) {
-            return localAnswer;
-        }
-
         try {
             const response = await fetch(`${this.backendUrl}/chat`, {
                 method: 'POST',
@@ -235,62 +379,13 @@ class SpotBubbleAssistant {
 
             return answer;
         } catch (error) {
-            console.log('OpenAI unavailable, using local knowledge base:', error);
-            this.openAiRetryAt = Date.now() + 30000;
-            return localAnswer;
+            console.log('OpenAI unavailable:', error);
+            return "I'm having trouble reaching OpenAI right now. Please try again.";
         }
-    }
-
-    findAnswer(query) {
-        if (!this.qaDatabase) {
-            return "I'm sorry, my knowledge base is not loaded yet.";
-        }
-
-        const cleanQuery = query.toLowerCase().trim();
-
-        // Try exact match first
-        let match = this.qaDatabase.find(qa =>
-            qa.question.toLowerCase() === cleanQuery
-        );
-
-        // If no exact match, try partial match
-        if (!match) {
-            match = this.qaDatabase.find(qa =>
-                cleanQuery.includes(qa.question.toLowerCase()) ||
-                qa.question.toLowerCase().includes(cleanQuery)
-            );
-        }
-
-        // If still no match, try word-by-word similarity
-        if (!match) {
-            const queryWords = cleanQuery.split(' ').filter(w => w.length > 2);
-            let bestMatch = null;
-            let bestScore = 0;
-
-            this.qaDatabase.forEach(qa => {
-                const questionWords = qa.question.toLowerCase().split(' ');
-                let score = 0;
-
-                queryWords.forEach(qWord => {
-                    if (questionWords.some(word => word.includes(qWord) || qWord.includes(word))) {
-                        score++;
-                    }
-                });
-
-                if (score > bestScore && score >= Math.min(2, queryWords.length * 0.5)) {
-                    bestScore = score;
-                    bestMatch = qa;
-                }
-            });
-
-            match = bestMatch;
-        }
-
-        return match ? match.answer : "I'm not sure how to answer that. Try asking about Spot robots, inspections, or basic questions!";
     }
 
     async speak(text) {
-        // Use Bryce voice if backend is available, otherwise fall back to browser voices
+        // Use backend voice if available, otherwise fall back to browser voices
         if (this.useBryceVoice) {
             await this.speakWithBryce(text);
         } else {
@@ -300,8 +395,8 @@ class SpotBubbleAssistant {
 
     async speakWithBryce(text) {
         try {
-            console.log('Speaking with Bryce voice:', text);
-            this.updateBubbleStatus('speaking', '🔊 Speaking with Bryce voice...');
+            console.log('Speaking with backend voice:', text);
+            this.updateBubbleStatus('speaking', '🔊 Speaking with backend voice...');
             this.addSoundWaveAnimation();
 
             // Call backend TTS API
@@ -334,14 +429,14 @@ class SpotBubbleAssistant {
             source.connect(this.audioContext.destination);
 
             source.onended = () => {
-                console.log('Finished speaking (Bryce)');
+                console.log('Finished speaking (backend)');
                 this.removeSoundWaveAnimation();
             };
 
             source.start(0);
 
         } catch (error) {
-            console.error('Error with Bryce voice, falling back to browser:', error);
+            console.error('Error with backend voice, falling back to browser:', error);
             this.useBryceVoice = false;  // Disable for this session
             this.speakWithBrowser(text);
         }
@@ -535,9 +630,9 @@ class SpotBubbleAssistant {
 
         if (historyDiv) historyDiv.innerHTML = '';
         if (userInputDiv) userInputDiv.textContent = 'Your question will appear here';
-        if (messageDiv) messageDiv.textContent = 'Say "Hey Spot" to start a conversation!';
+        if (messageDiv) messageDiv.textContent = 'Say "Hey Spot" or "Hi Spot" to start a conversation!';
 
-        this.updateBubbleStatus('listening', '🎤 Listening for "Hey Spot"...');
+        this.updateBubbleStatus('listening', '🎤 Listening for "Hey Spot" or "Hi Spot"...');
     }
 }
 
@@ -574,3 +669,4 @@ function clearChat() {
         spotBubbleAssistant.clearConversation();
     }
 }
+

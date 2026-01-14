@@ -1,26 +1,25 @@
 """
-Voice Server for Spot AI - Uses Piper TTS with Bryce voice
-This server provides text-to-speech using the Bryce ONNX voice model
+Voice Server for Spot AI - OpenAI-backed chat, STT, and TTS.
 """
 
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
+from openai import OpenAI
 import os
 import json
-import tempfile
 import base64
+import tempfile
 from pathlib import Path
 import urllib.error
 import urllib.request
-import numpy as np
-import soundfile as sf
-from piper.voice import PiperVoice
+import io
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend access
 
 # Repository root
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+
 
 def load_env_file(env_path: Path) -> None:
     if not env_path.exists():
@@ -38,6 +37,7 @@ def load_env_file(env_path: Path) -> None:
     except OSError:
         return
 
+
 load_env_file(REPO_ROOT / ".env")
 
 DEFAULT_OPENAI_MODEL = "gpt-4.1-nano"
@@ -49,28 +49,17 @@ DEFAULT_SYSTEM_PROMPT = (
 )
 
 OPENAI_API_URL = os.getenv("OPENAI_API_URL", "https://api.openai.com/v1/responses")
+OPENAI_TTS_MODEL = os.getenv("OPENAI_TTS_MODEL", "gpt-4o-mini-tts")
+OPENAI_TTS_VOICE = os.getenv("OPENAI_TTS_VOICE", "onyx")
+OPENAI_STT_MODEL = os.getenv("OPENAI_STT_MODEL", "gpt-4o-mini-transcribe")
 
-# Path to voice model
-VOICE_MODEL_PATH = REPO_ROOT / "voices" / "en_US-bryce-medium.onnx"
-VOICE_CONFIG_PATH = REPO_ROOT / "voices" / "en_US-bryce-medium.onnx.json"
 
-# Load voice model once at startup for better performance
-voice_model = None
+def get_openai_client() -> OpenAI:
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY is not set")
+    return OpenAI(api_key=api_key)
 
-def load_voice_model():
-    """Load the Piper voice model at startup"""
-    global voice_model
-    try:
-        if VOICE_MODEL_PATH.exists() and VOICE_CONFIG_PATH.exists():
-            voice_model = PiperVoice.load(str(VOICE_MODEL_PATH), config_path=str(VOICE_CONFIG_PATH))
-            print(f"✓ Voice model loaded successfully: {VOICE_MODEL_PATH}")
-            return True
-        else:
-            print(f"✗ Voice model not found at {VOICE_MODEL_PATH}")
-            return False
-    except Exception as e:
-        print(f"✗ Error loading voice model: {e}")
-        return False
 
 def extract_openai_text(payload: dict) -> str:
     if not isinstance(payload, dict):
@@ -106,6 +95,17 @@ def extract_openai_text(payload: dict) -> str:
                 if isinstance(text, str):
                     return text.strip()
     return ""
+
+
+def extract_audio_bytes(response) -> bytes:
+    if hasattr(response, "read"):
+        return response.read()
+    if hasattr(response, "content"):
+        return response.content
+    if hasattr(response, "data"):
+        return response.data
+    raise RuntimeError("Unsupported OpenAI TTS response type")
+
 
 def call_openai(prompt: str) -> str:
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
@@ -154,10 +154,12 @@ def call_openai(prompt: str) -> str:
         raise RuntimeError("OpenAI returned an empty response")
     return answer
 
+
 @app.route('/health', methods=['GET'])
 def health():
     """Health check endpoint"""
-    return jsonify({"status": "healthy", "voice": "Bryce"})
+    return jsonify({"status": "healthy", "tts": "openai", "stt": "openai"})
+
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -186,136 +188,123 @@ def chat():
         print(f"OpenAI error: {exc}")
         return jsonify({"error": "OpenAI request failed"}), 500
 
+
 @app.route('/tts', methods=['POST'])
 def text_to_speech():
     """
-    Convert text to speech using Bryce voice
+    Convert text to speech using OpenAI TTS
     Expected JSON: {"text": "text to speak"}
     Returns: Audio file (WAV format)
     """
     try:
-        data = request.json
+        data = request.json or {}
         text = data.get('text', '')
 
         if not text.strip():
             return jsonify({"error": "No text provided"}), 400
 
-        # Check if voice model is loaded
-        if voice_model is None:
-            return jsonify({
-                "error": "Voice model not loaded. Please restart the server."
-            }), 500
-
-        # Create temporary file for audio output
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_audio:
-            output_path = temp_audio.name
-
-        try:
-            # Generate speech using Piper library
-            with sf.SoundFile(output_path, 'w', samplerate=voice_model.config.sample_rate,
-                            channels=1, subtype='PCM_16') as wav_file:
-                for audio_chunk in voice_model.synthesize(text):
-                    audio_bytes = audio_chunk.audio_int16_bytes
-                    int_array = np.frombuffer(audio_bytes, dtype=np.int16)
-                    wav_file.write(int_array)
-
-            # Check if audio file was created
-            if not os.path.exists(output_path):
-                return jsonify({"error": "Audio file not generated"}), 500
-
-            # Return the audio file
-            return send_file(
-                output_path,
-                mimetype='audio/wav',
-                as_attachment=False,
-                download_name='speech.wav'
-            )
-
-        except Exception as e:
-            # Clean up on error
-            if os.path.exists(output_path):
-                os.unlink(output_path)
-            raise
+        client = get_openai_client()
+        response = client.audio.speech.create(
+            model=OPENAI_TTS_MODEL,
+            voice=OPENAI_TTS_VOICE,
+            input=text,
+            response_format="wav",
+        )
+        audio_bytes = extract_audio_bytes(response)
+        return send_file(
+            io.BytesIO(audio_bytes),
+            mimetype='audio/wav',
+            as_attachment=False,
+            download_name='speech.wav'
+        )
 
     except Exception as e:
         print(f"Error in TTS: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/tts-base64', methods=['POST'])
 def text_to_speech_base64():
     """
-    Convert text to speech and return as base64-encoded audio
-    This is useful for direct playback in the browser
+    Convert text to speech and return as base64-encoded audio.
     """
     try:
-        data = request.json
+        data = request.json or {}
         text = data.get('text', '')
 
         if not text.strip():
             return jsonify({"error": "No text provided"}), 400
 
-        # Check if voice model is loaded
-        if voice_model is None:
-            return jsonify({
-                "error": "Voice model not loaded. Please restart the server."
-            }), 500
-
-        # Create temporary file for audio output
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_audio:
-            output_path = temp_audio.name
-
-        try:
-            # Generate speech using Piper library
-            with sf.SoundFile(output_path, 'w', samplerate=voice_model.config.sample_rate,
-                            channels=1, subtype='PCM_16') as wav_file:
-                for audio_chunk in voice_model.synthesize(text):
-                    audio_bytes = audio_chunk.audio_int16_bytes
-                    int_array = np.frombuffer(audio_bytes, dtype=np.int16)
-                    wav_file.write(int_array)
-
-            # Read audio file and encode as base64
-            with open(output_path, 'rb') as audio_file:
-                audio_data = audio_file.read()
-                audio_base64 = base64.b64encode(audio_data).decode('utf-8')
-
-            # Clean up
-            os.unlink(output_path)
-
-            return jsonify({
-                "audio": audio_base64,
-                "format": "wav"
-            })
-
-        except Exception as e:
-            # Clean up on error
-            if os.path.exists(output_path):
-                os.unlink(output_path)
-            raise
+        client = get_openai_client()
+        response = client.audio.speech.create(
+            model=OPENAI_TTS_MODEL,
+            voice=OPENAI_TTS_VOICE,
+            input=text,
+            response_format="wav",
+        )
+        audio_bytes = extract_audio_bytes(response)
+        audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+        return jsonify({
+            "audio": audio_base64,
+            "format": "wav"
+        })
 
     except Exception as e:
         print(f"Error in TTS: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+
+@app.route('/stt', methods=['POST'])
+def speech_to_text():
+    """
+    Convert speech to text using OpenAI STT.
+    Accepts multipart form-data with an audio file.
+    """
+    try:
+        audio_file = request.files.get("audio") or request.files.get("file")
+        if audio_file is None:
+            return jsonify({"error": "No audio file provided"}), 400
+
+        language = (request.form.get("language") or "").strip()
+        client = get_openai_client()
+        suffix = os.path.splitext(audio_file.filename or "")[1] or ".webm"
+        temp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_audio:
+                temp_path = temp_audio.name
+                audio_file.save(temp_audio)
+            with open(temp_path, "rb") as handle:
+                if language:
+                    result = client.audio.transcriptions.create(
+                        model=OPENAI_STT_MODEL,
+                        file=handle,
+                        language=language,
+                    )
+                else:
+                    result = client.audio.transcriptions.create(
+                        model=OPENAI_STT_MODEL,
+                        file=handle,
+                    )
+        finally:
+            if temp_path and os.path.exists(temp_path):
+                os.unlink(temp_path)
+        text = result.text.strip() if result and result.text else ""
+        if not text:
+            return jsonify({"text": "", "no_speech": True})
+        return jsonify({"text": text})
+    except Exception as exc:
+        print(f"Error in STT: {str(exc)}")
+        return jsonify({"error": str(exc)}), 500
+
+
 if __name__ == '__main__':
-    print(f"Voice model path: {VOICE_MODEL_PATH}")
-    print(f"Config path: {VOICE_CONFIG_PATH}")
-    print(f"Voice model exists: {VOICE_MODEL_PATH.exists()}")
-    print(f"Config exists: {VOICE_CONFIG_PATH.exists()}")
-    print()
-
-    # Load voice model at startup
-    print("Loading Bryce voice model...")
-    if load_voice_model():
-        print("✓ Voice model loaded successfully")
-    else:
-        print("✗ Failed to load voice model - server will return errors")
-    print()
-
     # Start server
     print("Starting Spot Voice Server on http://localhost:5000")
     print("Endpoints:")
+    print("  - POST /chat - Text chat with OpenAI")
     print("  - POST /tts - Text to speech (returns WAV file)")
     print("  - POST /tts-base64 - Text to speech (returns base64 encoded audio)")
+    print("  - POST /stt - Speech to text (returns transcription)")
     print("  - GET /health - Health check")
     print()
 

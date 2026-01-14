@@ -371,7 +371,6 @@ class UserSession:
         self.language = "multilingual"
 
         # OpenAI client to make requests to STT and GPT
-        self.offline_mode = False
         api_key = os.getenv("OPENAI_API_KEY")
         if api_key:
             try:
@@ -379,11 +378,9 @@ class UserSession:
             except Exception as exc:
                 logging.warning("OpenAI client disabled (invalid API key): %s", exc)
                 self.client = None
-                self.offline_mode = True
         else:
-            logging.warning("OPENAI_API_KEY not set; using predefined answers.")
+            logging.warning("OpenAI client disabled (OPENAI_API_KEY not set).")
             self.client = None
-            self.offline_mode = True
 
         # Init GPT-API connector
         self.gpt_connector = gpt_api.GPT_Chat(user_session=self)

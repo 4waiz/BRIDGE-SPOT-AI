@@ -9,7 +9,7 @@ class SpeechToTextModule:
         self.websocket = user_session.websocket
         self.session = user_session
         self.model = None
-        self.client = openai.OpenAI()
+        self.client = self.session.client
 
     def load_model(self, model):
         if model:
@@ -44,10 +44,12 @@ class SpeechToTextModule:
                         return self.model.transcribe(audio=filename, language=lang)["text"].strip()
                     return self.model.transcribe(audio=filename)["text"].strip()
                 else:
+                    if self.client is None:
+                        raise RuntimeError("OpenAI client not configured for STT")
                     with open(filename, "rb") as audio_file:
                         if lang != "multilingual":
-                            return self.client.audio.transcriptions.create(model="whisper-1", file=audio_file, timeout=10, language=lang).text
-                        return self.client.audio.transcriptions.create(model="whisper-1", file=audio_file, timeout=10).text
+                            return self.client.audio.transcriptions.create(model="gpt-4o-mini-transcribe", file=audio_file, timeout=10, language=lang).text
+                        return self.client.audio.transcriptions.create(model="gpt-4o-mini-transcribe", file=audio_file, timeout=10).text
             except (openai.RateLimitError, openai.APIError, openai.APITimeoutError) as exc:
                 logging.exception(exc)
                 time.sleep(delay)

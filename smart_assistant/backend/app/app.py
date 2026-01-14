@@ -52,12 +52,6 @@ async def serve_root_file():
     return FileResponse(url)
 
 
-@app.get("/pre.json")
-async def serve_preload_file():
-    url = FRONTEND_STATIC_FOLDER + "/pre.json"
-    return FileResponse(url)
-
-
 # Websocket endpoint
 @app.websocket("/ws/")
 async def websocket_endpoint(websocket: WebSocket):
@@ -101,12 +95,7 @@ async def handle_message(websocket, data):
     elif "creativity" in data:
         session.gpt_connector.temperature = float(data["creativity"])
     elif "gpt-model" in data:
-        if data["gpt-model"] == "4o":
-            session.gpt_connector.model = "gpt-4o-mini"
-        elif data["gpt-model"] == "4":
-            session.gpt_connector.model = "gpt-4-turbo"
-        else:
-            session.gpt_connector.model = "gpt-3.5-turbo"
+        session.gpt_connector.model = "gpt-4.1-nano"
     elif "prompt" in data:
         session.gpt_connector.update_prompt(data["prompt"])
     elif "content" in data:

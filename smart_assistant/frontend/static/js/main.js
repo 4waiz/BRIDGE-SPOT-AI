@@ -20897,7 +20897,7 @@ const defaultSettings = {
   "playback-speed": "playback-speed_1.00",
   autostop: "0.7 0.3 1",
   creativity: "creativity_medium",
-  "gpt-model": "gpt-model_4o",
+  "gpt-model": "gpt-model_4.1-nano",
   prompt: "",
   content: "content_none",
   "show-start-menu": "show-start-menu_on",
@@ -20946,7 +20946,7 @@ const allowedSettings = {
     "2.00",
   ],
   creativity: ["low", "medium", "high"],
-  "gpt-model": ["3.5", "4", "4o"],
+  "gpt-model": ["4.1-nano"],
   content: ["none", "mslf", "ss-doe", "ss-yellow"],
   "show-start-menu": ["on", "off"],
   stt: ["api", "tiny", "small", "base", "medium", "large"],
@@ -20966,13 +20966,6 @@ var firstSetup = true; // specific behaviour for lazy loading
 var audioElement;
 var pingSound;
 var isMuted = false;
-// When true, bypass backend and answer from local canned responses (for offline/demo use).
-var USE_MOCK_RESPONSES = parameters.get("mock") !== "0";
-var mockDataLoaded = false;
-var mockData = {
-  fallback: "I'm running in local demo mode. Ask me about EDGE Group, Boston Dynamics Spot, or general help.",
-  items: []
-};
 var localSpeechRecognition = null;
 var localSpeechActive = false;
 var localSpeechUtterance = null;
@@ -21001,7 +20994,7 @@ var isSecureOrigin = location.protocol === "https:";
 var socketProtocol = isSecureOrigin ? "wss://" : "ws://";
 // Construct the WebSocket URL dynamically (assistant backend runs on port 4001)
 var websocketHost = window.location.hostname + ":4001";
-var websocketURL = USE_MOCK_RESPONSES ? null : socketProtocol + websocketHost + "/ws/";
+var websocketURL = socketProtocol + websocketHost + "/ws/";
 var websocketMessage;
 
 // helper functions
@@ -21043,79 +21036,6 @@ function normalizeMockText(value) {
     .replace(/[^a-z0-9\s]+/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-async function loadMockData() {
-  if (mockDataLoaded) {
-    return;
-  }
-  mockDataLoaded = true;
-  const paths = ["pre.json", "/static/pre.json"];
-  let loaded = false;
-  let lastError = null;
-  for (const path of paths) {
-    try {
-      const response = await fetch(path, { cache: "no-store" });
-      if (!response.ok) {
-        continue;
-      }
-      const data = await response.json();
-      if (data && typeof data.fallback === "string") {
-        mockData.fallback = data.fallback;
-      }
-      if (data && Array.isArray(data.items)) {
-        mockData.items = data.items;
-      }
-      loaded = true;
-      break;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-  if (!loaded) {
-    console.warn("Could not load pre.json, using fallback replies.", lastError);
-  }
-}
-
-function getMockReply(questionText) {
-  const normalized = normalizeMockText(questionText);
-  if (!normalized) {
-    return "Please type or speak a question.";
-  }
-  let bestItem = null;
-  let bestScore = 0;
-  for (const item of mockData.items) {
-    const keywords = Array.isArray(item.keywords)
-      ? item.keywords
-      : item.question
-      ? [item.question]
-      : item.q
-      ? [item.q]
-      : [];
-    let score = 0;
-    for (const keyword of keywords) {
-      const key = normalizeMockText(keyword);
-      if (!key) {
-        continue;
-      }
-      if (normalized.includes(key) || key.includes(normalized)) {
-        score += Math.max(1, key.split(" ").length);
-      }
-    }
-    if (score > bestScore) {
-      bestScore = score;
-      bestItem = item;
-    }
-  }
-  if (bestItem) {
-    return (
-      bestItem.answer ||
-      bestItem.response ||
-      bestItem.a ||
-      mockData.fallback
-    );
-  }
-  return mockData.fallback;
 }
 
 function getSpeechLanguage() {
@@ -21322,7 +21242,7 @@ function stopLocalSpeechRecognition() {
 }
 
 // Establish the WebSocket connection
-var socket = USE_MOCK_RESPONSES ? null : new WebSocket(websocketURL);
+var socket = new WebSocket(websocketURL);
 
 // Create a timeout to create a new session after 10 minutes of no activity
 function startNewSession() {
@@ -21388,9 +21308,6 @@ function update_localStorage() {
 // Start program
 // make sure localstorage is up to date before doing anything settings related
 update_localStorage();
-if (USE_MOCK_RESPONSES) {
-  loadMockData();
-}
 // show start screen if the value is on or null
 if (localStorage.getItem("show-start-menu") !== "show-start-menu_off") {
   activateStartScreen();
@@ -21416,14 +21333,13 @@ if (localStorage.getItem("show-start-menu") !== "show-start-menu_off") {
   playGreeting();
 }
 
-// Handle WebSocket events (skip when in mock/offline mode)
-if (socket) {
-  socket.onerror = function (error) {
-    console.error("WebSocket error:", error);
-  };
-  socket.onopen = function () {
-    console.log("Websocket open");
-  };
+// Handle WebSocket events
+socket.onerror = function (error) {
+  console.error("WebSocket error:", error);
+};
+socket.onopen = function () {
+  console.log("Websocket open");
+};
 
   // Handle Websocket message Events
   socket.onmessage = async function (event) {
@@ -21477,12 +21393,11 @@ if (socket) {
     }
   };
 
-  // Handle WebSocket close event
-  socket.onclose = function (event) {
-    console.log("WebSocket connection closed with code: " + event.code);
-    cancel();
-  };
-}
+// Handle WebSocket close event
+socket.onclose = function (event) {
+  console.log("WebSocket connection closed with code: " + event.code);
+  cancel();
+};
 
 function activateStartScreen() {
   // display the start screen
@@ -21680,7 +21595,7 @@ function saveSetting() {
       session_id: sessionId,
       prompt: prompt,
     };
-    if (!USE_MOCK_RESPONSES && socket && socket.readyState === 1) {
+    if (socket && socket.readyState === 1) {
       socket.send(JSON.stringify(websocketMessage));
     }
     jquery__WEBPACK_IMPORTED_MODULE_3___default()("#prompt_input").on("click", activateSaveButton);
@@ -21716,9 +21631,7 @@ function saveSetting() {
       negativeThreshold = positiveThreshold;
     }
     // create speech detector again because values have changed
-    if (!USE_MOCK_RESPONSES) {
-      createVAD();
-    }
+    createVAD();
   }
 }
 
@@ -21761,7 +21674,7 @@ function select(category, value) {
 }
 
 function sendSetting(category, value) {
-  if (USE_MOCK_RESPONSES || !socket || socket.readyState !== 1) {
+  if (!socket || socket.readyState !== 1) {
     return;
   }
   websocketMessage = {
@@ -21773,8 +21686,8 @@ function sendSetting(category, value) {
 
 // select the settings either from localStorage or from default at start of program
 async function selectSettings() {
-  // still apply local settings even when running in mock/offline mode; only send to backend when available
-  let shouldSendToBackend = !USE_MOCK_RESPONSES && socket;
+  // apply local settings; send to backend when available
+  let shouldSendToBackend = !!socket;
   if (shouldSendToBackend) {
     // as selectSettings is called right away while socket is connecting and messages have to be sent through websocket, you have to wait for socket to open
     let waitedMs = 0;
@@ -21816,9 +21729,7 @@ async function selectSettings() {
       document.getElementById("autostop_negative").value = negativeThreshold;
       document.getElementById("autostop_seconds").value = autostopAfterSeconds;
       // create a VAD with the settings
-      if (!USE_MOCK_RESPONSES) {
-        createVAD();
-      }
+      createVAD();
       continue;
     }
     // all other settings are multiple choice
@@ -21937,20 +21848,6 @@ async function sendText() {
   jquery__WEBPACK_IMPORTED_MODULE_3___default()("#question").one("focus", clearQuestion);
 
   var valueWebsocket;
-  // offline mock mode: answer locally and skip websocket
-  if (USE_MOCK_RESPONSES) {
-    await loadMockData();
-    var questionText = document.getElementById("question").value || "";
-    var reply = getMockReply(questionText);
-    document.getElementById("answer").textContent = reply;
-    var spoke = speakLocalReply(reply);
-    if (!spoke) {
-      hideCancelButton();
-    }
-    previousQuestion = "";
-    return;
-  }
-
   // send the question
   requestId = Math.floor(Math.random() * 90000 + 10000);
   valueWebsocket = document.getElementById("question").value;
@@ -21975,10 +21872,6 @@ async function sendText() {
 // Function to start the recording
 async function startRecording() {
   if (settingsOpen) {
-    return;
-  }
-  if (USE_MOCK_RESPONSES) {
-    startLocalSpeechRecognition();
     return;
   }
   // don't react if settings menu is open or VAD has not been set yet at start of program
@@ -22033,10 +21926,6 @@ async function waitForAudio() {
 
 // stop the recording manually
 function stopRecording() {
-  if (USE_MOCK_RESPONSES) {
-    stopLocalSpeechRecognition();
-    return;
-  }
   if (speechStarted) {
     showCancelButton();
     // get the recorded audio and send it to backend
@@ -22082,7 +21971,7 @@ function cancelWithoutReset() {
   stopLocalSpeech();
   stopLocalSpeechRecognition();
   // send cancel to backend
-  if (!USE_MOCK_RESPONSES && socket && socket.readyState === 1) {
+  if (socket && socket.readyState === 1) {
     websocketMessage = {
       session_id: sessionId,
       request_id: requestId,
@@ -22143,7 +22032,7 @@ async function playAudio() {
 }
 
 async function sendAudio(audioData) {
-  if (USE_MOCK_RESPONSES || !socket || socket.readyState !== 1) {
+  if (!socket || socket.readyState !== 1) {
     return;
   }
   jquery__WEBPACK_IMPORTED_MODULE_3___default()("#question").one("focus", clearQuestion);

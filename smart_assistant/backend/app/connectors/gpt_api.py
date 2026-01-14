@@ -9,25 +9,26 @@ import settings
 
 
 language_names = {"en": "english", "ar": "arabic", "hi": "hindi", "de": "german", "es": "spanish", "pt": "portuguese", "sv": "swedish", "nl": "dutch", "ru": "russian", "fr": "french", "zh": "chinese"}
-fallback_responses = [
-    "This is a pre-defined answer while the assistant is offline. Add an OPENAI_API_KEY to enable live responses.",
-    "The assistant is running in demo mode without an OpenAI API key, so this is a canned reply.",
-    "Pre-defined response: please set the OPENAI_API_KEY environment variable to get dynamic answers.",
-]
 
 
 class GPT_Chat:
     def __init__(self, user_session):
         self.session = user_session
         self.client = self.session.client
-        self.offline_mode = getattr(self.session, "offline_mode", False)
         self.websocket = self.session.websocket
         self.dialogue = []
         self.name = ""
         self.user_prompt = ""
+        self.base_prompt = (
+            "You are the BRIDGE Spot assistant. BRIDGE is the Edge Learning and Innovation Factory in Abu Dhabi. "
+            "Spot is the Boston Dynamics robot dog. Answer only questions related to BRIDGE or Spot. "
+            "If a question is unrelated, say you can help with BRIDGE or Spot and ask a concise follow-up. "
+            "Keep replies very short (1-2 sentences)."
+        )
         self.update_prompt()
-        self.model = "gpt-4o-mini"  # alternative gpt-4-turbo or gpt-3.5-turbo (but gpt-4o-mini is more capable and cheaper)
+        self.model = "gpt-4.1-nano"
         self.maxtoken = 8000  # all three models have very high max tokens, 16k for gpt3, 128k for gpt4 and gpt4o, limits do not need to be exhausted
+        self.max_response_tokens = 256
         self.temperature = 0.5
         self.content = "none"
         self.embeddings_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
@@ -41,16 +42,24 @@ class GPT_Chat:
     def update_prompt(self, prompt=False):
         if prompt:
             self.user_prompt = prompt
+        extra_prompt = self.base_prompt
+        if self.user_prompt:
+            extra_prompt = f"{extra_prompt}\n{self.user_prompt}"
         if self.session.language != "multilingual":
             self.dialogue = [
                 {
                     "role": "system",
-                    "content": f"Your name is {self.name} and you are a personal assistant. Give short answers (maximum 3 sentences).\nPlease always answer in {language_names[self.session.language]}.\n"
-                    + self.user_prompt,
+                    "content": f"Your name is {self.name} and you are a personal assistant. Give short answers (maximum 2 sentences).\nPlease always answer in {language_names[self.session.language]}.\n"
+                    + extra_prompt,
                 }
             ]
         else:
-            self.dialogue = [{"role": "system", "content": f"Your name is {self.name} and you are a personal assistant.Give short answers (maximum 3 sentences).\n" + self.user_prompt}]
+            self.dialogue = [
+                {
+                    "role": "system",
+                    "content": f"Your name is {self.name} and you are a personal assistant. Give short answers (maximum 2 sentences).\n" + extra_prompt,
+                }
+            ]
 
     # the search performed on all text snippets by the biencoder to return an inacurrate list of candidates
     def get_candidates(self, df, question):
@@ -77,24 +86,14 @@ class GPT_Chat:
             )
             logging.info(f"session {self.session.session_id}, request {request.id}: Question: {question}")
 
-            if self.offline_mode or self.client is None:
-                self.dialogue.append({"role": "user", "content": question})
-                fallback_text = self.get_offline_response(question)
-                logging.info(f"session {self.session.session_id}, request {request.id}: Offline mode active, sending predefined response.")
+            if self.client is None:
+                logging.error(f"session {self.session.session_id}, request {request.id}: OpenAI client not configured.")
                 await self.session.send_json(
-                    {
-                        "sentence": fallback_text,
+                    json={
+                        "finish": "error in GPT",
                         "request_id": request.id,
                     }
                 )
-                await self.session.tts_module.speak(fallback_text, request, play_locally)
-                await self.session.send_json(
-                    {
-                        "finish": "success",
-                        "request_id": request.id,
-                    }
-                )
-                self.dialogue.append({"role": "assistant", "content": fallback_text})
                 return
 
             while self.num_tokens_from_messages() > self.maxtoken:
@@ -219,7 +218,14 @@ class GPT_Chat:
         max_retries = 2
         for retries in range(1, max_retries + 1):
             try:
-                return self.client.chat.completions.create(model=self.model, messages=self.dialogue, temperature=self.temperature, stream=True, timeout=5)
+                return self.client.chat.completions.create(
+                    model=self.model,
+                    messages=self.dialogue,
+                    temperature=self.temperature,
+                    stream=True,
+                    timeout=5,
+                    max_tokens=self.max_response_tokens,
+                )
             except (openai.RateLimitError, openai.APIError, openai.APITimeoutError) as exc:
                 logging.exception(exc)
                 time.sleep(delay)
@@ -227,12 +233,6 @@ class GPT_Chat:
                 if retries == max_retries:
                     raise exc
             logging.error(f"session {self.session.session_id}, request {request.id}: Retrying GPT")
-
-    def get_offline_response(self, question):
-        if not fallback_responses:
-            return "Assistant is running in offline mode. Set OPENAI_API_KEY to enable live answers."
-        index = sum(ord(char) for char in question) % len(fallback_responses) if question else 0
-        return fallback_responses[index]
 
     def num_tokens_from_messages(self):
         num_tokens = 0

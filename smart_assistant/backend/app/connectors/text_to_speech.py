@@ -1,5 +1,5 @@
 import base64
-import json
+import io
 import logging
 import os
 import time
@@ -15,14 +15,13 @@ import queue
 import threading
 import wave
 
-import azure.cognitiveservices.speech as speechsdk
 import numpy as np
 from scipy.signal import resample
 
-# Make speech optional so the assistant can start without Azure creds.
-SPEECH_KEY = os.getenv("SPEECH_KEY")
-SPEECH_REGION = os.getenv("SPEECH_REGION")
-AZURE_SPEECH_ENABLED = bool(SPEECH_KEY and SPEECH_REGION)
+# OpenAI TTS settings
+TTS_MODEL = os.getenv("OPENAI_TTS_MODEL", "gpt-4o-mini-tts")
+TTS_VOICE_FEMALE = os.getenv("OPENAI_TTS_VOICE_FEMALE", "shimmer")
+TTS_VOICE_MALE = os.getenv("OPENAI_TTS_VOICE_MALE", "onyx")
 
 # Audio configuration
 SAMPLE_RATE = 16000  # Set this to match the audio sample rate of your TTS engine
@@ -65,40 +64,49 @@ greeting_lang_dict = {
     "zh": "你好，我叫 ()。 只需点击按钮并询问我任何事情即可。",
 }
 
-# Some locales do not provide blendshapes, so the multilingual voice has to be used instead
-# Jenny V2 currently in preview, to be changed in Q4 2023, then change back to JennyMultilingualNeural
-voice_lang_dict = {
-    ("female", "multilingual"): "en-US-JennyMultilingualV2Neural",
-    ("male", "multilingual"): "en-US-RyanMultilingualNeural",
-    ("female", "en"): "en-US-JaneNeural",
-    ("male", "en"): "en-US-JasonNeural",
-    ("female", "ar"): "en-US-JennyMultilingualV2Neural",
-    ("male", "ar"): "en-US-RyanMultilingualNeural",
-    ("female", "hi"): "hi-IN-SwaraNeural",
-    ("male", "hi"): "hi-IN-MadhurNeural",
-    ("female", "de"): "de-DE-KatjaNeural",
-    ("male", "de"): "de-DE-ConradNeural",
-    ("female", "es"): "es-CO-SalomeNeural",
-    ("male", "es"): "es-MX-JorgeNeural",
-    ("female", "pt"): "pt-BR-FranciscaNeural",
-    ("male", "pt"): "pt-BR-AntonioNeural",
-    ("female", "sv"): "en-US-JennyMultilingualV2Neural",
-    ("male", "sv"): "en-US-RyanMultilingualNeural",
-    ("female", "nl"): "en-US-JennyMultilingualV2Neural",
-    ("male", "nl"): "en-US-RyanMultilingualNeural",
-    ("female", "ru"): "ru-RU-SvetlanaNeural",
-    ("male", "ru"): "ru-RU-DmitryNeural",
-    ("female", "fr"): "fr-FR-DeniseNeural",
-    ("male", "fr"): "fr-FR-HenriNeural",
-    ("female", "zh"): "zh-CN-XiaoqiuNeural",
-    ("male", "zh"): "zh-CN-YunyangNeural",
-}
+def build_blenddata(duration_seconds, fps=60):
+    target_count = 52
+    frames = max(10, int(round(duration_seconds * fps)))
+    data = [[0.0 for _ in range(frames)] for _ in range(target_count)]
+    jaw_open_index = 17
+    mouth_close_index = 18
+    mouth_funnel_index = 19
+    mouth_pucker_index = 20
+    mouth_smile_left_index = 23
+    mouth_smile_right_index = 24
+    for frame in range(frames):
+        t = frame / fps
+        wave = 0.25 + 0.25 * np.sin(2 * np.pi * 2.7 * t) + 0.08 * np.sin(2 * np.pi * 6.1 * t)
+        open_level = min(1.0, max(0.0, float(wave)))
+        data[jaw_open_index][frame] = open_level
+        data[mouth_close_index][frame] = 0.05
+        data[mouth_funnel_index][frame] = 0.08 * (1 - open_level)
+        data[mouth_pucker_index][frame] = 0.04
+        data[mouth_smile_left_index][frame] = 0.05
+        data[mouth_smile_right_index][frame] = 0.05
+    return data
 
 
-def transpose(matrix):
-    if matrix == []:
-        return []
-    return [[matrix[row][col] for row in range(0, len(matrix))] for col in range(0, len(matrix[0]))]
+def extract_audio_bytes(response):
+    if hasattr(response, "read"):
+        return response.read()
+    if hasattr(response, "content"):
+        return response.content
+    if hasattr(response, "data"):
+        return response.data
+    raise RuntimeError("Unsupported OpenAI TTS response type")
+
+
+def decode_wav_bytes(audio_bytes):
+    with wave.open(io.BytesIO(audio_bytes), "rb") as wav_file:
+        samplerate = wav_file.getframerate()
+        channels = wav_file.getnchannels()
+        frames = wav_file.readframes(wav_file.getnframes())
+    data = np.frombuffer(frames, dtype=np.int16)
+    if channels > 1:
+        data = data.reshape(-1, channels)
+        data = convert_to_mono(data)
+    return samplerate, data
 
 
 def play_audio():
@@ -141,47 +149,26 @@ class TextToSpeechModule:
         self.websocket = user_session.websocket  # websocket of the current connection
         self.playback_speed = "1"
         self.session = user_session
-        self.speech_config = (
-            speechsdk.SpeechConfig(subscription=SPEECH_KEY, region=SPEECH_REGION)
-            if AZURE_SPEECH_ENABLED
-            else None
-        )
+        self.client = self.session.client
         self.gender = "female"
-        self.blenddata = []
         self.playback_thread = None
-
-    def viseme_cb(self, event):
-        animation_dict = json.loads(event.animation)
-        for frame in animation_dict["BlendShapes"]:
-            self.blenddata.append(frame)
 
     async def speak(self, text, request, play_locally=False):
         try:
-            if not AZURE_SPEECH_ENABLED:
-                logging.warning("Azure Speech not configured; skipping TTS playback.")
-                return
-            # Create SSML
-            xml_lang = self.session.language if self.session.language != "multilingual" else "en"
-            ssml = f"""<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="http://www.w3.org/2001/mstts" xml:lang="{xml_lang}">
-                            <voice name="{voice_lang_dict[(self.gender, self.session.language)]}">
-                                <mstts:viseme type="FacialExpression"/>
-                                <prosody rate="{self.playback_speed}">"{text}"</prosody>
-                            </voice>
-                        </speak>"""
-            # Create synthesizer
-            self.synthesizer = speechsdk.SpeechSynthesizer(speech_config=self.speech_config, audio_config=None)
-            self.synthesizer.viseme_received.connect(self.viseme_cb)
-            result = self.synthesizer.speak_ssml_async(ssml).get()
-
-            if result.reason == speechsdk.ResultReason.Canceled:
-                cancellation_details = result.cancellation_details
-                logging.info(f"session {self.session.session_id}, request {request.id}: Speech synthesis canceled for text: {text}\nCancellation reason: {cancellation_details.reason}")
-                if cancellation_details.reason == speechsdk.CancellationReason.Error:
-                    if cancellation_details.error_details:
-                        logging.info(f"session {self.session.session_id}, request {request.id}: Error details: {cancellation_details.error_details}")
-
-            audio_bytes = result.audio_data
-            audio_duration = result.audio_duration.total_seconds()
+            if self.client is None:
+                logging.error("OpenAI client not configured; skipping TTS playback.")
+                return time.time(), 0.0
+            voice = TTS_VOICE_FEMALE if self.gender == "female" else TTS_VOICE_MALE
+            response = self.client.audio.speech.create(
+                model=TTS_MODEL,
+                voice=voice,
+                input=text,
+                response_format="wav",
+            )
+            audio_bytes = extract_audio_bytes(response)
+            samplerate, pcm_data = decode_wav_bytes(audio_bytes)
+            audio_duration = len(pcm_data) / float(samplerate) if samplerate else 0.0
+            blenddata = build_blenddata(audio_duration)
 
             if play_locally:
                 if not self.playback_thread:
@@ -189,7 +176,9 @@ class TextToSpeechModule:
                     self.playback_thread.daemon = True  # Daemon mode so it stops when main program exits
                     self.playback_thread.start()
                 # There is a clicking sound in between sound batches with pyaudio which can be minimized with some fade
-                audio_bytes = add_fade_in(audio_bytes)
+                if samplerate != SAMPLE_RATE:
+                    pcm_data = resample_audio(pcm_data, samplerate, SAMPLE_RATE)
+                audio_bytes = add_fade_in(pcm_data.astype(np.int16).tobytes())
                 # Play audio locally on the server by adding audio to the queue
                 audio_queue.put(audio_bytes)
             else:
@@ -198,13 +187,12 @@ class TextToSpeechModule:
                 await self.session.send_json(
                     json={
                         "audio": encoded_audio,
-                        "blenddata": transpose(self.blenddata),
+                        "blenddata": blenddata,
                         "request_id": request.id,
                     }
                 )
 
             start_time = time.time()
-            self.blenddata = []
             return start_time, audio_duration
 
         except Exception as exc:
@@ -214,6 +202,7 @@ class TextToSpeechModule:
                 await self.session.send_json(json={"finish": "error in TTS", "request_id": request.id})
             except Exception as wsexc:
                 logging.exception(f"session {self.session.session_id}, request {request.id}: error in TTS ws: {wsexc}")
+            return time.time(), 0.0
 
     async def no_question(self, request, play_locally=False):
         # send Answer Text to Websocket
@@ -225,7 +214,7 @@ class TextToSpeechModule:
             }
         )
         # speak the text
-        await self.speak(text, play_locally)
+        await self.speak(text, request, play_locally)
         # send finish
         await self.session.send_json(
             json={
