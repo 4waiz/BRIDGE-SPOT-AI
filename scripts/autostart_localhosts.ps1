@@ -34,7 +34,8 @@ function Test-PortOpen {
 $services = @(
     @{ Name = "Spot API"; Port = 4000; Script = Join-Path $repoRoot "scripts\start_spot.ps1" },
     @{ Name = "Assistant API"; Port = 4001; Script = Join-Path $repoRoot "scripts\start_assistant.ps1" },
-    @{ Name = "Frontend"; Port = 3001; Script = Join-Path $repoRoot "scripts\start_frontend.ps1" }
+    @{ Name = "Frontend"; Port = 3001; Script = Join-Path $repoRoot "scripts\start_frontend.ps1" },
+    @{ Name = "Spot Voice"; Port = 5000; Script = Join-Path $repoRoot "scripts\start_voice.ps1" }
 )
 
 foreach ($svc in $services) {
@@ -56,7 +57,7 @@ foreach ($svc in $services) {
     Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile", "-WindowStyle", "Hidden", "-ExecutionPolicy", "Bypass", "-File", $script -WorkingDirectory $repoRoot -WindowStyle Hidden | Out-Null
 }
 
-$ports = @(4000, 4001, 3001)
+$ports = $services | ForEach-Object { [int]$_.Port }
 $deadline = (Get-Date).AddMinutes(2)
 while ($true) {
     $up = $ports | Where-Object { Test-PortOpen -Port $_ }
