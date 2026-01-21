@@ -24,6 +24,15 @@ class SimpleSpotAssistant {
         this.silenceThreshold = 0.02;
         this.silenceDurationMs = 900;
         this.maxRecordMs = 8000;
+        this.mode = 'online';
+        this.modeDropdown = null;
+        this.modeTrigger = null;
+        this.modeLabel = null;
+        this.modeIndicator = null;
+        this.modeOptions = [];
+        this.offlineData = null;
+        this.offlineEntries = [];
+        this.offlineDataPromise = this.loadOfflineData();
 
         // Initialize Speech Recognition
         if ('webkitSpeechRecognition' in window) {
@@ -211,6 +220,196 @@ class SimpleSpotAssistant {
             this.useBryceVoice = false;
             this.useBackendStt = false;
         }
+    }
+
+    bindModeToggle() {
+        const dropdown = document.getElementById('assistant-mode-dropdown');
+        if (!dropdown) {
+            return;
+        }
+        const trigger = dropdown.querySelector('[data-role="mode-trigger"]');
+        const label = dropdown.querySelector('[data-role="mode-label"]');
+        const indicator = dropdown.querySelector('[data-role="mode-indicator"]');
+        const options = Array.from(dropdown.querySelectorAll('[data-mode]'));
+        if (!trigger || !label || !indicator || !options.length) {
+            return;
+        }
+
+        this.modeDropdown = dropdown;
+        this.modeTrigger = trigger;
+        this.modeLabel = label;
+        this.modeIndicator = indicator;
+        this.modeOptions = options;
+
+        this.updateModeUI();
+
+        trigger.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.toggleModeMenu();
+        });
+
+        options.forEach((option) => {
+            option.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const nextMode = option.getAttribute('data-mode');
+                this.setMode(nextMode);
+                this.closeModeMenu();
+            });
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!this.modeDropdown) {
+                return;
+            }
+            if (!this.modeDropdown.contains(event.target)) {
+                this.closeModeMenu();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                this.closeModeMenu();
+            }
+        });
+    }
+
+    setMode(mode) {
+        if (mode !== 'online' && mode !== 'offline') {
+            return;
+        }
+        this.mode = mode;
+        this.updateModeUI();
+    }
+
+    updateModeUI() {
+        const isOnline = this.mode === 'online';
+        if (this.modeLabel) {
+            this.modeLabel.textContent = isOnline ? 'Online Mode' : 'Offline Mode';
+        }
+        if (this.modeIndicator) {
+            this.modeIndicator.classList.toggle('online', isOnline);
+            this.modeIndicator.classList.toggle('offline', !isOnline);
+        }
+        if (this.modeOptions && this.modeOptions.length) {
+            this.modeOptions.forEach((option) => {
+                const isActive = option.getAttribute('data-mode') === this.mode;
+                option.classList.toggle('is-active', isActive);
+                option.setAttribute('aria-selected', String(isActive));
+            });
+        }
+    }
+
+    toggleModeMenu() {
+        if (!this.modeDropdown) {
+            return;
+        }
+        if (this.modeDropdown.classList.contains('open')) {
+            this.closeModeMenu();
+        } else {
+            this.openModeMenu();
+        }
+    }
+
+    openModeMenu() {
+        if (!this.modeDropdown) {
+            return;
+        }
+        this.modeDropdown.classList.add('open');
+        if (this.modeTrigger) {
+            this.modeTrigger.setAttribute('aria-expanded', 'true');
+        }
+    }
+
+    closeModeMenu() {
+        if (!this.modeDropdown) {
+            return;
+        }
+        this.modeDropdown.classList.remove('open');
+        if (this.modeTrigger) {
+            this.modeTrigger.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    async loadOfflineData() {
+        try {
+            const response = await fetch('bridge_offline_conversation.json', { cache: 'no-store' });
+            if (!response.ok) {
+                throw new Error(`Offline data fetch failed: ${response.status}`);
+            }
+            const data = await response.json();
+            if (!data || !Array.isArray(data.entries)) {
+                throw new Error('Offline data format invalid');
+            }
+            this.offlineData = data;
+            this.offlineEntries = data.entries.map((entry) => {
+                const keywords = Array.isArray(entry.keywords) ? entry.keywords : [];
+                const matchText = this.normalizeText(
+                    [entry.id, entry.title, entry.answer, keywords.join(' ')].filter(Boolean).join(' ')
+                );
+                return { ...entry, keywords, matchText };
+            });
+        } catch (error) {
+            console.log('Offline conversation load failed:', error);
+            this.offlineData = null;
+            this.offlineEntries = [];
+        }
+    }
+
+    normalizeText(text) {
+        return (text || '')
+            .toLowerCase()
+            .replace(/[^a-z0-9\s]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    tokenize(text) {
+        const normalized = this.normalizeText(text);
+        if (!normalized) {
+            return [];
+        }
+        return normalized.split(' ').filter((token) => token.length > 2);
+    }
+
+    getOfflineAnswer(query) {
+        if (!this.offlineData || !this.offlineEntries.length) {
+            return 'Offline mode is selected, but the local knowledge file is not available.';
+        }
+
+        const normalizedQuery = this.normalizeText(query);
+        const tokens = this.tokenize(query);
+        let bestScore = 0;
+        let bestEntry = null;
+
+        for (const entry of this.offlineEntries) {
+            let score = 0;
+            if (entry.keywords && entry.keywords.length) {
+                for (const keyword of entry.keywords) {
+                    const normalizedKeyword = this.normalizeText(keyword);
+                    if (normalizedKeyword && normalizedQuery.includes(normalizedKeyword)) {
+                        score += 4;
+                    }
+                }
+            }
+            for (const token of tokens) {
+                if (entry.matchText.includes(token)) {
+                    score += 1;
+                }
+            }
+            if (score > bestScore) {
+                bestScore = score;
+                bestEntry = entry;
+            }
+        }
+
+        if (!bestEntry || bestScore < 2) {
+            if (this.offlineData.fallback) {
+                return this.offlineData.fallback;
+            }
+            return 'I have offline information loaded, but I could not find a close match.';
+        }
+
+        return bestEntry.answer || this.offlineData.fallback || '';
     }
 
     setupRecognition() {
@@ -415,6 +614,12 @@ class SimpleSpotAssistant {
     }
 
     async getAnswer(query) {
+        if (this.mode === 'offline') {
+            if (this.offlineDataPromise) {
+                await this.offlineDataPromise;
+            }
+            return this.getOfflineAnswer(query);
+        }
         try {
             const response = await fetch(`${this.backendUrl}/chat`, {
                 method: 'POST',
@@ -669,7 +874,7 @@ class SimpleSpotAssistant {
     showMessage(text) {
         const textEl = document.getElementById('bubble-text');
         if (textEl) {
-            textEl.innerHTML = text;
+            textEl.textContent = text;
             textEl.classList.add('fade-in');
             setTimeout(() => textEl.classList.remove('fade-in'), 400);
         }
@@ -694,6 +899,7 @@ let simpleAssistant = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     simpleAssistant = new SimpleSpotAssistant();
+    simpleAssistant.bindModeToggle();
 
     if ('speechSynthesis' in window) {
         speechSynthesis.addEventListener('voiceschanged', () => {

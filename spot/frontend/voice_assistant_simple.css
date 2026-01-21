@@ -58,6 +58,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    text-align: center;
+    white-space: pre-line;
 }
 
 [data-theme="dark"] .bubble-text {

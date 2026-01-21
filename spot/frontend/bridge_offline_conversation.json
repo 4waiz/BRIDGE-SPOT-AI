@@ -1,0 +1,148 @@
+{
+  "title": "BRIDGE Offline Knowledge Base",
+  "version": "1.0",
+  "last_updated": "2026-01-20",
+  "source": "Prepared for Smart BRIDGE Bot (offline knowledge)",
+  "disclaimer": "This knowledge base consolidates (1) information extracted from the BRIDGE training calendar Excel file and (2) publicly available information from the BRIDGE / EDGE Learning and Innovation Factory (LIF) website and external publications. Most public sources still reference the former name 'Learning and Innovation Factory (LIF)'. This document consistently uses the name 'BRIDGE' and notes the former name where relevant.",
+  "scope": "This knowledge base covers BRIDGE’s purpose, activities, programmes, training catalogue, policies, scale, and certifications. It does not include confidential internal strategies or unpublished financial information.",
+  "fallback": "I have offline information about BRIDGE’s overview, programmes, training catalogue, schedules, fees, policies, and certifications. You can ask about what BRIDGE does, its courses, programmes, pricing model, or reported impact.",
+  "entries": [
+    {
+      "id": "bridge-overview",
+      "title": "Executive Summary",
+      "keywords": [
+        "overview",
+        "executive summary",
+        "what is bridge",
+        "bridge overview",
+        "lif",
+        "learning and innovation factory"
+      ],
+      "answer": "BRIDGE (formerly EDGE Learning and Innovation Factory – LIF) is an Industry 4.0, operational excellence, and advanced-technology learning and demonstration centre under EDGE Group. It is designed as a one-stop hub that combines structured training, hands-on simulations, and technology demonstrations.\n\nPublic communications describe BRIDGE as supporting capability building in Lean Management, Six Sigma, Lean Digital, Analytics and IoT, Agile, and leadership for digital transformation. The internal training calendar lists at least 64 distinct courses and 922 scheduled sessions delivered between March 2023 and March 2026.\n\nExternal publications also describe BRIDGE/LIF as a delivery and execution venue for national Industry 4.0 initiatives, including hackathons, executive programmes, and Ministry of Industry and Advanced Technology (MoIAT) initiatives such as Transform 4.0."
+    },
+    {
+      "id": "bridge-pillars",
+      "title": "Core Activities and Pillars",
+      "keywords": [
+        "what does bridge do",
+        "pillars",
+        "capability building",
+        "operational excellence",
+        "industry 4.0",
+        "innovation",
+        "co-creation",
+        "ecosystem"
+      ],
+      "answer": "BRIDGE activities are consistently described across internal schedules and public sources as falling into five main pillars:\n\n1. Capability Building and Upskilling: Delivery of structured training programmes across operational excellence, Industry 4.0, digital manufacturing, data and analytics, and agile ways of working, with strong emphasis on in-person practice and simulations.\n\n2. Operational Excellence Enablement: Training and common-language creation around Lean, Six Sigma, problem solving, performance management, and continuous improvement at both operational and leadership levels.\n\n3. Industry 4.0 Demonstration and Testbed: Hands-on demonstrations of smart manufacturing concepts, connected operations, and digital tools that allow participants to observe and experiment with Industry 4.0 technologies.\n\n4. Innovation and Co-Creation Programmes: Hackathons, workshops, competitions, and structured innovation activities that bring together industry, government, academia, and technology partners.\n\n5. Ecosystem Partnerships: Joint programmes and initiatives with government entities and external partners, supporting broader industrial capability development."
+    },
+    {
+      "id": "facility-model",
+      "title": "Facility and Learning Model",
+      "keywords": [
+        "facility",
+        "learning model",
+        "simulations",
+        "smart learning factory",
+        "digital twin",
+        "shopfloor"
+      ],
+      "answer": "Public descriptions characterize BRIDGE as a purpose-built learning and demonstration facility that integrates theory, technology, and practice in a single environment. External reporting highlights experiential learning as a defining feature, with simulations forming a significant portion of training time.\n\nIllustrative learning elements referenced in public sources include:\n- A smart learning factory environment simulating end-to-end production flows.\n- Role-based exercises in which participants configure a small product and track it through multiple production stages.\n- Demonstrations of digital twins, connected machines, and data-driven performance management.\n- Examples of digital work instructions, KPI dashboards, and smart logistics tools such as RFID, pick-by-light, and electronic displays."
+    },
+    {
+      "id": "programmes-initiatives",
+      "title": "Programmes and Initiatives",
+      "keywords": [
+        "programmes",
+        "initiatives",
+        "ceo 4.0",
+        "leadership 4.0",
+        "pioneers 4.0",
+        "talk 4.0",
+        "transform 4.0",
+        "engineering bootcamp",
+        "quantasim"
+      ],
+      "answer": "Public sources and announcements reference several structured programmes hosted, supported, or executed through BRIDGE:\n\n- CEO 4.0: A leadership-focused Industry 4.0 programme, described in public reporting as a short executive-level format.\n- Leadership 4.0: A multi-day leadership development programme covering operational excellence, digital transformation, and Industry 4.0 topics.\n- Role-based SME Programmes: Capability-building initiatives aimed at subject matter experts to establish a shared technical and operational language.\n- Pioneers 4.0 Hackathon Series: A MoIAT-EDGE initiative with recurring challenges focused on applying analytics, AI, and digital technologies to industrial problems.\n- Talk 4.0 Series: A MoIAT-EDGE initiative consisting of talks, workshops, and seminars hosted at BRIDGE.\n- Transform 4.0 (MoIAT): Under a formal partnership, BRIDGE/LIF is positioned as a strategic partner and execution venue supporting Industry 4.0 adoption and lighthouse development.\n- Engineering Bootcamp (QuantaSim partnership): A nine-month interdisciplinary bootcamp for early-career engineers, structured around the V-cycle and combining simulation, design, and prototyping."
+    },
+    {
+      "id": "training-catalogue",
+      "title": "Training Catalogue and Schedule",
+      "keywords": [
+        "training catalogue",
+        "courses",
+        "sessions",
+        "calendar",
+        "curricula"
+      ],
+      "answer": "The provided Excel workbook contains a training catalogue of 64 courses and a detailed calendar of 922 scheduled sessions running from March 2023 through March 2026. Each course entry specifies a curriculum domain, skill level, prerequisites (where applicable), and duration in training days.\n\nCurriculum domains listed include Lean, Six Sigma, Lean Digital, Industry 4.0, Analytics and IoT, Agile, AI, and leadership-oriented programmes. Skill levels range from foundation and practitioner to management, leadership, and advanced."
+    },
+    {
+      "id": "policies-fees",
+      "title": "Training Registration, Attendance, and Fees Policy",
+      "keywords": [
+        "policy",
+        "registration",
+        "attendance",
+        "booking fee",
+        "no-show",
+        "cancellation",
+        "fees"
+      ],
+      "answer": "Key policy elements extracted from the Training Registration and Attendance Policy include:\n\n- Registration and cancellation must be completed through MASAR EDGE, the official learning platform.\n- Attendance requirement: a minimum of 80 percent daily participation is required to be recorded as attended.\n- Booking fee: AED 500 per trainee per day, effective 1 January 2026.\n- No-show fee: AED 500 per trainee per day for missed sessions without timely cancellation, effective 1 October 2025. This fee applies in addition to the booking fee.\n- Cancellation deadlines: at least 5 working days in advance for trainings of 1–2 days; at least 10 working days for trainings of 4–12 days.\n- Declining or deleting the Outlook invitation does not constitute cancellation.\n- Repeated no-shows: three no-shows for the same training topic result in a three-month suspension from that course.\n- Fees are recharged to entity cost centers on a quarterly basis."
+    },
+    {
+      "id": "pricing-notes",
+      "title": "Pricing Model Notes",
+      "keywords": [
+        "pricing",
+        "cost",
+        "fees",
+        "how much does it cost"
+      ],
+      "answer": "Publicly available materials do not list commercial per-seat pricing for BRIDGE courses. The only explicit pricing information available in the provided sources is the internal chargeback model based on booking and no-show fees of AED 500 per trainee per day."
+    },
+    {
+      "id": "certifications",
+      "title": "Quality Management and Certifications",
+      "keywords": [
+        "certification",
+        "iso",
+        "iso 9001",
+        "quality"
+      ],
+      "answer": "Public documentation indicates that EDGE Group PJSC holds an ISO 9001:2015 certification that includes training activities delivered through the Learning and Innovation Factory (LIF) within its scope. The referenced certificate (FS 807480) has an expiry date of 13 May 2027."
+    },
+    {
+      "id": "scale-impact",
+      "title": "Reported Scale and Impact",
+      "keywords": [
+        "scale",
+        "impact",
+        "trainee days",
+        "metrics"
+      ],
+      "answer": "An external visit report published in 2024 describes BRIDGE/LIF as established in 2021 and reports approximately 18,000 trainee-days delivered over a two-year period. Of these, 11,000 trainee-days were delivered in 2023. The majority of training was delivered to EDGE employees, with several thousand trainee-days delivered to external participants. The report emphasizes experiential learning, noting that simulations account for more than half of trainee time."
+    },
+    {
+      "id": "contact",
+      "title": "Contact and Administration",
+      "keywords": [
+        "contact",
+        "email",
+        "lif",
+        "bridge support"
+      ],
+      "answer": "The contact email listed in the source materials for training policy and administration inquiries is LIF@EDGEGROUP.AE. Updated policies are noted as being available on EDGE HUB."
+    },
+    {
+      "id": "authorship",
+      "title": "Authorship and Preparation",
+      "keywords": [
+        "author",
+        "prepared by",
+        "who made this"
+      ],
+      "answer": "Prepared by Eng. Awaiz Ahmed on 20 January 2026."
+    }
+  ]
+}

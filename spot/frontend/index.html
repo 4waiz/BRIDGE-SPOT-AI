@@ -44,7 +44,26 @@
             <img src="Spot_qturn.png" alt="Spot AI Robot">
         </div>
         <div class="top-right">
-            <a onclick="startwwd()" class="neumorphic-button">Smart Assistant</a>
+            <div class="assistant-actions">
+                <div id="assistant-mode-dropdown" class="mode-dropdown">
+                    <button type="button" class="mode-button mode-button--current" data-role="mode-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="mode-indicator online" data-role="mode-indicator" aria-hidden="true"></span>
+                        <span class="mode-label" data-role="mode-label">Online Mode</span>
+                        <span class="mode-caret" aria-hidden="true"></span>
+                    </button>
+                    <div class="mode-menu" role="listbox" aria-label="Assistant mode options">
+                        <button type="button" class="mode-option is-active" data-mode="online" role="option" aria-selected="true">
+                            <span class="mode-indicator online" aria-hidden="true"></span>
+                            Online Mode
+                        </button>
+                        <button type="button" class="mode-option" data-mode="offline" role="option" aria-selected="false">
+                            <span class="mode-indicator offline" aria-hidden="true"></span>
+                            Offline Mode
+                        </button>
+                    </div>
+                </div>
+                <a onclick="startwwd()" class="neumorphic-button">Smart Assistant</a>
+            </div>
         </div>
         <div class="bottom-left">
             <a href="http://192.168.208.88:8004/" class="neumorphic-button">Guided Tour</a>

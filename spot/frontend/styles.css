@@ -194,6 +194,158 @@ body {
     grid-row: 2 / 3;
 }
 
+.assistant-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+    width: 100%;
+    position: relative;
+}
+
+.mode-dropdown {
+    position: relative;
+    width: 100%;
+}
+
+.assistant-actions .mode-dropdown {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(100% + 0.85rem);
+}
+
+.mode-button {
+    border: 1px solid var(--border);
+    background-color: var(--surface);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 0.7rem 1rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease,
+        color 0.2s ease, opacity 0.2s ease;
+}
+
+.mode-button:hover {
+    transform: translateY(-0.15rem);
+    box-shadow: var(--shadow-hover);
+    border-color: rgba(255, 86, 34, 0.35);
+}
+
+.mode-button:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-press);
+}
+
+.mode-button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.mode-button--current {
+    min-height: 3.4rem;
+}
+
+.mode-dropdown.open .mode-button {
+    border-color: rgba(255, 86, 34, 0.55);
+    background-color: rgba(255, 86, 34, 0.08);
+    box-shadow: var(--shadow-hover);
+}
+
+.mode-label {
+    text-align: center;
+}
+
+.mode-caret {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    opacity: 0.6;
+    justify-self: end;
+}
+
+.mode-menu {
+    position: absolute;
+    top: calc(100% + 0.6rem);
+    left: 0;
+    right: 0;
+    background-color: var(--surface);
+    border-radius: 1.5rem;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    padding: 0.35rem;
+    display: none;
+    gap: 0.4rem;
+    z-index: 2;
+}
+
+.mode-dropdown.open .mode-menu {
+    display: grid;
+}
+
+.mode-option {
+    border: 1px solid transparent;
+    background-color: transparent;
+    color: var(--text);
+    border-radius: 999px;
+    padding: 0.65rem 1rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    width: 100%;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.mode-option:hover,
+.mode-option:focus-visible {
+    background-color: rgba(255, 86, 34, 0.08);
+    border-color: rgba(255, 86, 34, 0.35);
+}
+
+.mode-option:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.mode-option.is-active {
+    background-color: rgba(255, 86, 34, 0.12);
+    border-color: rgba(255, 86, 34, 0.6);
+}
+
+.mode-indicator {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.08);
+}
+
+.mode-indicator.online {
+    background-color: #2ecc71;
+    box-shadow: 0 0 8px rgba(46, 204, 113, 0.6);
+}
+
+.mode-indicator.offline {
+    background-color: #e74c3c;
+    box-shadow: 0 0 8px rgba(231, 76, 60, 0.55);
+}
+
 .dropdown {
     position: relative;
     width: 100%;
@@ -366,6 +518,16 @@ h1 {
     .neumorphic-button {
         font-size: 1rem;
         height: 5rem;
+    }
+
+    .mode-button {
+        font-size: 0.85rem;
+        padding: 0.55rem 0.9rem;
+    }
+
+    .mode-option {
+        font-size: 0.85rem;
+        padding: 0.55rem 0.9rem;
     }
 
     .header-logo img {
