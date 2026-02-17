@@ -66,7 +66,7 @@
             </div>
         </div>
         <div class="bottom-left">
-            <a href="http://192.168.208.88:8004/" class="neumorphic-button">Guided Tour</a>
+            <a id="guided-tour-link" href="http://localhost:8004/" class="neumorphic-button" target="_blank" rel="noopener">Guided Tour</a>
         </div>
         <div class="bottom-right">
             <a href="https://192.168.208.117" class="neumorphic-button" target="_blank">Spot Admin</a>
@@ -96,6 +96,14 @@
 
     <script src="voice_assistant_simple.js?v=20260114"></script>
     <script src="smartassistant.js"></script>
+    <script>
+        (function bindGuidedTourLink() {
+            const guidedTourLink = document.getElementById('guided-tour-link');
+            if (!guidedTourLink) return;
+            const host = window.location.hostname || 'localhost';
+            guidedTourLink.href = `http://${host}:8004/`;
+        })();
+    </script>
 </body>
 </html>
 
