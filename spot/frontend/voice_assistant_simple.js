@@ -6,24 +6,29 @@ const ASSISTANT_STATES = Object.freeze({
     IDLE: 'IDLE',
     GREET: 'GREET',
     LISTEN_QUERY: 'LISTEN_QUERY',
+    FOLLOWUP_PROMPT: 'FOLLOWUP_PROMPT',
+    LISTEN_FOLLOWUP: 'LISTEN_FOLLOWUP',
     PROCESS: 'PROCESS',
     SPEAK: 'SPEAK',
     COOLDOWN: 'COOLDOWN'
 });
 
 const QUERY_TIMEOUT_MS = 20000;
+const FOLLOWUP_TIMEOUT_MS = 10000;
 const COOLDOWN_MS = 1500;
 const TTS_RESUME_DELAY_MS = 400;
 const TOAST_DISMISS_MIN_MS = 4000;
 const TOAST_DISMISS_MAX_MS = 6000;
 const GREETING_TEXT = 'Hi, I am the Spot dog. How may I help you?';
+const FOLLOWUP_PROMPT_TEXT = 'Do you have any other question?';
 const OFFLINE_MAX_WORDS = 28;
 const OFFLINE_MAX_CHARS = 180;
 const OFFLINE_UNKNOWN_MESSAGE = 'Offline mode: I can answer BRIDGE overview, programs, schedules, fees, policies, certifications.';
 
 // Small deterministic wake phrase variant lists.
-const HEY_VARIANTS = ['hey', 'hi', 'hay', 'hei', 'hello'];
-const SPOT_VARIANTS = ['spot', 'sport', 'spat', 'spotty', 'spotify'];
+const HEY_VARIANTS = ['hey', 'hi', 'hay', 'hei', 'hello', 'high', 'hig', 'hai', 'heyy', 'hiya'];
+const SPOT_VARIANTS = ['spot', 'sport', 'spat', 'spotty', 'spotify', 'esport', 'spott', 'spod'];
+const MERGED_WAKE_VARIANTS = ['highspot', 'hayesport', 'heyspot', 'hispot', 'hisport', 'heysport', 'hayespot'];
 
 const OFFLINE_TEMPLATES = Object.freeze({
     overview: 'BRIDGE is EDGE\'s training hub for Industry 4.0, operational excellence, and practical digital transformation skills.',
@@ -134,7 +139,10 @@ class SimpleSpotAssistant {
         if (this.state === ASSISTANT_STATES.IDLE) {
             return true;
         }
-        return this.state === ASSISTANT_STATES.LISTEN_QUERY && !this.useBackendStt;
+        return (
+            (this.state === ASSISTANT_STATES.LISTEN_QUERY || this.state === ASSISTANT_STATES.LISTEN_FOLLOWUP) &&
+            !this.useBackendStt
+        );
     }
 
     ensureRecognitionRunning(reason = '') {
@@ -227,7 +235,11 @@ class SimpleSpotAssistant {
         return this.querySessionId;
     }
 
-    beginQueryWindow(reason = '') {
+    beginQueryWindow(
+        reason = '',
+        targetState = ASSISTANT_STATES.LISTEN_QUERY,
+        timeoutMs = QUERY_TIMEOUT_MS
+    ) {
         if (!this.isListening) {
             return;
         }
@@ -237,25 +249,33 @@ class SimpleSpotAssistant {
         this.cancelActiveRecording();
         const sessionId = this.nextQuerySessionId();
 
-        this.queryDeadlineAt = Date.now() + QUERY_TIMEOUT_MS;
-        this.setState(ASSISTANT_STATES.LISTEN_QUERY, reason || 'Ready for user query');
-        console.log(`[Query] Listening for user query for ${QUERY_TIMEOUT_MS}ms (session ${sessionId})`);
+        this.queryDeadlineAt = Date.now() + timeoutMs;
+        const isFollowup = targetState === ASSISTANT_STATES.LISTEN_FOLLOWUP;
+        const stateReason = reason || (isFollowup ? 'Ready for follow-up query' : 'Ready for user query');
+        this.setState(targetState, stateReason);
+        console.log(
+            `[Query] Listening for ${isFollowup ? 'follow-up' : 'user'} query for ${timeoutMs}ms (session ${sessionId})`
+        );
 
         this.queryTimeoutHandle = setTimeout(() => {
-            if (!this.isListening || this.state !== ASSISTANT_STATES.LISTEN_QUERY || this.querySessionId !== sessionId) {
+            if (!this.isListening || this.state !== targetState || this.querySessionId !== sessionId) {
                 return;
             }
-            console.log('[Query] No query received within timeout; returning to IDLE');
+            console.log(`[Query] No ${isFollowup ? 'follow-up' : 'query'} received within timeout; returning to IDLE`);
             this.enterIdle('Query timeout');
-        }, QUERY_TIMEOUT_MS);
+        }, timeoutMs);
 
         if (this.useBackendStt) {
             this.blockRecognition('backend-stt');
-            this.listenForQuery(sessionId);
+            this.listenForQuery(sessionId, targetState);
         } else {
             this.unblockRecognition('backend-stt');
             this.ensureRecognitionRunning('listen-query-browser-stt');
         }
+    }
+
+    beginFollowupWindow(reason = '') {
+        this.beginQueryWindow(reason, ASSISTANT_STATES.LISTEN_FOLLOWUP, FOLLOWUP_TIMEOUT_MS);
     }
 
     closeQueryWindow(reason = '') {
@@ -420,15 +440,15 @@ class SimpleSpotAssistant {
         return data && data.text ? data.text.trim() : '';
     }
 
-    async listenForQuery(sessionId) {
+    async listenForQuery(sessionId, expectedState = ASSISTANT_STATES.LISTEN_QUERY) {
         if (!this.useBackendStt) {
             return;
         }
-        console.log(`[Query] Backend STT loop started (session ${sessionId})`);
+        console.log(`[Query] Backend STT loop started (session ${sessionId}, state=${expectedState})`);
 
         while (
             this.isListening &&
-            this.state === ASSISTANT_STATES.LISTEN_QUERY &&
+            this.state === expectedState &&
             this.querySessionId === sessionId
         ) {
             const remainingMs = this.queryDeadlineAt - Date.now();
@@ -442,7 +462,7 @@ class SimpleSpotAssistant {
 
                 if (
                     !this.isListening ||
-                    this.state !== ASSISTANT_STATES.LISTEN_QUERY ||
+                    this.state !== expectedState ||
                     this.querySessionId !== sessionId
                 ) {
                     return;
@@ -455,7 +475,7 @@ class SimpleSpotAssistant {
                 const transcript = await this.transcribeWithBackend(audioBlob);
                 if (
                     !this.isListening ||
-                    this.state !== ASSISTANT_STATES.LISTEN_QUERY ||
+                    this.state !== expectedState ||
                     this.querySessionId !== sessionId
                 ) {
                     return;
@@ -463,14 +483,20 @@ class SimpleSpotAssistant {
 
                 if (transcript && transcript.trim()) {
                     console.log('[Query] Backend STT transcript:', transcript.trim());
-                    this.handleQueryTranscript(transcript.trim(), 'backend-stt');
-                    return;
+                    const consumed = this.handleQueryTranscript(transcript.trim(), 'backend-stt');
+                    if (consumed) {
+                        return;
+                    }
+                    continue;
                 }
             } catch (error) {
                 console.error('Backend STT failed during query listen:', error);
                 this.useBackendStt = false;
                 this.unblockRecognition('backend-stt');
-                if (this.isListening && this.state === ASSISTANT_STATES.LISTEN_QUERY) {
+                if (
+                    this.isListening &&
+                    (this.state === ASSISTANT_STATES.LISTEN_QUERY || this.state === ASSISTANT_STATES.LISTEN_FOLLOWUP)
+                ) {
                     this.ensureRecognitionRunning('backend-stt-fallback');
                 }
                 return;
@@ -789,6 +815,17 @@ class SimpleSpotAssistant {
         };
     }
 
+    isMeaningfulFollowupInput(text) {
+        const normalized = this.normalizeText(text);
+        if (!normalized || normalized.length < 2) {
+            return false;
+        }
+        if (/^(uh+|um+)$/.test(normalized)) {
+            return false;
+        }
+        return true;
+    }
+
     normalizeWakeText(text) {
         const deAccented = (text || '')
             .normalize('NFD')
@@ -894,8 +931,15 @@ class SimpleSpotAssistant {
             return false;
         }
         const tokens = normalized.split(' ').filter(Boolean);
+        const joined = normalized.replace(/\s+/g, '');
         if (!tokens.length) {
             return false;
+        }
+
+        // Handles merged wake transcriptions like "highspot" or "hayesport".
+        if (MERGED_WAKE_VARIANTS.some((variant) => joined.includes(variant))) {
+            console.log(`[Wake] Matched merged wake phrase | transcript="${normalized}"`);
+            return true;
         }
 
         const heyIndices = [];
@@ -955,15 +999,23 @@ class SimpleSpotAssistant {
     handleQueryTranscript(query, source = 'browser-stt') {
         const normalizedQuery = (query || '').trim();
         if (!normalizedQuery) {
-            return;
+            return false;
         }
-        if (!this.isListening || this.audioGate || this.state !== ASSISTANT_STATES.LISTEN_QUERY) {
-            return;
+        const isListeningState =
+            this.state === ASSISTANT_STATES.LISTEN_QUERY || this.state === ASSISTANT_STATES.LISTEN_FOLLOWUP;
+        if (!this.isListening || this.audioGate || !isListeningState) {
+            return false;
+        }
+
+        if (this.state === ASSISTANT_STATES.LISTEN_FOLLOWUP && !this.isMeaningfulFollowupInput(normalizedQuery)) {
+            console.log(`[Followup] Ignored non-meaningful follow-up input: "${normalizedQuery}"`);
+            return false;
         }
 
         console.log(`[Query] Received (${source}): ${normalizedQuery}`);
         this.closeQueryWindow(`Query received from ${source}`);
         this.handleQuery(normalizedQuery, source);
+        return true;
     }
 
     setupRecognition() {
@@ -1003,7 +1055,10 @@ class SimpleSpotAssistant {
                 return;
             }
 
-            if (this.state === ASSISTANT_STATES.LISTEN_QUERY && !this.useBackendStt) {
+            if (
+                (this.state === ASSISTANT_STATES.LISTEN_QUERY || this.state === ASSISTANT_STATES.LISTEN_FOLLOWUP) &&
+                !this.useBackendStt
+            ) {
                 this.handleQueryTranscript(transcript, 'browser-stt');
                 return;
             }
@@ -1122,10 +1177,30 @@ class SimpleSpotAssistant {
                 if (!this.isListening) {
                     return;
                 }
-                this.enterCooldown('Response spoken');
+                this.startFollowupPrompt();
             },
             () => {
                 this.showMessage(responseText, { hint: responseHint });
+            }
+        );
+    }
+
+    startFollowupPrompt() {
+        if (!this.isListening) {
+            return;
+        }
+
+        this.setState(ASSISTANT_STATES.FOLLOWUP_PROMPT, 'Prompting for follow-up question');
+        this.speak(
+            FOLLOWUP_PROMPT_TEXT,
+            () => {
+                if (!this.isListening) {
+                    return;
+                }
+                this.beginFollowupWindow('Follow-up prompt completed');
+            },
+            () => {
+                this.showMessage(FOLLOWUP_PROMPT_TEXT);
             }
         );
     }
