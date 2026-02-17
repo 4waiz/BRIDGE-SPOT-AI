@@ -35,6 +35,7 @@ $services = @(
     @{ Name = "Spot API"; Port = 4000; Script = Join-Path $repoRoot "scripts\start_spot.ps1" },
     @{ Name = "Assistant API"; Port = 4001; Script = Join-Path $repoRoot "scripts\start_assistant.ps1" },
     @{ Name = "Frontend"; Port = 3001; Script = Join-Path $repoRoot "scripts\start_frontend.ps1" },
+    @{ Name = "Guided Tour"; Port = 8004; Script = Join-Path $repoRoot "scripts\start_guided_tour.ps1" },
     @{ Name = "Spot Voice"; Port = 5000; Script = Join-Path $repoRoot "scripts\start_voice.ps1" }
 )
 
