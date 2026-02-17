@@ -1,20 +1,61 @@
 // Simple Spot Voice Assistant - Just Speech Bubble
 // Clean UI showing only Spot's responses
 
+// Explicit assistant states for wake-query-response lifecycle.
+const ASSISTANT_STATES = Object.freeze({
+    IDLE: 'IDLE',
+    GREET: 'GREET',
+    LISTEN_QUERY: 'LISTEN_QUERY',
+    PROCESS: 'PROCESS',
+    SPEAK: 'SPEAK',
+    COOLDOWN: 'COOLDOWN'
+});
+
+const QUERY_TIMEOUT_MS = 20000;
+const COOLDOWN_MS = 1500;
+const TTS_RESUME_DELAY_MS = 400;
+const TOAST_DISMISS_MIN_MS = 4000;
+const TOAST_DISMISS_MAX_MS = 6000;
+const GREETING_TEXT = 'Hi, I am the Spot dog. How may I help you?';
+const OFFLINE_MAX_WORDS = 28;
+const OFFLINE_MAX_CHARS = 180;
+const OFFLINE_UNKNOWN_MESSAGE = 'Offline mode: I can answer BRIDGE overview, programs, schedules, fees, policies, certifications.';
+
+// Small deterministic wake phrase variant lists.
+const HEY_VARIANTS = ['hey', 'hi', 'hay', 'hei', 'hello'];
+const SPOT_VARIANTS = ['spot', 'sport', 'spat', 'spotty', 'spotify'];
+
+const OFFLINE_TEMPLATES = Object.freeze({
+    overview: 'BRIDGE is EDGE\'s training hub for Industry 4.0, operational excellence, and practical digital transformation skills.',
+    programs: 'BRIDGE offers practical programs in Industry 4.0, Lean, analytics, agile methods, and leadership development.',
+    schedule: 'I can share BRIDGE course schedules and dates, including the next available training window.',
+    fees: 'BRIDGE booking is AED 500 per trainee per day, and no-show fees may also apply.',
+    policies: 'BRIDGE requires strong attendance and early cancellation through the official training registration platform.',
+    certifications: 'BRIDGE training is included in EDGE\'s ISO 9001:2015 quality management certification scope.',
+    unknown: OFFLINE_UNKNOWN_MESSAGE
+});
+
 class SimpleSpotAssistant {
     constructor() {
         this.isListening = false;
         this.isProcessing = false;
-        this.wakeWordDetected = false;
-        this.isSpeaking = false; // Track if Spot is currently speaking
+        this.isSpeaking = false;
+        this.audioGate = false;
+        this.state = ASSISTANT_STATES.IDLE;
         this.recognition = null;
         this.synthesis = window.speechSynthesis;
-        this.wakeWords = ['hey spot', 'hi spot']; // Support both "Hey Spot" and "Hi Spot"
-        this.activeTimeout = null;
-        this.lastSpeechTime = null;
+        this.recognitionActive = false;
+        this.recognitionBlocks = new Set();
+        this.queryTimeoutHandle = null;
+        this.cooldownTimeoutHandle = null;
+        this.resumeRecognitionTimeout = null;
+        this.toastDismissHandle = null;
+        this.querySessionId = 0;
+        this.queryDeadlineAt = 0;
         this.backendUrl = 'http://localhost:5000';
         this.useBryceVoice = false;  // Backend TTS availability
         this.useBackendStt = false;  // Backend STT availability
+        this.offlineBriefMode = true;
         this.audioContext = null;
         this.micStream = null;
         this.micSource = null;
@@ -53,6 +94,227 @@ class SimpleSpotAssistant {
     initAudioContext() {
         // Initialize Web Audio API context for playing backend audio
         this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    setState(nextState, reason = '') {
+        const prevState = this.state;
+        if (prevState === nextState) {
+            if (reason) {
+                console.log(`[State] ${nextState} (no change) | ${reason}`);
+            }
+            return;
+        }
+        this.state = nextState;
+        if (reason) {
+            console.log(`[State] ${prevState} -> ${nextState} | ${reason}`);
+        } else {
+            console.log(`[State] ${prevState} -> ${nextState}`);
+        }
+    }
+
+    blockRecognition(reason) {
+        if (!this.recognitionBlocks.has(reason)) {
+            this.recognitionBlocks.add(reason);
+            console.log(`[Recognition] blocked: ${reason}`);
+        }
+        this.stopRecognition(`block:${reason}`);
+    }
+
+    unblockRecognition(reason) {
+        if (this.recognitionBlocks.delete(reason)) {
+            console.log(`[Recognition] unblocked: ${reason}`);
+        }
+        this.ensureRecognitionRunning(`unblock:${reason}`);
+    }
+
+    shouldRecognitionRun() {
+        if (!this.isListening || !this.recognition || this.audioGate || this.recognitionBlocks.size > 0) {
+            return false;
+        }
+        if (this.state === ASSISTANT_STATES.IDLE) {
+            return true;
+        }
+        return this.state === ASSISTANT_STATES.LISTEN_QUERY && !this.useBackendStt;
+    }
+
+    ensureRecognitionRunning(reason = '') {
+        if (!this.shouldRecognitionRun()) {
+            return;
+        }
+        if (this.recognitionActive) {
+            return;
+        }
+        try {
+            this.recognitionActive = true;
+            this.recognition.start();
+            if (reason) {
+                console.log(`[Recognition] start requested (${reason})`);
+            }
+        } catch (e) {
+            this.recognitionActive = false;
+            const message = e && e.message ? e.message.toLowerCase() : '';
+            if (!message.includes('already started')) {
+                console.log('[Recognition] start error:', e);
+            }
+        }
+    }
+
+    stopRecognition(reason = '') {
+        if (!this.recognition) {
+            return;
+        }
+        if (!this.recognitionActive) {
+            return;
+        }
+        try {
+            this.recognition.stop();
+            if (reason) {
+                console.log(`[Recognition] stop requested (${reason})`);
+            }
+        } catch (e) {
+            this.recognitionActive = false;
+            const message = e && e.message ? e.message.toLowerCase() : '';
+            if (!message.includes('already') && !message.includes('abort')) {
+                console.log('[Recognition] stop error:', e);
+            }
+        }
+    }
+
+    clearQueryTimeout() {
+        if (!this.queryTimeoutHandle) {
+            return;
+        }
+        clearTimeout(this.queryTimeoutHandle);
+        this.queryTimeoutHandle = null;
+    }
+
+    clearCooldownTimeout() {
+        if (!this.cooldownTimeoutHandle) {
+            return;
+        }
+        clearTimeout(this.cooldownTimeoutHandle);
+        this.cooldownTimeoutHandle = null;
+    }
+
+    clearResumeRecognitionTimeout() {
+        if (!this.resumeRecognitionTimeout) {
+            return;
+        }
+        clearTimeout(this.resumeRecognitionTimeout);
+        this.resumeRecognitionTimeout = null;
+    }
+
+    clearToastDismissTimer() {
+        if (!this.toastDismissHandle) {
+            return;
+        }
+        clearTimeout(this.toastDismissHandle);
+        this.toastDismissHandle = null;
+    }
+
+    cancelActiveRecording() {
+        if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+            try {
+                this.mediaRecorder.stop();
+            } catch (e) {
+                console.log('Recorder stop error:', e);
+            }
+        }
+    }
+
+    nextQuerySessionId() {
+        this.querySessionId += 1;
+        return this.querySessionId;
+    }
+
+    beginQueryWindow(reason = '') {
+        if (!this.isListening) {
+            return;
+        }
+
+        // Every query window gets a session id so stale async callbacks are ignored.
+        this.clearQueryTimeout();
+        this.cancelActiveRecording();
+        const sessionId = this.nextQuerySessionId();
+
+        this.queryDeadlineAt = Date.now() + QUERY_TIMEOUT_MS;
+        this.setState(ASSISTANT_STATES.LISTEN_QUERY, reason || 'Ready for user query');
+        console.log(`[Query] Listening for user query for ${QUERY_TIMEOUT_MS}ms (session ${sessionId})`);
+
+        this.queryTimeoutHandle = setTimeout(() => {
+            if (!this.isListening || this.state !== ASSISTANT_STATES.LISTEN_QUERY || this.querySessionId !== sessionId) {
+                return;
+            }
+            console.log('[Query] No query received within timeout; returning to IDLE');
+            this.enterIdle('Query timeout');
+        }, QUERY_TIMEOUT_MS);
+
+        if (this.useBackendStt) {
+            this.blockRecognition('backend-stt');
+            this.listenForQuery(sessionId);
+        } else {
+            this.unblockRecognition('backend-stt');
+            this.ensureRecognitionRunning('listen-query-browser-stt');
+        }
+    }
+
+    closeQueryWindow(reason = '') {
+        this.clearQueryTimeout();
+        this.queryDeadlineAt = 0;
+        this.nextQuerySessionId();
+        this.cancelActiveRecording();
+        this.unblockRecognition('backend-stt');
+        if (reason) {
+            console.log(`[Query] Closed query window | ${reason}`);
+        }
+    }
+
+    enterIdle(reason = '') {
+        this.clearCooldownTimeout();
+        this.clearQueryTimeout();
+        this.cancelActiveRecording();
+        this.queryDeadlineAt = 0;
+        this.unblockRecognition('backend-stt');
+        this.unblockRecognition('cooldown');
+        this.setState(ASSISTANT_STATES.IDLE, reason || 'Wake listening');
+        this.ensureRecognitionRunning('enter-idle');
+    }
+
+    enterCooldown(reason = '') {
+        this.closeQueryWindow('Entering cooldown');
+        this.setState(ASSISTANT_STATES.COOLDOWN, reason || 'Post-response cooldown');
+        this.blockRecognition('cooldown');
+        this.clearCooldownTimeout();
+        this.cooldownTimeoutHandle = setTimeout(() => {
+            this.cooldownTimeoutHandle = null;
+            this.unblockRecognition('cooldown');
+            if (this.isListening) {
+                this.enterIdle('Cooldown complete');
+            }
+        }, COOLDOWN_MS);
+    }
+
+    beginTtsPlayback(reason = '') {
+        this.clearResumeRecognitionTimeout();
+        // Audio gate blocks wake/query handling while TTS is audible.
+        this.audioGate = true;
+        this.isSpeaking = true;
+        this.setState(ASSISTANT_STATES.SPEAK, reason || 'TTS playback');
+        this.blockRecognition('tts');
+    }
+
+    endTtsPlayback(onComplete) {
+        this.isSpeaking = false;
+        console.log(`[AudioGate] TTS ended, resuming recognition after ${TTS_RESUME_DELAY_MS}ms`);
+        this.clearResumeRecognitionTimeout();
+        this.resumeRecognitionTimeout = setTimeout(() => {
+            this.resumeRecognitionTimeout = null;
+            this.audioGate = false;
+            this.unblockRecognition('tts');
+            if (onComplete) {
+                onComplete();
+            }
+        }, TTS_RESUME_DELAY_MS);
     }
 
     async ensureMicStream() {
@@ -105,7 +367,7 @@ class SimpleSpotAssistant {
         };
     }
 
-    async captureQueryAudio() {
+    async captureQueryAudio(maxDurationMs = this.maxRecordMs) {
         await this.ensureMicStream();
         this.isRecording = true;
         const recorder = new MediaRecorder(this.micStream, { mimeType: 'audio/webm' });
@@ -119,6 +381,7 @@ class SimpleSpotAssistant {
         const stopPromise = new Promise((resolve) => {
             recorder.onstop = resolve;
         });
+
         recorder.start(250);
         const stopSilenceMonitor = this.startSilenceMonitor(() => {
             if (recorder.state === 'recording') {
@@ -129,12 +392,14 @@ class SimpleSpotAssistant {
             if (recorder.state === 'recording') {
                 recorder.stop();
             }
-        }, this.maxRecordMs);
+        }, maxDurationMs);
+
         await stopPromise;
         clearTimeout(maxTimer);
         stopSilenceMonitor();
         this.isRecording = false;
         this.mediaRecorder = null;
+
         if (!chunks.length) {
             return null;
         }
@@ -155,50 +420,60 @@ class SimpleSpotAssistant {
         return data && data.text ? data.text.trim() : '';
     }
 
-    async listenForQuery() {
-        if (this.isProcessing || this.isSpeaking || this.isRecording) {
-            return;
-        }
+    async listenForQuery(sessionId) {
         if (!this.useBackendStt) {
             return;
         }
-        try {
-            if (this.recognition && this.isListening) {
-                try {
-                    this.recognition.stop();
-                } catch (e) {
-                    console.log('Recognition stop error:', e);
-                }
-            }
-            const audioBlob = await this.captureQueryAudio();
-            if (!audioBlob) {
-                this.resumeWakeWordListening();
-                return;
-            }
-            const transcript = await this.transcribeWithBackend(audioBlob);
-            if (!transcript) {
-                this.resumeWakeWordListening();
-                return;
-            }
-            this.lastSpeechTime = Date.now();
-            this.resetActiveTimeout();
-            this.handleQuery(transcript);
-        } catch (error) {
-            console.error('Backend STT failed:', error);
-            this.useBackendStt = false;
-            this.resumeWakeWordListening();
-        }
-    }
+        console.log(`[Query] Backend STT loop started (session ${sessionId})`);
 
-    resumeWakeWordListening() {
-        this.wakeWordDetected = false;
-        if (this.isListening && this.recognition && !this.isSpeaking) {
+        while (
+            this.isListening &&
+            this.state === ASSISTANT_STATES.LISTEN_QUERY &&
+            this.querySessionId === sessionId
+        ) {
+            const remainingMs = this.queryDeadlineAt - Date.now();
+            if (remainingMs <= 0) {
+                return;
+            }
+
             try {
-                this.recognition.start();
-            } catch (e) {
-                if (!e.message || !e.message.includes('already started')) {
-                    console.log('Recognition start error:', e);
+                const captureMs = Math.max(300, Math.min(this.maxRecordMs, remainingMs));
+                const audioBlob = await this.captureQueryAudio(captureMs);
+
+                if (
+                    !this.isListening ||
+                    this.state !== ASSISTANT_STATES.LISTEN_QUERY ||
+                    this.querySessionId !== sessionId
+                ) {
+                    return;
                 }
+
+                if (!audioBlob) {
+                    continue;
+                }
+
+                const transcript = await this.transcribeWithBackend(audioBlob);
+                if (
+                    !this.isListening ||
+                    this.state !== ASSISTANT_STATES.LISTEN_QUERY ||
+                    this.querySessionId !== sessionId
+                ) {
+                    return;
+                }
+
+                if (transcript && transcript.trim()) {
+                    console.log('[Query] Backend STT transcript:', transcript.trim());
+                    this.handleQueryTranscript(transcript.trim(), 'backend-stt');
+                    return;
+                }
+            } catch (error) {
+                console.error('Backend STT failed during query listen:', error);
+                this.useBackendStt = false;
+                this.unblockRecognition('backend-stt');
+                if (this.isListening && this.state === ASSISTANT_STATES.LISTEN_QUERY) {
+                    this.ensureRecognitionRunning('backend-stt-fallback');
+                }
+                return;
             }
         }
     }
@@ -278,7 +553,13 @@ class SimpleSpotAssistant {
             return;
         }
         this.mode = mode;
+        if (this.mode === 'offline') {
+            this.offlineBriefMode = true;
+        } else {
+            this.clearToastDismissTimer();
+        }
         this.updateModeUI();
+        this.updateBubbleMode();
     }
 
     updateModeUI() {
@@ -297,6 +578,14 @@ class SimpleSpotAssistant {
                 option.setAttribute('aria-selected', String(isActive));
             });
         }
+    }
+
+    updateBubbleMode() {
+        const bubble = document.getElementById('simple-chat-bubble');
+        if (!bubble) {
+            return;
+        }
+        bubble.classList.toggle('offline-toast', this.mode === 'offline');
     }
 
     toggleModeMenu() {
@@ -371,9 +660,47 @@ class SimpleSpotAssistant {
         return normalized.split(' ').filter((token) => token.length > 2);
     }
 
-    getOfflineAnswer(query) {
-        if (!this.offlineData || !this.offlineEntries.length) {
-            return 'Offline mode is selected, but the local knowledge file is not available.';
+    normalizeOfflineText(text) {
+        return (text || '')
+            .replace(/[\r\n]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    truncateOfflineText(text) {
+        let normalized = this.normalizeOfflineText(text);
+        if (!normalized) {
+            return '';
+        }
+
+        let truncated = false;
+        const words = normalized.split(/\s+/);
+        if (words.length > OFFLINE_MAX_WORDS) {
+            normalized = words.slice(0, OFFLINE_MAX_WORDS).join(' ');
+            truncated = true;
+        }
+
+        if (normalized.length > OFFLINE_MAX_CHARS) {
+            let cut = normalized.slice(0, OFFLINE_MAX_CHARS);
+            cut = cut.replace(/\s+\S*$/, '').trim();
+            if (!cut) {
+                cut = normalized.slice(0, OFFLINE_MAX_CHARS).trim();
+            }
+            normalized = cut;
+            truncated = true;
+        }
+
+        if (truncated) {
+            normalized = normalized.replace(/[.]+$/, '');
+            normalized += '...';
+        }
+
+        return normalized;
+    }
+
+    findStrongOfflineEntry(query) {
+        if (!this.offlineEntries || !this.offlineEntries.length) {
+            return null;
         }
 
         const normalizedQuery = this.normalizeText(query);
@@ -386,8 +713,11 @@ class SimpleSpotAssistant {
             if (entry.keywords && entry.keywords.length) {
                 for (const keyword of entry.keywords) {
                     const normalizedKeyword = this.normalizeText(keyword);
-                    if (normalizedKeyword && normalizedQuery.includes(normalizedKeyword)) {
-                        score += 4;
+                    if (!normalizedKeyword) {
+                        continue;
+                    }
+                    if (normalizedQuery.includes(normalizedKeyword)) {
+                        score += normalizedQuery === normalizedKeyword ? 8 : 5;
                     }
                 }
             }
@@ -402,14 +732,238 @@ class SimpleSpotAssistant {
             }
         }
 
-        if (!bestEntry || bestScore < 2) {
-            if (this.offlineData.fallback) {
-                return this.offlineData.fallback;
-            }
-            return 'I have offline information loaded, but I could not find a close match.';
+        return bestScore >= 7 ? bestEntry : null;
+    }
+
+    classifyOfflineIntent(query) {
+        const normalizedQuery = this.normalizeText(query);
+        if (!normalizedQuery) {
+            return 'unknown';
         }
 
-        return bestEntry.answer || this.offlineData.fallback || '';
+        if (
+            /\bwhat is bridge\b/.test(normalizedQuery) ||
+            /\bwho are you\b/.test(normalizedQuery) ||
+            /\bwhat do you do\b/.test(normalizedQuery) ||
+            /\babout bridge\b/.test(normalizedQuery) ||
+            /\bbridge overview\b/.test(normalizedQuery)
+        ) {
+            return 'overview';
+        }
+        if (/\bprograms?\b|\bcourses?\b|\btraining\b/.test(normalizedQuery)) {
+            return 'programs';
+        }
+        if (/\bschedules?\b|\bdates?\b|\bcalendar\b/.test(normalizedQuery)) {
+            return 'schedule';
+        }
+        if (/\bfees?\b|\bprices?\b|\bcosts?\b|\bpricing\b/.test(normalizedQuery)) {
+            return 'fees';
+        }
+        if (/\bpolic(?:y|ies)\b|\brefund\b|\battendance\b/.test(normalizedQuery)) {
+            return 'policies';
+        }
+        if (/\bcertificates?\b|\bcertifications?\b/.test(normalizedQuery)) {
+            return 'certifications';
+        }
+        return 'unknown';
+    }
+
+    getOfflineUiHint(intent) {
+        if (intent === 'overview' || intent === 'unknown') {
+            return 'Try: programs, schedules, or fees.';
+        }
+        return '';
+    }
+
+    getOfflineAnswer(query) {
+        const intent = this.classifyOfflineIntent(query);
+        const template = OFFLINE_TEMPLATES[intent] || OFFLINE_TEMPLATES.unknown;
+        const strongEntry = this.findStrongOfflineEntry(query);
+        const preferredText = strongEntry && strongEntry.answer ? strongEntry.answer : template;
+        const text = this.offlineBriefMode ? this.truncateOfflineText(preferredText) : this.normalizeOfflineText(preferredText);
+
+        return {
+            text,
+            uiHint: this.getOfflineUiHint(intent),
+            intent
+        };
+    }
+
+    normalizeWakeText(text) {
+        const deAccented = (text || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+        return this.normalizeText(deAccented);
+    }
+
+    toWakePhonetic(token) {
+        let output = this.normalizeWakeText(token).replace(/\s+/g, '');
+        output = output
+            .replace(/ph/g, 'f')
+            .replace(/ck/g, 'k')
+            .replace(/qu/g, 'kw')
+            .replace(/ee|ea|ei|ey|ay/g, 'e')
+            .replace(/oo|ou/g, 'u')
+            .replace(/tt/g, 't')
+            .replace(/([a-z])\1+/g, '$1');
+
+        if (output.length > 3) {
+            output = output[0] + output.slice(1).replace(/[aeiou]/g, '');
+        }
+        return output;
+    }
+
+    editDistance(left, right) {
+        if (left === right) {
+            return 0;
+        }
+        if (!left.length) {
+            return right.length;
+        }
+        if (!right.length) {
+            return left.length;
+        }
+
+        const rows = left.length + 1;
+        const cols = right.length + 1;
+        const dp = Array.from({ length: rows }, () => new Array(cols).fill(0));
+
+        for (let i = 0; i < rows; i++) {
+            dp[i][0] = i;
+        }
+        for (let j = 0; j < cols; j++) {
+            dp[0][j] = j;
+        }
+
+        for (let i = 1; i < rows; i++) {
+            for (let j = 1; j < cols; j++) {
+                const cost = left[i - 1] === right[j - 1] ? 0 : 1;
+                dp[i][j] = Math.min(
+                    dp[i - 1][j] + 1,
+                    dp[i][j - 1] + 1,
+                    dp[i - 1][j - 1] + cost
+                );
+            }
+        }
+        return dp[left.length][right.length];
+    }
+
+    allowedWakeDistance(a, b) {
+        const maxLen = Math.max(a.length, b.length);
+        return maxLen <= 4 ? 1 : 2;
+    }
+
+    tokenMatchesWakeVariant(token, variants) {
+        const normalizedToken = this.normalizeWakeText(token).replace(/\s+/g, '');
+        if (!normalizedToken) {
+            return false;
+        }
+        const phoneticToken = this.toWakePhonetic(normalizedToken);
+
+        for (const variant of variants) {
+            const normalizedVariant = this.normalizeWakeText(variant).replace(/\s+/g, '');
+            if (!normalizedVariant) {
+                continue;
+            }
+
+            if (normalizedToken === normalizedVariant) {
+                return true;
+            }
+
+            const plainDistance = this.editDistance(normalizedToken, normalizedVariant);
+            if (plainDistance <= this.allowedWakeDistance(normalizedToken, normalizedVariant)) {
+                return true;
+            }
+
+            const phoneticVariant = this.toWakePhonetic(normalizedVariant);
+            if (phoneticToken === phoneticVariant) {
+                return true;
+            }
+
+            const phoneticDistance = this.editDistance(phoneticToken, phoneticVariant);
+            if (phoneticDistance <= this.allowedWakeDistance(phoneticToken, phoneticVariant)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    isWakePhrase(transcript) {
+        const normalized = this.normalizeWakeText(transcript);
+        if (!normalized) {
+            return false;
+        }
+        const tokens = normalized.split(' ').filter(Boolean);
+        if (!tokens.length) {
+            return false;
+        }
+
+        const heyIndices = [];
+        const spotIndices = [];
+        tokens.forEach((token, index) => {
+            if (this.tokenMatchesWakeVariant(token, HEY_VARIANTS)) {
+                heyIndices.push(index);
+            }
+            if (this.tokenMatchesWakeVariant(token, SPOT_VARIANTS)) {
+                spotIndices.push(index);
+            }
+        });
+
+        if (!heyIndices.length || !spotIndices.length) {
+            return false;
+        }
+
+        // Wake words must be close: up to two words between "hey/hi" and "spot".
+        for (const heyIndex of heyIndices) {
+            for (const spotIndex of spotIndices) {
+                const wordsBetween = Math.abs(heyIndex - spotIndex) - 1;
+                if (wordsBetween <= 2) {
+                    console.log(
+                        `[Wake] Matched wake phrase | transcript="${normalized}" | hey@${heyIndex} spot@${spotIndex}`
+                    );
+                    return true;
+                }
+            }
+        }
+
+        console.log(`[Wake] Rejected wake phrase by distance | transcript="${normalized}"`);
+        return false;
+    }
+
+    handleWakePhraseDetected(transcript) {
+        if (!this.isListening || this.audioGate || this.state !== ASSISTANT_STATES.IDLE) {
+            return;
+        }
+        const normalized = this.normalizeWakeText(transcript);
+        this.setState(ASSISTANT_STATES.GREET, `Wake phrase detected: "${normalized}"`);
+        this.showTyping();
+
+        this.speak(
+            GREETING_TEXT,
+            () => {
+                if (!this.isListening) {
+                    return;
+                }
+                this.beginQueryWindow('Greeting completed');
+            },
+            () => {
+                this.showMessage(GREETING_TEXT);
+            }
+        );
+    }
+
+    handleQueryTranscript(query, source = 'browser-stt') {
+        const normalizedQuery = (query || '').trim();
+        if (!normalizedQuery) {
+            return;
+        }
+        if (!this.isListening || this.audioGate || this.state !== ASSISTANT_STATES.LISTEN_QUERY) {
+            return;
+        }
+
+        console.log(`[Query] Received (${source}): ${normalizedQuery}`);
+        this.closeQueryWindow(`Query received from ${source}`);
+        this.handleQuery(normalizedQuery, source);
     }
 
     setupRecognition() {
@@ -419,66 +973,65 @@ class SimpleSpotAssistant {
         this.recognition.maxAlternatives = 1;
 
         this.recognition.onstart = () => {
-            console.log('Listening for "Hey Spot" or "Hi Spot"...');
+            this.recognitionActive = true;
+            console.log(`[Recognition] started | state=${this.state}`);
         };
 
         this.recognition.onresult = (event) => {
             const lastResult = event.results[event.results.length - 1];
-            const transcript = lastResult[0].transcript.trim().toLowerCase();
-
-            if (!this.wakeWordDetected) {
-                console.log('Heard:', transcript);
-                // Check if transcript contains any of the wake words
-                const wakeWordFound = this.wakeWords.some(wakeWord => transcript.includes(wakeWord));
-                if (wakeWordFound) {
-                    this.handleWakeWord();
-                }
-            } else if (!this.useBackendStt) {
-                console.log('Heard:', transcript);
-                // After wake word, accept any question (not just after processing)
-                // BUT only if Spot is not currently speaking
-                // CRITICAL: Never process speech while Spot is talking to avoid feedback loop
-                if (!this.isProcessing && !this.isSpeaking) {
-                    // Ignore if it contains the wake word again (don't process wake words as questions)
-                    const containsWakeWord = this.wakeWords.some(wakeWord => transcript.includes(wakeWord));
-                    if (containsWakeWord) {
-                        console.log('Wake word detected again, ignoring as question:', transcript);
-                        return;
-                    }
-
-                    if (!transcript) {
-                        return;
-                    }
-                    // Reset the timeout since we heard something meaningful
-                    this.lastSpeechTime = Date.now();
-                    this.resetActiveTimeout();
-                    this.handleQuery(transcript);
-                } else if (this.isSpeaking) {
-                    console.log('Spot is speaking, ignoring input:', transcript);
-                }
+            const transcript = lastResult && lastResult[0] ? lastResult[0].transcript.trim() : '';
+            if (!transcript) {
+                return;
             }
+
+            const normalizedTranscript = this.normalizeWakeText(transcript);
+            console.log(`[STT] Heard | state=${this.state} | text="${normalizedTranscript}"`);
+
+            if (!this.isListening) {
+                return;
+            }
+
+            if (this.audioGate) {
+                console.log('[STT] Ignored because audioGate is active');
+                return;
+            }
+
+            if (this.state === ASSISTANT_STATES.IDLE) {
+                if (this.isWakePhrase(transcript)) {
+                    this.handleWakePhraseDetected(transcript);
+                }
+                return;
+            }
+
+            if (this.state === ASSISTANT_STATES.LISTEN_QUERY && !this.useBackendStt) {
+                this.handleQueryTranscript(transcript, 'browser-stt');
+                return;
+            }
+
+            console.log(`[STT] Ignored in state ${this.state}`);
         };
 
         this.recognition.onerror = (event) => {
             console.error('Speech recognition error:', event.error);
+            if (event.error !== 'no-speech') {
+                this.recognitionActive = false;
+            }
             if (event.error === 'not-allowed') {
                 this.showMessage('Microphone access denied');
             }
         };
 
         this.recognition.onend = () => {
-            // Only auto-restart if we're listening AND not in the middle of speaking
-            // This prevents conflicts with the speak() method's restart logic
-            if (this.isListening && !this.isSpeaking) {
-                setTimeout(() => {
-                    try {
-                        this.recognition.start();
-                        console.log('Auto-restarted recognition');
-                    } catch (e) {
-                        console.log('Recognition already started or error:', e);
-                    }
-                }, 100);
+            this.recognitionActive = false;
+            console.log(
+                `[Recognition] ended | state=${this.state} | gate=${this.audioGate} | blocks=${[...this.recognitionBlocks].join(',') || 'none'}`
+            );
+            if (!this.isListening) {
+                return;
             }
+            setTimeout(() => {
+                this.ensureRecognitionRunning('recognition-onend');
+            }, 100);
         };
     }
 
@@ -489,135 +1042,96 @@ class SimpleSpotAssistant {
         }
 
         this.isListening = true;
-        try {
-            this.recognition.start();
-            this.showBubble();
-            this.showMessage('Say "Hey Spot" or "Hi Spot" to start...');
-        } catch (e) {
-            console.log('Recognition error:', e);
-        }
+        this.isProcessing = false;
+        this.isSpeaking = false;
+        this.audioGate = false;
+        this.recognitionActive = false;
+        this.recognitionBlocks.clear();
+        this.clearQueryTimeout();
+        this.clearCooldownTimeout();
+        this.clearResumeRecognitionTimeout();
+        this.showBubble();
+        this.showMessage('Say "Hey Spot" or "Hi Spot" to start...');
+        this.enterIdle('Assistant started');
     }
 
     stop() {
         this.isListening = false;
-        this.wakeWordDetected = false;
+        this.isProcessing = false;
         this.isSpeaking = false;
-        if (this.activeTimeout) {
-            clearTimeout(this.activeTimeout);
-            this.activeTimeout = null;
-        }
-        if (this.recognition) {
-            this.recognition.stop();
-        }
-        if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
-            try {
-                this.mediaRecorder.stop();
-            } catch (e) {
-                console.log('Recorder stop error:', e);
-            }
-        }
+        this.audioGate = false;
+        this.recognitionActive = false;
+        this.clearQueryTimeout();
+        this.clearCooldownTimeout();
+        this.clearResumeRecognitionTimeout();
+        this.clearToastDismissTimer();
+        this.queryDeadlineAt = 0;
+        this.nextQuerySessionId();
+        this.cancelActiveRecording();
+        this.recognitionBlocks.clear();
+        this.stopRecognition('assistant-stop');
         this.synthesis.cancel();
+        this.setState(ASSISTANT_STATES.IDLE, 'Assistant stopped');
         this.hideBubble();
     }
 
-    resetActiveTimeout() {
-        // Clear existing timeout
-        if (this.activeTimeout) {
-            clearTimeout(this.activeTimeout);
-        }
-
-        // Set new 20-second timeout
-        this.activeTimeout = setTimeout(() => {
-            if (this.wakeWordDetected && !this.isProcessing) {
-                console.log('20 seconds passed with no speech, going back to wake word mode');
-                this.showMessage('Say "Hey Spot" or "Hi Spot" to start...');
-                this.resumeWakeWordListening();
-            }
-        }, 20000);
-    }
-
-    handleWakeWord() {
-        this.wakeWordDetected = true;
-        this.lastSpeechTime = Date.now();
-        console.log('Wake word detected!');
-
-        this.showTyping();
-
-        const greeting = "Hey there! How may I help you?";
-        if (this.useBackendStt && this.recognition && this.isListening) {
-            try {
-                this.recognition.stop();
-            } catch (e) {
-                console.log('Recognition stop error:', e);
-            }
-        }
-
-        // Respond faster - reduced delay
-        setTimeout(() => {
-            this.speak(
-                greeting,
-                () => {
-                // Callback when speaking finishes
-                    console.log('Greeting finished, ready for questions');
-                    this.resetActiveTimeout();
-                    if (this.useBackendStt) {
-                        this.listenForQuery();
-                    }
-                },
-                () => {
-                    this.showMessage(greeting);
-                }
-            );
-        }, 150); // Faster response after wake word
-    }
-
-    async handleQuery(query) {
-        if (!query || !query.trim()) {
+    async handleQuery(query, source = 'unknown') {
+        const normalizedQuery = (query || '').trim();
+        if (!normalizedQuery || !this.isListening) {
             return;
         }
 
         this.isProcessing = true;
-        console.log('Processing valid query:', query);
-
+        this.setState(ASSISTANT_STATES.PROCESS, `Processing query from ${source}`);
+        console.log(`[Query] Processing: "${normalizedQuery}"`);
         this.showTyping();
 
-        const answer = await this.getAnswer(query);
+        let answerPayload = { text: '', uiHint: '' };
+        try {
+            answerPayload = await this.getAnswer(normalizedQuery);
+        } catch (error) {
+            console.error('Query processing failed:', error);
+        }
 
-        // Don't respond if no valid answer (likely noise)
-        if (!answer) {
-            console.log('No answer found, ignoring as noise');
+        if (!this.isListening) {
             this.isProcessing = false;
-            this.resetActiveTimeout();
             return;
         }
 
-        // Respond much faster
-        setTimeout(() => {
-            this.speak(
-                answer,
-                () => {
-                // Callback when speaking finishes
-                    console.log('Answer finished speaking, waiting for next question...');
-                    this.isProcessing = false;
-                    // Stay in active mode, ready for next question
-                    // Don't reset wakeWordDetected - keep listening for more questions
-                    this.resetActiveTimeout();
-                    if (this.useBackendStt) {
-                        this.listenForQuery();
-                    }
-                },
-                () => {
-                    this.showMessage(answer);
+        const payload = typeof answerPayload === 'string'
+            ? { text: answerPayload, uiHint: '' }
+            : (answerPayload || { text: '', uiHint: '' });
+
+        const responseHint = payload.uiHint ? payload.uiHint.trim() : '';
+        let responseText = payload.text ? payload.text.trim() : '';
+        if (this.mode === 'offline' && this.offlineBriefMode) {
+            responseText = this.truncateOfflineText(responseText);
+        }
+
+        if (!responseText) {
+            console.log('[Query] Empty answer, returning to IDLE');
+            this.isProcessing = false;
+            this.enterIdle('No response generated');
+            return;
+        }
+
+        this.speak(
+            responseText,
+            () => {
+                this.isProcessing = false;
+                if (!this.isListening) {
+                    return;
                 }
-            );
-        }, 400);
+                this.enterCooldown('Response spoken');
+            },
+            () => {
+                this.showMessage(responseText, { hint: responseHint });
+            }
+        );
     }
 
     async getAnswer(query) {
         if (this.mode === 'offline') {
-            if (this.offlineDataPromise) {
-                await this.offlineDataPromise;
-            }
             return this.getOfflineAnswer(query);
         }
         try {
@@ -639,40 +1153,36 @@ class SimpleSpotAssistant {
                 throw new Error('OpenAI returned an empty response');
             }
 
-            return answer;
+            return { text: answer, uiHint: '' };
         } catch (error) {
             console.log('OpenAI unavailable:', error);
-            return "I'm having trouble reaching OpenAI right now. Please try again.";
+            return { text: "I'm having trouble reaching OpenAI right now. Please try again.", uiHint: '' };
         }
     }
 
     async speak(text, onComplete, onStart) {
-        // Use backend voice if available, otherwise fall back to browser voices
-        if (this.useBryceVoice) {
-            await this.speakWithBryce(text, onComplete, onStart);
-        } else {
-            this.speakWithBrowser(text, onComplete, onStart);
+        const spokenText = (text || '').trim();
+        if (!spokenText) {
+            if (onComplete) {
+                onComplete();
+            }
+            return;
         }
+
+        this.beginTtsPlayback(`Speaking text (${spokenText.slice(0, 60)})`);
+        if (this.useBryceVoice) {
+            const backendStarted = await this.speakWithBryce(spokenText, onComplete, onStart);
+            if (backendStarted) {
+                return;
+            }
+            this.useBryceVoice = false;
+        }
+        this.speakWithBrowser(spokenText, onComplete, onStart, true);
     }
 
     async speakWithBryce(text, onComplete, onStart) {
         try {
             console.log('Speaking with backend voice:', text);
-            this.isSpeaking = true;
-
-            // CRITICAL: Stop recognition while speaking to prevent feedback loop
-            const wasListening = this.isListening;
-            let recognitionWasStopped = false;
-
-            if (this.recognition && wasListening) {
-                try {
-                    this.recognition.stop();
-                    recognitionWasStopped = true;
-                    console.log('Paused recognition to prevent feedback');
-                } catch (e) {
-                    console.log('Error stopping recognition (may already be stopped):', e);
-                }
-            }
 
             // Call backend TTS API
             const response = await fetch(`${this.backendUrl}/tts-base64`, {
@@ -705,55 +1215,26 @@ class SimpleSpotAssistant {
 
             source.onended = () => {
                 console.log('Finished speaking (backend)');
-                this.isSpeaking = false;
-
-                // Restart recognition after speaking
-                if (recognitionWasStopped && wasListening && this.isListening) {
-                    setTimeout(() => {
-                        try {
-                            this.recognition.start();
-                            console.log('Resumed recognition after speaking');
-                        } catch (e) {
-                            if (!e.message || !e.message.includes('already started')) {
-                                console.log('Error restarting recognition:', e);
-                            }
-                        }
-                    }, 500);
-                }
-
-                if (onComplete) {
-                    onComplete();
-                }
+                this.endTtsPlayback(onComplete);
             };
 
             if (onStart) {
                 onStart();
             }
             source.start(0);
+            return true;
 
         } catch (error) {
             console.error('Error with backend voice, falling back to browser:', error);
-            this.useBryceVoice = false;  // Disable for this session
-            this.speakWithBrowser(text, onComplete, onStart);
+            return false;
         }
     }
 
-    speakWithBrowser(text, onComplete, onStart) {
+    speakWithBrowser(text, onComplete, onStart, reuseActiveSession = false) {
         this.synthesis.cancel();
-        this.isSpeaking = true;
 
-        // CRITICAL: Stop recognition while speaking to prevent feedback loop
-        const wasListening = this.isListening;
-        let recognitionWasStopped = false;
-
-        if (this.recognition && wasListening) {
-            try {
-                this.recognition.stop();
-                recognitionWasStopped = true;
-                console.log('Paused recognition to prevent feedback');
-            } catch (e) {
-                console.log('Error stopping recognition (may already be stopped):', e);
-            }
+        if (!reuseActiveSession) {
+            this.beginTtsPlayback(`Speaking text (${text.slice(0, 60)})`);
         }
 
         const utterance = new SpeechSynthesisUtterance(text);
@@ -809,55 +1290,20 @@ class SimpleSpotAssistant {
         // When speech ends, mark as not speaking and call callback
         utterance.onend = () => {
             console.log('Speech finished');
-            this.isSpeaking = false;
-
-            // CRITICAL: Restart recognition after speaking to resume listening
-            if (recognitionWasStopped && wasListening && this.isListening) {
-                setTimeout(() => {
-                    try {
-                        this.recognition.start();
-                        console.log('Resumed recognition after speaking');
-                    } catch (e) {
-                        if (!e.message || !e.message.includes('already started')) {
-                            console.log('Error restarting recognition:', e);
-                        }
-                    }
-                }, 500);
-            }
-
-            if (onComplete) {
-                onComplete();
-            }
+            this.endTtsPlayback(onComplete);
         };
 
         // Handle errors
         utterance.onerror = (event) => {
             console.error('Speech error:', event);
-            this.isSpeaking = false;
-
-            // Restart recognition even on error
-            if (recognitionWasStopped && wasListening && this.isListening) {
-                setTimeout(() => {
-                    try {
-                        this.recognition.start();
-                        console.log('Resumed recognition after error');
-                    } catch (e) {
-                        if (!e.message || !e.message.includes('already started')) {
-                            console.log('Error restarting recognition:', e);
-                        }
-                    }
-                }, 500);
-            }
-
-            if (onComplete) {
-                onComplete();
-            }
+            this.endTtsPlayback(onComplete);
         };
 
         this.synthesis.speak(utterance);
     }
 
     showBubble() {
+        this.updateBubbleMode();
         const bubble = document.getElementById('simple-chat-bubble');
         if (bubble) {
             bubble.classList.add('active');
@@ -865,22 +1311,50 @@ class SimpleSpotAssistant {
     }
 
     hideBubble() {
+        this.clearToastDismissTimer();
         const bubble = document.getElementById('simple-chat-bubble');
         if (bubble) {
             bubble.classList.remove('active');
         }
     }
 
-    showMessage(text) {
+    showMessage(text, options = {}) {
+        const message = (text || '').trim();
+        if (!message) {
+            return;
+        }
+
+        this.clearToastDismissTimer();
+        this.updateBubbleMode();
+        this.showBubble();
+        const isOfflineToast = this.mode === 'offline';
+
         const textEl = document.getElementById('bubble-text');
         if (textEl) {
-            textEl.textContent = text;
+            textEl.textContent = message;
             textEl.classList.add('fade-in');
             setTimeout(() => textEl.classList.remove('fade-in'), 400);
+        }
+
+        const hintEl = document.getElementById('bubble-hint');
+        if (hintEl) {
+            hintEl.textContent = isOfflineToast && options.hint ? options.hint.trim() : '';
+        }
+
+        if (isOfflineToast) {
+            const dismissMs = TOAST_DISMISS_MIN_MS + Math.floor(Math.random() * (TOAST_DISMISS_MAX_MS - TOAST_DISMISS_MIN_MS + 1));
+            this.toastDismissHandle = setTimeout(() => {
+                this.toastDismissHandle = null;
+                this.hideBubble();
+            }, dismissMs);
         }
     }
 
     showTyping() {
+        this.clearToastDismissTimer();
+        this.updateBubbleMode();
+        this.showBubble();
+
         const textEl = document.getElementById('bubble-text');
         if (textEl) {
             textEl.innerHTML = `
@@ -890,6 +1364,11 @@ class SimpleSpotAssistant {
                     <div class="typing-dot"></div>
                 </div>
             `;
+        }
+
+        const hintEl = document.getElementById('bubble-hint');
+        if (hintEl) {
+            hintEl.textContent = '';
         }
     }
 }
@@ -920,3 +1399,4 @@ function stopAssistant() {
         simpleAssistant.stop();
     }
 }
+

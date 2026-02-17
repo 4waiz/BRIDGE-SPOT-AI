@@ -1,4 +1,9 @@
-/* Simple Speech Bubble Over Spot's Head */
+/* Simple speech bubble (default online mode) */
+
+:root {
+    --assistant-toast-safe-left: max(1rem, env(safe-area-inset-left));
+    --assistant-toast-safe-bottom: max(1rem, env(safe-area-inset-bottom));
+}
 
 .simple-chat-bubble {
     position: fixed;
@@ -8,7 +13,7 @@
     z-index: 9999;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .simple-chat-bubble.active {
@@ -32,7 +37,7 @@
     color: white;
 }
 
-/* Tail pointing down to Spot */
+/* Tail points to Spot in online mode. */
 .bubble-content::after {
     content: '';
     position: absolute;
@@ -66,7 +71,10 @@
     color: white;
 }
 
-/* Typing dots */
+.bubble-hint {
+    display: none;
+}
+
 .typing-dots {
     display: flex;
     gap: 6px;
@@ -96,7 +104,6 @@
     }
 }
 
-/* Close button - small, subtle */
 .bubble-close {
     position: absolute;
     top: 8px;
@@ -122,7 +129,6 @@
     background: rgba(255, 255, 255, 0.1);
 }
 
-/* Fade in animation */
 .fade-in {
     animation: fadeIn 0.4s ease;
 }
@@ -138,7 +144,100 @@
     }
 }
 
-/* Responsive */
+/* Offline mode: compact non-blocking toast in bottom-left safe zone. */
+.simple-chat-bubble.offline-toast {
+    top: auto;
+    left: var(--assistant-toast-safe-left);
+    bottom: calc(var(--assistant-toast-safe-bottom) + 0.5rem);
+    width: min(360px, calc(100vw - 2rem));
+    transform: translateY(10px);
+    z-index: 40;
+}
+
+.simple-chat-bubble.offline-toast.active {
+    transform: translateY(0);
+}
+
+.simple-chat-bubble.offline-toast .bubble-content {
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(18, 24, 40, 0.08);
+    border-radius: 14px;
+    padding: 0.72rem 2rem 0.72rem 0.85rem;
+    min-width: 0;
+    max-width: 360px;
+    max-height: 120px;
+    overflow: hidden;
+    text-align: left;
+    box-shadow: 0 10px 26px rgba(16, 24, 40, 0.24);
+    backdrop-filter: blur(4px);
+}
+
+[data-theme="dark"] .simple-chat-bubble.offline-toast .bubble-content {
+    background: rgba(33, 38, 48, 0.94);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.simple-chat-bubble.offline-toast .bubble-content::after {
+    display: none;
+}
+
+.simple-chat-bubble.offline-toast .bubble-text {
+    font-size: 0.9rem;
+    line-height: 1.35;
+    min-height: 0;
+    justify-content: flex-start;
+    text-align: left;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #1e2631;
+}
+
+[data-theme="dark"] .simple-chat-bubble.offline-toast .bubble-text {
+    color: #eef3fb;
+}
+
+.simple-chat-bubble.offline-toast .bubble-hint {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.76rem;
+    line-height: 1.2;
+    color: #596273;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+[data-theme="dark"] .simple-chat-bubble.offline-toast .bubble-hint {
+    color: #b4bfd2;
+}
+
+.simple-chat-bubble.offline-toast .bubble-hint:empty {
+    display: none;
+}
+
+.simple-chat-bubble.offline-toast .typing-dots {
+    justify-content: flex-start;
+    min-height: 1.2rem;
+}
+
+.simple-chat-bubble.offline-toast .typing-dot {
+    width: 7px;
+    height: 7px;
+}
+
+.simple-chat-bubble.offline-toast .bubble-close {
+    top: 0.36rem;
+    right: 0.36rem;
+    width: 1.2rem;
+    height: 1.2rem;
+    font-size: 0.8rem;
+    line-height: 1;
+}
+
 @media (max-width: 768px) {
     .simple-chat-bubble {
         top: 30%;
@@ -153,12 +252,28 @@
     .bubble-text {
         font-size: 16px;
     }
+
+    .simple-chat-bubble.offline-toast {
+        top: auto;
+        left: max(0.75rem, env(safe-area-inset-left));
+        bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 0.25rem);
+        width: min(360px, calc(100vw - 1.5rem));
+    }
+
+    .simple-chat-bubble.offline-toast .bubble-content {
+        max-height: 116px;
+    }
+
+    .simple-chat-bubble.offline-toast .bubble-text {
+        font-size: 0.86rem;
+    }
 }
 
-/* Accessibility */
 @media (prefers-reduced-motion: reduce) {
     .typing-dot,
-    .fade-in {
+    .fade-in,
+    .simple-chat-bubble {
         animation: none;
+        transition: none;
     }
 }

@@ -83,13 +83,14 @@
         </svg>
     </button>
 
-    <!-- Simple Speech Bubble -->
+    <!-- Assistant message bubble (online) / compact toast (offline) -->
     <div id="simple-chat-bubble" class="simple-chat-bubble">
         <div class="bubble-content">
-            <button class="bubble-close" onclick="stopAssistant()" title="Close">✕</button>
+            <button class="bubble-close" onclick="stopAssistant()" title="Close">&times;</button>
             <div id="bubble-text" class="bubble-text">
                 Say "Hey Spot" or "Hi Spot" to start...
             </div>
+            <div id="bubble-hint" class="bubble-hint"></div>
         </div>
     </div>
 
@@ -97,3 +98,4 @@
     <script src="smartassistant.js"></script>
 </body>
 </html>
+
