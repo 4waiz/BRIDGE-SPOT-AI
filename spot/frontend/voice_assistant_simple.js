@@ -1,7 +1,3 @@
-// Simple Spot Voice Assistant - Just Speech Bubble
-// Clean UI showing only Spot's responses
-
-// Explicit assistant states for wake-query-response lifecycle.
 const ASSISTANT_STATES = Object.freeze({
     IDLE: 'IDLE',
     GREET: 'GREET',
@@ -19,7 +15,7 @@ const COOLDOWN_MS = 1500;
 const TTS_RESUME_DELAY_MS = 400;
 const TOAST_DISMISS_MIN_MS = 4000;
 const TOAST_DISMISS_MAX_MS = 6000;
-const GREETING_TEXT = 'Hi, I am the Spot dog. How may I help you?';
+const GREETING_TEXT = 'Hi, there how are you? How can I help you?';
 const FOLLOWUP_PROMPT_TEXT = 'Do you have any other question?';
 const OFFLINE_MAX_WORDS = 28;
 const OFFLINE_MAX_CHARS = 180;
