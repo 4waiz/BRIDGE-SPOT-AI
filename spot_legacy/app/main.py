@@ -14,5 +14,5 @@ if __name__ == "__main__":
         logging.error("Wrong app_type! Exiting...")
         sys.exit(1)
 
-    app.run(processes=1, host="0.0.0.0", port=8000)
+    app.run(processes=1, host="0.0.0.0", port=8004)
     logging.info("server starting...")
