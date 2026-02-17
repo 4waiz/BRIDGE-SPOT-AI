@@ -23,7 +23,164 @@ const GREETING_TEXT = 'Hi, I am the Spot dog. How may I help you?';
 const FOLLOWUP_PROMPT_TEXT = 'Do you have any other question?';
 const OFFLINE_MAX_WORDS = 28;
 const OFFLINE_MAX_CHARS = 180;
-const OFFLINE_UNKNOWN_MESSAGE = 'Offline mode: I can answer BRIDGE overview, programs, schedules, fees, policies, certifications.';
+const OFFLINE_UNKNOWN_MESSAGE = 'Offline mode: I can answer BRIDGE overview, programs, schedules, fees, policies, certifications, plus Boston Dynamics and Spot robot facts.';
+
+const OFFLINE_EXTRA_ENTRIES = Object.freeze([
+    {
+        id: 'bridge-identity-positioning-verbatim',
+        title: 'BRIDGE Identity and Positioning',
+        keywords: [
+            'bridge',
+            'lif',
+            'learning and innovation factory',
+            'what is bridge',
+            'one-stop hub',
+            'industry 4.0',
+            'lean management',
+            'six sigma',
+            'lean digital',
+            'analytics and iot',
+            'agile management',
+            '64 courses',
+            '922 sessions',
+            'march 2023',
+            'march 2026'
+        ],
+        answer: 'BRIDGE (formerly EDGE Learning & Innovation Factory, LIF) is an Industry 4.0, operational excellence, and advanced-technology learning and demonstration centre that combines theory, technology, and practice under one roof. Public communications describe it as a "one-stop hub" for learning, innovation, and operational excellence. Curriculums span Lean Management, Six Sigma, Lean Digital, Analytics & IoT, and Agile Management. From the internal training calendar: at least 64 distinct courses; 922 scheduled sessions between March 2023 and March 2026. Portfolio is heavily weighted toward Lean and Agile; Analytics & IoT and Industry 4.0 form the next tier.'
+    },
+    {
+        id: 'bridge-pillars-verbatim',
+        title: 'What BRIDGE Does (Pillars)',
+        keywords: [
+            'bridge pillars',
+            'capability building',
+            'upskilling',
+            'operational excellence enablement',
+            'industry 4.0 demonstration',
+            'testbed',
+            'innovation and co-creation',
+            'ecosystem partnerships',
+            'moiat',
+            'quantasim'
+        ],
+        answer: 'What BRIDGE does includes: Capability Building & Upskilling across operational excellence, Industry 4.0 and digital manufacturing, data and analytics, and agile with strong in-person simulations and practice. Operational Excellence Enablement using Lean and Six Sigma, problem solving, and performance management for measurable shopfloor and leadership improvement. Industry 4.0 Demonstration & Testbed with hands-on smart manufacturing and connected operations demos, including digital twins, connected technologies, dashboards, and human-technology interfaces in an end-to-end environment. Innovation & Co-Creation Programmes through hackathons, workshops, competitions, and partner demos linking academia, industry, and technology providers for real industrial challenges. Ecosystem Partnerships through joint programmes with government and industry partners, including MoIAT initiatives and an engineering bootcamp partnership with QuantaSim.'
+    },
+    {
+        id: 'bridge-facility-learning-model-verbatim',
+        title: 'Facility and Learning Model',
+        keywords: [
+            'facility',
+            'learning model',
+            'smart learning factory',
+            'simulations',
+            'digital twins',
+            'small car',
+            'production islands',
+            'digital work instructions',
+            'kpi dashboards',
+            'pick-by-light',
+            'rfid',
+            'e-ink'
+        ],
+        answer: 'BRIDGE is described as a purpose-built learning and demonstration centre that combines theory, technology, and practice under one roof to drive improvements and inspire transformation. Experiential and role-based simulations are a major component; simulations occupy over half of trainee time in one account. Illustrative elements include an end-to-end automated and integrated smart learning factory simulation and digital manufacturing demos; exercises where participants configure a small product described as a small car, add customisation, and track production through multiple production islands; demonstrations of digital twins, connected technologies, and data use for productivity and efficiency improvements; and integration examples such as digital work instructions, KPI dashboards, and smart logistics interfaces including pick-by-light, RFID, and e-ink displays.'
+    },
+    {
+        id: 'bridge-programmes-initiatives-verbatim',
+        title: 'Programmes and Initiatives',
+        keywords: [
+            'ceo 4.0',
+            'leadership 4.0',
+            'role-based programme for subject matter experts',
+            'pioneers 4.0 hackathon',
+            'talk 4.0',
+            'transform 4.0',
+            'operation 300bn',
+            'engineering bootcamp',
+            'quantasim',
+            'predictive maintenance',
+            'mes data'
+        ],
+        answer: 'Programmes and initiatives mentioned include: CEO 4.0, a leadership-facing Industry 4.0 programme described as one-day in one visit account. Leadership 4.0, referenced as a five-day multi-domain leadership programme. A role-based programme for Subject Matter Experts to uplift capability and build a common language across the group. Pioneers 4.0 Hackathon Series, a MoIAT-EDGE initiative twice per year; the inaugural challenge on Nov 21-22, 2022 used sensor and MES data for AI and ML predictive maintenance tasks. Talk 4.0 Series, a MoIAT-EDGE talks, workshops, and seminars programme; inaugural edition held at BRIDGE/LIF with smart learning factory simulation and micro-trainings. Transform 4.0 (MoIAT) execution under an MoU, with LIF positioned as strategic partner and executor to support high-potential manufacturers and develop Industry 4.0 lighthouses in the Operation 300bn context. Engineering Bootcamp with QuantaSim, a nine-month V-cycle-based interdisciplinary programme for early-career engineers with hands-on prototyping and simulation tools.'
+    },
+    {
+        id: 'bridge-policies-pricing-registration-verbatim',
+        title: 'Policies, Pricing, and Registration',
+        keywords: [
+            'masar edge',
+            'registration',
+            'attendance',
+            '80%',
+            'booking fee',
+            'aed 500',
+            'no-show fee',
+            'cancellation rules',
+            'outlook invite',
+            'three no-shows',
+            '3-month suspension',
+            'cost centres',
+            'quarterly recharge',
+            '1 january 2026',
+            '1 october 2025'
+        ],
+        answer: 'Policies and pricing include: registration and cancellations must be made through MASAR EDGE, the official learning platform. Attendance requires a minimum of 80% daily participation to be recorded as attended. Booking fee is AED 500 per trainee day for each training day, effective 1 January 2026. No-show fee is AED 500 per trainee day for sessions missed without prior cancellation in MASAR EDGE, effective 1 October 2025, and it is applied in addition to booking fee. Cancellation rules are at least 5 working days in advance for trainings lasting 1-2 days, and at least 10 working days in advance for trainings lasting 4-12 days. Declining or deleting an Outlook invite does not cancel registration. Repeated absences policy says three no-show records for the same training topic result in a 3-month suspension from that course. Cost allocation policy states all fees are recharged to entities cost centres quarterly.'
+    },
+    {
+        id: 'bridge-quality-certification-verbatim',
+        title: 'Quality and Certification',
+        keywords: [
+            'iso 9001',
+            'iso 9001:2015',
+            'certificate',
+            'fs 807480',
+            '13 may 2027',
+            'quality management'
+        ],
+        answer: 'Quality and certification facts: ISO 9001:2015 certificate for EDGE Group PJSC includes "providing training through Learning & Innovation Factory (LIF)" in scope. Certificate number is FS 807480. Expiry date is 13 May 2027.'
+    },
+    {
+        id: 'bridge-scale-impact-verbatim',
+        title: 'Scale and Impact',
+        keywords: [
+            'scale',
+            'impact',
+            'edr magazine',
+            'march 2024',
+            'created in 2021',
+            '18,000 trainee-days',
+            '11,000 in 2023',
+            '4,000 external',
+            'experiential learning',
+            'external consultants'
+        ],
+        answer: 'Scale and impact facts: an external visit report in EDR Magazine in March 2024 describes BRIDGE/LIF as created in 2021. It reports 18,000 trainee-days over the prior two years, including 11,000 in 2023. Majority delivery was to EDGE employees, with about 4,000 trainee-days dedicated to external personnel in 2022-23. Learning is predominantly experiential, with role simulation over 50% of trainee time, and a lean internal team supported by external consultants.'
+    },
+    {
+        id: 'boston-dynamics-company',
+        title: 'Boston Dynamics Overview',
+        keywords: [
+            'boston dynamics',
+            'robotics company',
+            'atlas',
+            'spot',
+            'mobile robots'
+        ],
+        answer: 'Boston Dynamics is a robotics company known for developing and deploying highly mobile robots for real-world industrial tasks. It builds robots such as Spot, a quadruped robot, and Atlas, a humanoid robot.'
+    },
+    {
+        id: 'spot-robot-dog',
+        title: 'Spot Robot Dog',
+        keywords: [
+            'spot robot',
+            'spot robot dog',
+            'robot dog',
+            'quadruped',
+            'spot quadruped',
+            'inspection robot',
+            'data collection robot'
+        ],
+        answer: 'Spot is a four-legged agile mobile robot used to help organizations monitor and operate sites. It is commonly used for inspection and data collection in environments that are hazardous or difficult for humans.'
+    }
+]);
 
 // Small deterministic wake phrase variant lists.
 const HEY_VARIANTS = ['hey', 'hi', 'hay', 'hei', 'hello', 'high', 'hig', 'hai', 'heyy', 'hiya'];
@@ -37,6 +194,8 @@ const OFFLINE_TEMPLATES = Object.freeze({
     fees: 'BRIDGE booking is AED 500 per trainee per day, and no-show fees may also apply.',
     policies: 'BRIDGE requires strong attendance and early cancellation through the official training registration platform.',
     certifications: 'BRIDGE training is included in EDGE\'s ISO 9001:2015 quality management certification scope.',
+    boston_dynamics: 'Boston Dynamics develops highly mobile robots for real-world industrial tasks, including Spot and Atlas.',
+    spot_robot: 'Spot is a quadruped robot dog used for site inspection and data collection in difficult or hazardous areas.',
     unknown: OFFLINE_UNKNOWN_MESSAGE
 });
 
@@ -645,6 +804,69 @@ class SimpleSpotAssistant {
         }
     }
 
+    normalizeOfflineEntry(entry, index = 0, prefix = 'offline-entry') {
+        if (!entry || typeof entry !== 'object') {
+            return null;
+        }
+
+        const answer = typeof entry.answer === 'string' ? entry.answer.trim() : '';
+        if (!answer) {
+            return null;
+        }
+
+        const rawId = typeof entry.id === 'string' ? entry.id.trim() : '';
+        const id = rawId || `${prefix}-${index + 1}`;
+        const title = typeof entry.title === 'string' ? entry.title.trim() : '';
+        const keywords = Array.isArray(entry.keywords)
+            ? entry.keywords
+                .filter((item) => typeof item === 'string' && item.trim())
+                .map((item) => item.trim())
+            : [];
+        const matchText = this.normalizeText(
+            [id, title, answer, keywords.join(' ')].filter(Boolean).join(' ')
+        );
+
+        return {
+            ...entry,
+            id,
+            title,
+            answer,
+            keywords,
+            matchText
+        };
+    }
+
+    mergeOfflineEntries(baseEntries, extraEntries) {
+        const merged = [];
+        const seenIds = new Set();
+
+        const appendEntries = (entries, prefix) => {
+            if (!Array.isArray(entries)) {
+                return;
+            }
+            entries.forEach((entry, index) => {
+                const normalizedEntry = this.normalizeOfflineEntry(entry, index, prefix);
+                if (!normalizedEntry || seenIds.has(normalizedEntry.id)) {
+                    return;
+                }
+                seenIds.add(normalizedEntry.id);
+                merged.push(normalizedEntry);
+            });
+        };
+
+        appendEntries(baseEntries, 'offline-base');
+        appendEntries(extraEntries, 'offline-extra');
+        return merged;
+    }
+
+    buildOfflineDataWithEntries(baseData, mergedEntries) {
+        const plainEntries = (mergedEntries || []).map(({ matchText, ...entry }) => entry);
+        return {
+            ...(baseData || {}),
+            entries: plainEntries
+        };
+    }
+
     async loadOfflineData() {
         try {
             const response = await fetch('bridge_offline_conversation.json', { cache: 'no-store' });
@@ -655,18 +877,21 @@ class SimpleSpotAssistant {
             if (!data || !Array.isArray(data.entries)) {
                 throw new Error('Offline data format invalid');
             }
-            this.offlineData = data;
-            this.offlineEntries = data.entries.map((entry) => {
-                const keywords = Array.isArray(entry.keywords) ? entry.keywords : [];
-                const matchText = this.normalizeText(
-                    [entry.id, entry.title, entry.answer, keywords.join(' ')].filter(Boolean).join(' ')
-                );
-                return { ...entry, keywords, matchText };
-            });
+            const mergedEntries = this.mergeOfflineEntries(data.entries, OFFLINE_EXTRA_ENTRIES);
+            this.offlineEntries = mergedEntries;
+            this.offlineData = this.buildOfflineDataWithEntries(data, mergedEntries);
         } catch (error) {
             console.log('Offline conversation load failed:', error);
-            this.offlineData = null;
-            this.offlineEntries = [];
+            const mergedEntries = this.mergeOfflineEntries([], OFFLINE_EXTRA_ENTRIES);
+            this.offlineEntries = mergedEntries;
+            this.offlineData = this.buildOfflineDataWithEntries(
+                {
+                    title: 'Embedded Offline Knowledge',
+                    version: 'embedded-1.0',
+                    fallback: OFFLINE_UNKNOWN_MESSAGE
+                },
+                mergedEntries
+            );
         }
     }
 
@@ -767,6 +992,19 @@ class SimpleSpotAssistant {
             return 'unknown';
         }
 
+        if (/\bboston dynamics\b|\batlas\b/.test(normalizedQuery)) {
+            return 'boston_dynamics';
+        }
+        if (
+            /\bspot robot\b/.test(normalizedQuery) ||
+            /\bspot robot dog\b/.test(normalizedQuery) ||
+            /\brobot dog\b/.test(normalizedQuery) ||
+            /\bquadruped\b/.test(normalizedQuery) ||
+            /\bspot quadruped\b/.test(normalizedQuery)
+        ) {
+            return 'spot_robot';
+        }
+
         if (
             /\bwhat is bridge\b/.test(normalizedQuery) ||
             /\bwho are you\b/.test(normalizedQuery) ||
@@ -795,8 +1033,11 @@ class SimpleSpotAssistant {
     }
 
     getOfflineUiHint(intent) {
+        if (intent === 'boston_dynamics' || intent === 'spot_robot') {
+            return 'Try: boston dynamics, spot robot, or quadruped use cases.';
+        }
         if (intent === 'overview' || intent === 'unknown') {
-            return 'Try: programs, schedules, or fees.';
+            return 'Try: programs, schedules, fees, or spot robot.';
         }
         return '';
     }
