@@ -12,7 +12,7 @@ const ASSISTANT_STATES = Object.freeze({
 const QUERY_TIMEOUT_MS = 20000;
 const FOLLOWUP_TIMEOUT_MS = 10000;
 const COOLDOWN_MS = 1500;
-const TTS_RESUME_DELAY_MS = 400;
+const TTS_RESUME_DELAY_MS = 300;
 const TOAST_DISMISS_MIN_MS = 4000;
 const TOAST_DISMISS_MAX_MS = 6000;
 const GREETING_TEXT = 'Hi there, How can I help you?';
@@ -231,6 +231,7 @@ class SimpleSpotAssistant {
         this.modeLabel = null;
         this.modeIndicator = null;
         this.modeOptions = [];
+        this.modeStartsAssistant = false;
         this.offlineData = null;
         this.offlineEntries = [];
         this.offlineDataPromise = this.loadOfflineData();
@@ -687,15 +688,16 @@ class SimpleSpotAssistant {
         const label = dropdown.querySelector('[data-role="mode-label"]');
         const indicator = dropdown.querySelector('[data-role="mode-indicator"]');
         const options = Array.from(dropdown.querySelectorAll('[data-mode]'));
-        if (!trigger || !label || !indicator || !options.length) {
+        if (!trigger || !options.length) {
             return;
         }
 
         this.modeDropdown = dropdown;
         this.modeTrigger = trigger;
-        this.modeLabel = label;
-        this.modeIndicator = indicator;
+        this.modeLabel = label || null;
+        this.modeIndicator = indicator || null;
         this.modeOptions = options;
+        this.modeStartsAssistant = dropdown.getAttribute('data-start-on-select') === 'true';
 
         this.updateModeUI();
 
@@ -708,8 +710,15 @@ class SimpleSpotAssistant {
             option.addEventListener('click', (event) => {
                 event.stopPropagation();
                 const nextMode = option.getAttribute('data-mode');
+                if (nextMode !== 'online' && nextMode !== 'offline') {
+                    return;
+                }
+                const shouldStartAssistant = this.modeStartsAssistant && !this.isListening;
                 this.setMode(nextMode);
                 this.closeModeMenu();
+                if (shouldStartAssistant) {
+                    this.start();
+                }
             });
         });
 

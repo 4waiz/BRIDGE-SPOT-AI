@@ -209,10 +209,7 @@ body {
 }
 
 .assistant-actions .mode-dropdown {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: calc(100% + 0.85rem);
+    position: relative;
 }
 
 .mode-button {
@@ -255,10 +252,28 @@ body {
     min-height: 3.4rem;
 }
 
+.mode-button--launcher {
+    min-height: 6rem;
+    border-radius: 2rem;
+    font-size: 1.2rem;
+    font-weight: 500;
+    grid-template-columns: 1fr auto;
+    padding: 1rem 1.2rem;
+}
+
+.mode-label--launcher {
+    text-align: center;
+    justify-self: center;
+}
+
 .mode-dropdown.open .mode-button {
     border-color: rgba(255, 86, 34, 0.55);
     background-color: rgba(255, 86, 34, 0.08);
     box-shadow: var(--shadow-hover);
+}
+
+.mode-dropdown.open .mode-caret {
+    transform: rotate(225deg);
 }
 
 .mode-label {
@@ -288,6 +303,11 @@ body {
     display: none;
     gap: 0.4rem;
     z-index: 2;
+}
+
+.mode-dropdown--launcher .mode-menu {
+    border-radius: 1rem;
+    border-top: 3px solid var(--accent);
 }
 
 .mode-dropdown.open .mode-menu {
@@ -530,6 +550,11 @@ h1 {
         padding: 0.55rem 0.9rem;
     }
 
+    .mode-button--launcher {
+        min-height: 5rem;
+        font-size: 1rem;
+    }
+
     .header-logo img {
         height: 6rem;
     }
@@ -562,5 +587,10 @@ h1 {
 
     .container {
         gap: 1.5rem;
+    }
+
+    .mode-button--launcher {
+        min-height: 4rem;
+        font-size: 0.9rem;
     }
 }

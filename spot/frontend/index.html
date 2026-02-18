@@ -45,10 +45,9 @@
         </div>
         <div class="top-right">
             <div class="assistant-actions">
-                <div id="assistant-mode-dropdown" class="mode-dropdown">
-                    <button type="button" class="mode-button mode-button--current" data-role="mode-trigger" aria-haspopup="listbox" aria-expanded="false">
-                        <span class="mode-indicator online" data-role="mode-indicator" aria-hidden="true"></span>
-                        <span class="mode-label" data-role="mode-label">Online Mode</span>
+                <div id="assistant-mode-dropdown" class="mode-dropdown mode-dropdown--launcher" data-start-on-select="true">
+                    <button type="button" class="neumorphic-button mode-button mode-button--launcher" data-role="mode-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="mode-label mode-label--launcher">Smart Assistant</span>
                         <span class="mode-caret" aria-hidden="true"></span>
                     </button>
                     <div class="mode-menu" role="listbox" aria-label="Assistant mode options">
@@ -62,7 +61,6 @@
                         </button>
                     </div>
                 </div>
-                <a onclick="startwwd()" class="neumorphic-button">Smart Assistant</a>
             </div>
         </div>
         <div class="bottom-left">
