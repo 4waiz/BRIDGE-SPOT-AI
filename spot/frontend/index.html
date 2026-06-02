@@ -67,7 +67,28 @@
             <a id="guided-tour-link" href="http://localhost:8004/" class="neumorphic-button" target="_blank" rel="noopener">Guided Tour</a>
         </div>
         <div class="bottom-right">
-            <a href="https://192.168.208.117" class="neumorphic-button" target="_blank">Spot Admin</a>
+            <!-- Spot Admin: keeps the real admin link; a plain click opens the demo status modal (see usecases.js). -->
+            <a href="https://192.168.208.117" class="neumorphic-button" target="_blank" rel="noopener" data-role="spot-admin">Spot Admin</a>
+        </div>
+    </div>
+
+    <!-- Demo-only: Industry 5.0 use-case modules. Cards are rendered from usecases.data.js. -->
+    <section class="usecases" aria-labelledby="usecases-heading">
+        <div class="usecases__head">
+            <h2 id="usecases-heading" class="usecases__title">Industry 5.0 Use Cases</h2>
+            <p class="usecases__subtitle">Interactive demo modules — preview of what BRIDGE SPOT can do with Spot, Spot&nbsp;CAM+IR, Jetson / Core&nbsp;I/O, AI models and dashboards.</p>
+        </div>
+        <div id="usecase-grid" class="usecase-grid" role="list"></div>
+    </section>
+
+    <!-- Demo-only: use-case detail modal (populated by usecases.js). -->
+    <div id="usecase-modal" class="usecase-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="usecase-modal-title">
+        <div class="usecase-modal__dialog" role="document">
+            <button type="button" class="usecase-modal__close" data-role="modal-close" aria-label="Back to Home">&times;</button>
+            <div class="usecase-modal__body" data-role="modal-body" id="usecase-modal-title"></div>
+            <div class="usecase-modal__footer">
+                <button type="button" class="uc-action-btn uc-back" data-role="modal-dismiss">&larr; Back to Home</button>
+            </div>
         </div>
     </div>
     <!-- Demo-only: theme toggle -->
@@ -94,6 +115,9 @@
 
     <script src="voice_assistant_simple.js?v=20260114"></script>
     <script src="smartassistant.js"></script>
+    <!-- Demo-only: Industry 5.0 use-case modules (mock data + detail modal). -->
+    <script src="usecases.data.js?v=20260602"></script>
+    <script src="usecases.js?v=20260602"></script>
     <script>
         (function bindGuidedTourLink() {
             const guidedTourLink = document.getElementById('guided-tour-link');

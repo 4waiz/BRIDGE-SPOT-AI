@@ -49,28 +49,37 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    /* Hero stays near the top; the use-case section flows below (page scrolls). */
+    justify-content: flex-start;
     min-height: 100vh;
     margin: 0;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     background-color: var(--bg);
     background-image: var(--bg-gradient);
+    background-attachment: fixed;
     color: var(--text);
     padding: 3.5rem 2rem 5rem;
     box-sizing: border-box;
     transition: background-color 0.25s ease, color 0.25s ease;
 }
 
+/* Demo-only: lock background scroll while the use-case modal is open. */
+body.modal-open {
+    overflow: hidden;
+}
+
 .container {
     display: grid;
     grid-template-columns: 1fr 2fr 1fr;
-    grid-template-rows: 1fr 1fr;
+    grid-template-rows: auto auto;
     gap: 2rem;
     width: 100%;
     max-width: 80rem;
-    margin-top: 0.25rem;
+    /* Clear the fixed header logo now that the page scrolls from the top. */
+    margin-top: 7rem;
+    align-items: center;
     animation: fade-rise 0.7s ease 0.08s both;
-    transform: translateY(-1.25rem);
 }
 
 /* Demo-only: premium button interactions. */
@@ -592,5 +601,612 @@ h1 {
     .mode-button--launcher {
         min-height: 4rem;
         font-size: 0.9rem;
+    }
+}
+
+/* ======================================================================
+   Demo-only: Industry 5.0 use-case modules (cards + detail modal).
+   Reuses the existing design tokens (--accent, --surface, --shadow, ...)
+   so it matches the launcher and follows light/dark mode automatically.
+   ====================================================================== */
+
+.usecases {
+    width: 100%;
+    max-width: 80rem;
+    margin: 1rem auto 0;
+    animation: fade-rise 0.7s ease 0.16s both;
+}
+
+.usecases__head {
+    text-align: center;
+    margin-bottom: 1.75rem;
+}
+
+.usecases__title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0 0 0.4rem;
+    letter-spacing: 0.01em;
+    color: var(--text);
+}
+
+/* Subtle orange underline accent under the section title. */
+.usecases__title::after {
+    content: "";
+    display: block;
+    width: 3rem;
+    height: 3px;
+    margin: 0.6rem auto 0;
+    border-radius: 999px;
+    background: var(--accent);
+}
+
+.usecases__subtitle {
+    margin: 0 auto;
+    max-width: 46rem;
+    color: var(--muted);
+    font-size: 0.98rem;
+    line-height: 1.5;
+}
+
+.usecase-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16.5rem, 1fr));
+    gap: 1.4rem;
+}
+
+/* ---- Use-case card ---- */
+.usecase-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    gap: 0.55rem;
+    padding: 1.4rem 1.4rem 1.25rem;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1.5rem;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    color: var(--text);
+    font-family: inherit;
+    overflow: hidden;
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease,
+        background-color 0.22s ease;
+}
+
+/* Orange accent strip that grows on hover. */
+.usecase-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: var(--accent);
+    transform: scaleY(0);
+    transform-origin: top;
+    transition: transform 0.22s ease;
+}
+
+.usecase-card:hover,
+.usecase-card:focus-visible {
+    transform: translateY(-0.4rem);
+    box-shadow: var(--shadow-hover), 0 0 0 1px rgba(255, 86, 34, 0.4),
+        0 18px 40px rgba(255, 86, 34, 0.18);
+    border-color: rgba(255, 86, 34, 0.55);
+    outline: none;
+}
+
+.usecase-card:hover::before,
+.usecase-card:focus-visible::before {
+    transform: scaleY(1);
+}
+
+.usecase-card:active {
+    transform: translateY(-0.1rem);
+    box-shadow: var(--shadow-press);
+}
+
+.usecase-card:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+
+.usecase-card__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.usecase-card__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.9rem;
+    height: 2.9rem;
+    border-radius: 0.9rem;
+    background: rgba(255, 86, 34, 0.1);
+    color: var(--accent);
+    transition: background-color 0.22s ease, transform 0.22s ease;
+}
+
+.usecase-card:hover .usecase-card__icon {
+    background: rgba(255, 86, 34, 0.16);
+    transform: scale(1.05);
+}
+
+/* Inline SVG icons. */
+.uc-icon {
+    width: 1.6rem;
+    height: 1.6rem;
+    display: block;
+}
+
+.usecase-card__icon .uc-icon {
+    width: 1.55rem;
+    height: 1.55rem;
+}
+
+/* "Demo" pill on every card. */
+.usecase-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.18rem 0.6rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(255, 86, 34, 0.12);
+    border: 1px solid rgba(255, 86, 34, 0.35);
+    border-radius: 999px;
+}
+
+.usecase-badge--lg {
+    font-size: 0.72rem;
+    padding: 0.25rem 0.7rem;
+}
+
+.usecase-card__title {
+    font-size: 1.08rem;
+    font-weight: 700;
+    line-height: 1.3;
+    margin: 0.15rem 0 0;
+    color: var(--text);
+}
+
+.usecase-card__desc {
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: var(--muted);
+    margin: 0;
+    flex-grow: 1;
+}
+
+.usecase-card__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.35rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--accent);
+    opacity: 0.85;
+    transition: gap 0.2s ease, opacity 0.2s ease;
+}
+
+.usecase-card__cta::after {
+    content: "\2192"; /* → */
+    transition: transform 0.2s ease;
+}
+
+.usecase-card:hover .usecase-card__cta {
+    opacity: 1;
+}
+
+.usecase-card:hover .usecase-card__cta::after {
+    transform: translateX(0.2rem);
+}
+
+/* ======================================================================
+   Use-case detail modal
+   ====================================================================== */
+.usecase-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 4vh 1.25rem;
+    background: rgba(16, 24, 40, 0.55);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+    overflow-y: auto;
+}
+
+.usecase-modal.is-open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.usecase-modal__dialog {
+    position: relative;
+    width: 100%;
+    max-width: 46rem;
+    margin: auto;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-top: 4px solid var(--accent);
+    border-radius: 1.5rem;
+    box-shadow: var(--shadow-hover);
+    padding: 1.75rem 1.75rem 1.25rem;
+    transform: translateY(12px) scale(0.985);
+    transition: transform 0.25s ease;
+}
+
+.usecase-modal.is-open .usecase-modal__dialog {
+    transform: translateY(0) scale(1);
+}
+
+.usecase-modal__close {
+    position: absolute;
+    top: 0.85rem;
+    right: 0.95rem;
+    width: 2.2rem;
+    height: 2.2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    line-height: 1;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--btn-bg);
+    color: var(--text);
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.usecase-modal__close:hover {
+    border-color: rgba(255, 86, 34, 0.55);
+    background: rgba(255, 86, 34, 0.1);
+    transform: rotate(90deg);
+}
+
+.usecase-modal__close:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* ---- Modal header ---- */
+.uc-modal__header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding-right: 2.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.uc-modal__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.4rem;
+    height: 3.4rem;
+    flex-shrink: 0;
+    border-radius: 1rem;
+    background: rgba(255, 86, 34, 0.12);
+    color: var(--accent);
+}
+
+.uc-modal__icon .uc-icon {
+    width: 1.9rem;
+    height: 1.9rem;
+}
+
+.uc-modal__title-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.uc-modal__title {
+    font-size: 1.45rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.25;
+}
+
+.uc-modal__tagline {
+    margin: 0.4rem 0 0;
+    color: var(--muted);
+    font-size: 0.98rem;
+    line-height: 1.5;
+}
+
+/* ---- Sections ---- */
+.uc-section {
+    margin-bottom: 1.35rem;
+}
+
+.uc-section__title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin: 0 0 0.6rem;
+}
+
+.uc-text {
+    margin: 0;
+    line-height: 1.6;
+    color: var(--text);
+    font-size: 0.98rem;
+}
+
+.uc-list {
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.45rem;
+}
+
+.uc-list li {
+    position: relative;
+    padding-left: 1.4rem;
+    line-height: 1.5;
+    color: var(--text);
+    font-size: 0.95rem;
+}
+
+.uc-list li::before {
+    content: "";
+    position: absolute;
+    left: 0.1rem;
+    top: 0.55rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--accent);
+    opacity: 0.8;
+}
+
+/* Two-column: Spot does / app does. */
+.uc-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem 1.75rem;
+}
+
+/* ---- Status / data cards ---- */
+.uc-status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: 0.8rem;
+}
+
+.uc-status-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.8rem 0.9rem;
+    border-radius: 1rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+}
+
+.uc-status-card__label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+}
+
+.uc-status-card__value {
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+/* Tone accents for status cards. */
+.uc-status-card.tone-ok {
+    border-left-color: #2ecc71;
+}
+.uc-status-card.tone-info {
+    border-left-color: var(--accent);
+}
+.uc-status-card.tone-warn {
+    border-left-color: #f1a204;
+}
+.uc-status-card.tone-bad {
+    border-left-color: #e74c3c;
+}
+
+/* ---- NL prompt sample ---- */
+.uc-prompt {
+    padding: 0.9rem 1.1rem;
+    border-radius: 1rem;
+    background: rgba(255, 86, 34, 0.06);
+    border: 1px dashed rgba(255, 86, 34, 0.4);
+}
+
+.uc-prompt__label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    margin-bottom: 0.3rem;
+}
+
+.uc-prompt__text {
+    margin: 0;
+    font-style: italic;
+    line-height: 1.55;
+    color: var(--text);
+}
+
+/* ---- Action buttons ---- */
+.uc-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+    margin: 0.5rem 0 0.25rem;
+}
+
+.uc-action-btn {
+    appearance: none;
+    font-family: inherit;
+    font-size: 0.92rem;
+    font-weight: 600;
+    padding: 0.65rem 1.1rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--btn-bg);
+    color: var(--text);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease,
+        background-color 0.18s ease, color 0.18s ease, opacity 0.18s ease;
+}
+
+.uc-action-btn:hover {
+    transform: translateY(-0.12rem);
+    border-color: rgba(255, 86, 34, 0.55);
+    box-shadow: var(--shadow);
+}
+
+.uc-action-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.uc-action-btn.is-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 8px 18px rgba(255, 86, 34, 0.32);
+}
+
+.uc-action-btn.is-primary:hover {
+    box-shadow: 0 12px 24px rgba(255, 86, 34, 0.4);
+}
+
+.uc-action-btn.is-busy {
+    opacity: 0.7;
+    cursor: progress;
+}
+
+.uc-action-btn:disabled {
+    cursor: not-allowed;
+}
+
+/* ---- Mock action log ---- */
+.uc-log {
+    margin-top: 1rem;
+    padding: 0.85rem 1rem;
+    border-radius: 1rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    max-height: 9rem;
+    overflow-y: auto;
+    font-size: 0.88rem;
+}
+
+.uc-log__line {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.18rem 0;
+    color: var(--text);
+}
+
+.uc-log__dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+}
+
+/* ---- Modal footer / Back to Home ---- */
+.usecase-modal__footer {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.uc-back {
+    font-weight: 700;
+}
+
+/* ---- Responsive tweaks for use-case modules ---- */
+@media (max-width: 48rem) {
+    .usecases {
+        margin-top: 0.5rem;
+    }
+
+    .usecases__title {
+        font-size: 1.35rem;
+    }
+
+    .uc-cols {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .usecase-modal__dialog {
+        padding: 1.4rem 1.25rem 1rem;
+    }
+
+    .uc-modal__title {
+        font-size: 1.25rem;
+    }
+}
+
+@media (max-width: 30rem) {
+    .usecase-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .uc-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .uc-action-btn {
+        justify-content: center;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .usecases,
+    .usecase-card,
+    .usecase-card::before,
+    .usecase-card__cta,
+    .usecase-card__cta::after,
+    .usecase-modal,
+    .usecase-modal__dialog,
+    .usecase-modal__close,
+    .uc-action-btn {
+        transition: none;
+        animation: none;
     }
 }
