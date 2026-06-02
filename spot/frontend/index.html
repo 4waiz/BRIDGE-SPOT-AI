@@ -29,8 +29,14 @@
         <img class="logo-light" src="bridge.png" alt="Bridge logo">
         <img class="logo-dark" src="bridge (1).png" alt="Bridge logo">
     </header>
+    <!-- Single-screen launcher: robot in the centre, all 9 cards orbit it.
+         Left column (3) + Right column (3) + Bottom row (3). The 5 new
+         Industry 5.0 use-case cards are injected by usecases.js into the
+         slots marked data-usecase-slot; the 4 original entries are kept
+         exactly as before. -->
     <div class="container">
-        <div class="top-left">
+        <!-- Left column -->
+        <div class="slot slot--l1">
             <div class="dropdown">
                 <button class="neumorphic-button">Autonomous Inspection</button>
                 <div class="dropdown-content">
@@ -38,12 +44,17 @@
                     <a href="hsse.html">HSSE</a>
                 </div>
             </div>
-            
         </div>
+        <div class="slot slot--l2" data-usecase-slot="0"></div>
+        <div class="slot slot--l3" data-usecase-slot="1"></div>
+
+        <!-- Centre: Spot robot -->
         <div class="image-container">
             <img src="Spot_qturn.png" alt="Spot AI Robot">
         </div>
-        <div class="top-right">
+
+        <!-- Right column -->
+        <div class="slot slot--r1">
             <div class="assistant-actions">
                 <div id="assistant-mode-dropdown" class="mode-dropdown mode-dropdown--launcher" data-start-on-select="true">
                     <button type="button" class="neumorphic-button mode-button mode-button--launcher" data-role="mode-trigger" aria-haspopup="listbox" aria-expanded="false">
@@ -63,23 +74,19 @@
                 </div>
             </div>
         </div>
-        <div class="bottom-left">
+        <div class="slot slot--r2" data-usecase-slot="2"></div>
+        <div class="slot slot--r3" data-usecase-slot="3"></div>
+
+        <!-- Bottom row -->
+        <div class="slot slot--b1">
             <a id="guided-tour-link" href="http://localhost:8004/" class="neumorphic-button" target="_blank" rel="noopener">Guided Tour</a>
         </div>
-        <div class="bottom-right">
+        <div class="slot slot--b2" data-usecase-slot="4"></div>
+        <div class="slot slot--b3">
             <!-- Spot Admin: keeps the real admin link; a plain click opens the demo status modal (see usecases.js). -->
             <a href="https://192.168.208.117" class="neumorphic-button" target="_blank" rel="noopener" data-role="spot-admin">Spot Admin</a>
         </div>
     </div>
-
-    <!-- Demo-only: Industry 5.0 use-case modules. Cards are rendered from usecases.data.js. -->
-    <section class="usecases" aria-labelledby="usecases-heading">
-        <div class="usecases__head">
-            <h2 id="usecases-heading" class="usecases__title">Industry 5.0 Use Cases</h2>
-            <p class="usecases__subtitle">Interactive demo modules — preview of what BRIDGE SPOT can do with Spot, Spot&nbsp;CAM+IR, Jetson / Core&nbsp;I/O, AI models and dashboards.</p>
-        </div>
-        <div id="usecase-grid" class="usecase-grid" role="list"></div>
-    </section>
 
     <!-- Demo-only: use-case detail modal (populated by usecases.js). -->
     <div id="usecase-modal" class="usecase-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="usecase-modal-title">

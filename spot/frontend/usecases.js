@@ -17,9 +17,14 @@
   }
   const { USE_CASES, ADMIN_INFO } = data;
 
-  const grid = document.getElementById("usecase-grid");
+  // Slots live inside the single-screen launcher grid (data-usecase-slot="0..4").
+  const slots = Array.from(document.querySelectorAll("[data-usecase-slot]")).sort(
+    (a, b) =>
+      Number(a.getAttribute("data-usecase-slot")) -
+      Number(b.getAttribute("data-usecase-slot"))
+  );
   const modal = document.getElementById("usecase-modal");
-  if (!grid || !modal) {
+  if (!slots.length || !modal) {
     return;
   }
 
@@ -69,32 +74,31 @@
     return ul;
   }
 
-  // ---- Launcher cards ---------------------------------------------------
+  // ---- Compact launcher card (icon + Demo badge + title) ----------------
   function buildCard(uc) {
     const card = el("button", "usecase-card");
     card.type = "button";
     card.setAttribute("data-id", uc.id);
     card.setAttribute("aria-haspopup", "dialog");
+    // Full one-liner shown as a native tooltip on hover (the card is compact).
+    card.title = uc.tagline;
 
-    const top = el("div", "usecase-card__top");
     const iconWrap = el("span", "usecase-card__icon");
     iconWrap.innerHTML = iconSvg(uc.icon);
-    top.appendChild(iconWrap);
-    top.appendChild(el("span", "usecase-badge", "Demo"));
-    card.appendChild(top);
+    card.appendChild(iconWrap);
 
+    card.appendChild(el("span", "usecase-badge usecase-card__badge", "Demo"));
     card.appendChild(el("h3", "usecase-card__title", uc.title));
-    card.appendChild(el("p", "usecase-card__desc", uc.tagline));
-
-    const cta = el("span", "usecase-card__cta", "Open demo");
-    cta.setAttribute("aria-hidden", "true");
-    card.appendChild(cta);
 
     card.addEventListener("click", () => openModal(uc));
     return card;
   }
 
-  USE_CASES.forEach((uc) => grid.appendChild(buildCard(uc)));
+  // Place each use-case card into its launcher slot (orbiting the robot).
+  USE_CASES.forEach((uc, i) => {
+    const slot = slots[i];
+    if (slot) slot.appendChild(buildCard(uc));
+  });
 
   // ---- Detail modal content --------------------------------------------
   function statusGrid(statusItems) {
