@@ -68,17 +68,17 @@ body.modal-open {
 
 .container {
     display: grid;
-    /* Two side columns flank a wide centre for the robot. */
-    grid-template-columns: 1fr 1.5fr 1.5fr 1fr;
+    /* Wider side columns so card titles fit; robot keeps the centre. */
+    grid-template-columns: 1.15fr 1.4fr 1.4fr 1.15fr;
     grid-template-rows: auto auto auto auto;
     grid-template-areas:
         "l1  img img r1"
         "l2  img img r2"
         "l3  img img r3"
         "b1  b2  b2  b3";
-    gap: 1.1rem 1.4rem;
+    gap: 1.1rem 1.6rem;
     width: 100%;
-    max-width: 82rem;
+    max-width: 84rem;
     margin-top: 4.5rem; /* clear the fixed header logo */
     align-items: stretch;
     animation: fade-rise 0.7s ease 0.08s both;
@@ -154,8 +154,8 @@ body.modal-open {
 }
 
 .image-container img {
-    max-width: 88%;
-    max-height: 38vh;
+    max-width: 100%;
+    max-height: 46vh;
     height: auto;
     filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.18));
 }
@@ -1081,16 +1081,8 @@ h1 {
     font-weight: 700;
 }
 
-/* ---- Responsive tweaks for use-case modules ---- */
+/* ---- Responsive tweaks for the use-case detail modal ---- */
 @media (max-width: 48rem) {
-    .usecases {
-        margin-top: 0.5rem;
-    }
-
-    .usecases__title {
-        font-size: 1.35rem;
-    }
-
     .uc-cols {
         grid-template-columns: 1fr;
         gap: 1rem;
@@ -1106,10 +1098,6 @@ h1 {
 }
 
 @media (max-width: 30rem) {
-    .usecase-grid {
-        grid-template-columns: 1fr;
-    }
-
     .uc-actions {
         flex-direction: column;
         align-items: stretch;
@@ -1121,11 +1109,9 @@ h1 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .usecases,
     .usecase-card,
     .usecase-card::before,
-    .usecase-card__cta,
-    .usecase-card__cta::after,
+    .usecase-card__icon,
     .usecase-modal,
     .usecase-modal__dialog,
     .usecase-modal__close,
