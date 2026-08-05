@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Bridge Spot — Assets</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" type="text/css" href="styles.css?v=20260805">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
+</head>
+<body>
+    <div class="bs-app" data-shell data-nav="assets">
+        <main class="bs-main">
+            <div class="bs-content">
+                <div class="page-head">
+                    <div>
+                        <h1 class="page-head__title">Assets</h1>
+                        <p class="page-head__sub">
+                            Every asset Spot inspects, scored against its thermal and visual baseline.
+                        </p>
+                    </div>
+                    <div class="page-head__actions">
+                        <button type="button" class="btn" data-role="export"><span data-icon="download"></span> Export CSV</button>
+                        <button type="button" class="btn btn--accent" data-role="scan"><span data-icon="scan"></span> Run asset scan</button>
+                    </div>
+                </div>
+
+                <div class="stack">
+                    <div class="grid-4" data-role="stats"></div>
+
+                    <section>
+                        <div class="toolbar">
+                            <div class="seg" data-role="filter">
+                                <button type="button" class="is-active" data-status="all">All</button>
+                                <button type="button" data-status="healthy">Healthy</button>
+                                <button type="button" data-status="watch">Watch list</button>
+                                <button type="button" data-status="critical">Critical</button>
+                            </div>
+                            <span class="toolbar__spacer"></span>
+                            <input type="search" class="input" data-role="search" placeholder="Search assets, areas or types…" aria-label="Search assets">
+                        </div>
+
+                        <div class="table-wrap">
+                            <table class="data">
+                                <thead>
+                                    <tr>
+                                        <th data-sort="name">Asset <span class="sort-mark">↕</span></th>
+                                        <th data-sort="area">Area <span class="sort-mark">↕</span></th>
+                                        <th data-sort="type">Type <span class="sort-mark">↕</span></th>
+                                        <th data-sort="health">Health <span class="sort-mark">↕</span></th>
+                                        <th data-sort="temp">Temperature <span class="sort-mark">↕</span></th>
+                                        <th data-sort="lastSeen">Last inspected <span class="sort-mark">↕</span></th>
+                                        <th data-sort="status">Status <span class="sort-mark">↕</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody data-role="assets"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="bridge-shell.js?v=20260805"></script>
+    <script src="usecases.data.js?v=20260805"></script>
+    <script src="usecases.js?v=20260805"></script>
+    <script src="platform.data.js?v=20260805"></script>
+    <script src="assets.js?v=20260805"></script>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Bridge Spot — Settings</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" type="text/css" href="styles.css?v=20260805">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
+</head>
+<body>
+    <div class="bs-app" data-shell data-nav="settings">
+        <main class="bs-main">
+            <div class="bs-content">
+                <div class="page-head">
+                    <div>
+                        <h1 class="page-head__title">Settings</h1>
+                        <p class="page-head__sub">
+                            Robot connection, assistant defaults and appearance. Preferences are stored in this
+                            browser and applied across every page.
+                        </p>
+                    </div>
+                    <div class="page-head__actions">
+                        <button type="button" class="btn btn--ghost" data-role="reset">Reset to defaults</button>
+                        <a class="btn" href="https://192.168.208.117" target="_blank" rel="noopener"><span data-icon="external"></span> Spot admin console</a>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <section class="card">
+                        <h2 class="card__title">Robot connection</h2>
+                        <p class="card__text" style="margin-bottom: 1rem;">Where the platform looks for Spot and its payload services.</p>
+                        <div class="stack" style="gap: 0.9rem;">
+                            <div class="field">
+                                <label class="field__label" for="robot-host">Robot host</label>
+                                <input class="input" id="robot-host" data-setting="robot-host" type="text" placeholder="192.168.208.117">
+                            </div>
+                            <div class="field">
+                                <label class="field__label" for="api-mode">API mode</label>
+                                <select class="select" id="api-mode" data-setting="api-mode">
+                                    <option value="mock">Mock — demo data only</option>
+                                    <option value="live">Live — call the Spot backend</option>
+                                </select>
+                                <span class="field__hint">Live mode requires the FastAPI service on port 4000 and a robot on the network.</span>
+                            </div>
+                            <div class="field">
+                                <label class="field__label" for="default-route">Default inspection route</label>
+                                <select class="select" id="default-route" data-setting="default-route">
+                                    <option value="digital_factory.html">Digital Factory</option>
+                                    <option value="hsse.html">HSSE</option>
+                                </select>
+                                <span class="field__hint">Listed first under “Start Inspection” on the home screen.</span>
+                            </div>
+                            <div class="page-head__actions">
+                                <button type="button" class="btn btn--accent" data-role="test-connection"><span data-icon="refresh"></span> Test connection</button>
+                                <span class="chip chip--plain" data-role="connection-result">Not tested</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <h2 class="card__title">Smart Assistant</h2>
+                        <p class="card__text" style="margin-bottom: 1rem;">Defaults applied when the assistant starts on the home screen.</p>
+                        <div class="stack" style="gap: 0.9rem;">
+                            <div class="field">
+                                <label class="field__label" for="assistant-mode">Default mode</label>
+                                <select class="select" id="assistant-mode" data-setting="assistant-mode">
+                                    <option value="online">Online — full knowledge base</option>
+                                    <option value="offline">Offline — short, on-device answers</option>
+                                </select>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" data-setting="assistant-autostart">
+                                <span class="switch__track"></span>
+                                <span>Start listening as soon as the home screen loads</span>
+                            </label>
+                            <label class="switch">
+                                <input type="checkbox" data-setting="assistant-collapsed">
+                                <span class="switch__track"></span>
+                                <span>Collapse the assistant panel by default</span>
+                            </label>
+                            <p class="field__hint">Wake phrase: “Hey Spot” or “Hi Spot”. Typing a question works without a microphone.</p>
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <h2 class="card__title">Appearance</h2>
+                        <p class="card__text" style="margin-bottom: 1rem;">Applies immediately, on every page.</p>
+                        <div class="stack" style="gap: 0.9rem;">
+                            <div class="field">
+                                <span class="field__label">Theme</span>
+                                <div class="seg" data-role="theme">
+                                    <button type="button" data-theme-pref="light">Light</button>
+                                    <button type="button" data-theme-pref="dark">Dark</button>
+                                    <button type="button" data-theme-pref="system">System</button>
+                                </div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" data-setting="sidebar-collapsed">
+                                <span class="switch__track"></span>
+                                <span>Compact sidebar (icons only)</span>
+                            </label>
+                            <label class="switch">
+                                <input type="checkbox" data-setting="notify-dot">
+                                <span class="switch__track"></span>
+                                <span>Show the unread indicator on notifications</span>
+                            </label>
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <h2 class="card__title">Local demo data</h2>
+                        <p class="card__text" style="margin-bottom: 1rem;">
+                            Reports you generate and the preferences above live in this browser only.
+                        </p>
+                        <div class="stack" style="gap: 0.9rem;">
+                            <div class="uc-status-grid" data-role="storage-stats"></div>
+                            <div class="page-head__actions">
+                                <button type="button" class="btn" data-role="export-settings"><span data-icon="download"></span> Export settings</button>
+                                <button type="button" class="btn btn--ghost" data-role="clear-data">Clear local data</button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="bridge-shell.js?v=20260805"></script>
+    <script src="settings.js?v=20260805"></script>
+</body>
+</html>

@@ -26,11 +26,12 @@ const USE_CASES = [
   {
     id: "inspection-copilot",
     title: "AI Facility Inspection Copilot",
-    // One-line description shown on the launcher card.
+    // One-line description shown in the detail view.
     tagline: "Autonomous visual and thermal inspection with AI-generated findings.",
-    // `icon` is a key into the inline SVG set in usecases.js (crisp + consistent
-    // across machines; avoids emoji font issues).
-    icon: "inspection",
+    // Short blurb used on the compact mission-module cards.
+    short: "Run AI-guided visual and thermal inspection routes.",
+    // `icon` is a key into the shared icon set in bridge-shell.js.
+    icon: "scan",
     overview:
       "Spot patrols selected facility areas using Spot CAM+IR and captures visual and thermal data. The software analyzes the findings and generates an inspection report.",
     spotDoes: [
@@ -67,7 +68,8 @@ const USE_CASES = [
     id: "predictive-maintenance",
     title: "Predictive Maintenance Command Center",
     tagline: "Track asset health, detect anomalies, and flag early maintenance risks.",
-    icon: "maintenance",
+    short: "Monitor, predict, and prevent equipment issues.",
+    icon: "chartUp",
     overview:
       "Spot repeatedly inspects assets and compares their current condition with historical baselines to surface early signs of failure.",
     spotDoes: [
@@ -100,9 +102,10 @@ const USE_CASES = [
   },
   {
     id: "safety-response",
-    title: "Human-Robot Safety & Emergency Response Simulator",
+    title: "Human-Robot Safety & Emergency Response",
     tagline: "Run safety scenarios with live robot inspection and response scoring.",
-    icon: "safety",
+    short: "Enhance site safety and emergency readiness.",
+    icon: "shield",
     overview:
       "Spot supports safety drills and emergency-response training by inspecting simulated incident zones while the team practices their response.",
     spotDoes: [
@@ -137,7 +140,8 @@ const USE_CASES = [
     id: "readiness-evaluator",
     title: "Agile / Readiness Assessment Evaluator",
     tagline: "Use Spot as a mobile evaluator for training stations and team readiness.",
-    icon: "readiness",
+    short: "Evaluate operational readiness and mission agility.",
+    icon: "target",
     overview:
       "Spot acts as a mobile evaluator during BRIDGE training exercises, visiting stations and capturing evidence of completion.",
     spotDoes: [
@@ -171,7 +175,8 @@ const USE_CASES = [
     id: "digital-twin-mission",
     title: "Digital Twin + Natural Language Mission Builder",
     tagline: "Convert plain-language instructions into robot missions and digital twin updates.",
-    icon: "digitaltwin",
+    short: "Create missions with natural language.",
+    icon: "cube",
     overview:
       "Users type natural-language instructions and the app converts them into robot mission tasks, then updates the digital twin as Spot completes them.",
     spotDoes: [
@@ -216,7 +221,8 @@ const ADMIN_INFO = {
   id: "spot-admin",
   title: "Spot Admin",
   tagline: "Robot connection, system settings, and API configuration.",
-  icon: "admin",
+  short: "Manage users, connection and permissions.",
+  icon: "userGear",
   // The real admin console already lives behind this link; the modal is a
   // demo-friendly status preview that does not require a live robot.
   externalUrl: "https://192.168.208.117",

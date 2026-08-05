@@ -1,329 +1,266 @@
 /*
- * BRIDGE SPOT — Industry 5.0 use-case launcher cards + demo detail modal.
+ * BRIDGE SPOT — mission modules (Industry 5.0 use cases) + detail dialog.
  *
- * DEMO ONLY: this renders the five Industry 5.0 use-case cards from
- * usecases.data.js and opens a client-side detail modal. There are no backend
- * calls — every action is mocked. Existing launcher entries (Autonomous
- * Inspection, Smart Assistant, Guided Tour, Spot Admin link) are untouched.
+ * DEMO ONLY. Renders the cards defined in usecases.data.js and opens a
+ * client-side detail dialog through the shared BridgeUI modal. No backend
+ * calls are made — every action button is mocked (see handleMockAction).
  *
- * FUTURE REAL API INTEGRATION: see handleMockAction() near the bottom — each
+ * How pages use it:
+ *   <div class="module-list" data-role="module-list"
+ *        data-modules="safety-response,predictive-maintenance"></div>
+ *        ... renders those modules, in that order (omit the attribute for all)
+ *   <button data-open-demo="digital-twin-mission">…</button>
+ *        ... opens that module's dialog from anywhere
+ *   index.html#demo=<id>
+ *        ... deep link straight into a module
+ *
+ * FUTURE REAL API INTEGRATION: see handleMockAction() at the bottom — each
  * action id is where a real Spot SDK / BRIDGE backend call should be wired.
  */
 (function initUseCases() {
-  const data = window.BRIDGE_SPOT_DEMO;
-  if (!data) {
-    console.warn("[bridge-spot] use-case demo data not found");
-    return;
-  }
-  const { USE_CASES, ADMIN_INFO } = data;
-
-  // Slots live inside the single-screen launcher grid (data-usecase-slot="0..4").
-  const slots = Array.from(document.querySelectorAll("[data-usecase-slot]")).sort(
-    (a, b) =>
-      Number(a.getAttribute("data-usecase-slot")) -
-      Number(b.getAttribute("data-usecase-slot"))
-  );
-  const modal = document.getElementById("usecase-modal");
-  if (!slots.length || !modal) {
-    return;
-  }
-
-  const modalBody = modal.querySelector("[data-role='modal-body']");
-  const modalClose = modal.querySelector("[data-role='modal-close']");
-  let lastFocused = null;
-
-  // ---- Inline SVG icon set (crisp + consistent; no emoji font dependency) --
-  // Stroke uses currentColor so icons pick up the orange accent via CSS.
-  const ICONS = {
-    inspection:
-      '<path d="M3 5h7l2 2h9v12H3z"/><circle cx="12" cy="13" r="3.2"/><path d="M12 11v4M10 13h4"/>',
-    maintenance:
-      '<path d="M4 19V5"/><path d="M4 17l5-5 4 3 7-8"/><path d="M16 7h4v4"/>',
-    safety:
-      '<path d="M12 3l8 3v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M12 8v4M12 15.5v.5"/>',
-    readiness:
-      '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.8" fill="currentColor" stroke="none"/>',
-    digitaltwin:
-      '<path d="M9 4 3 6v12l6 2 6-2 6 2V8l-6-2-6 2z"/><path d="M9 4v14M15 6v14"/>',
-    admin:
-      '<circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l1.7-1.3-1.8-3.1-2 .8a7.6 7.6 0 0 0-2.6-1.5L14.4 2H9.6l-.3 2.4a7.6 7.6 0 0 0-2.6 1.5l-2-.8L2.9 8.2 4.6 9.5a7.6 7.6 0 0 0 0 3L2.9 13.8l1.8 3.1 2-.8a7.6 7.6 0 0 0 2.6 1.5l.3 2.4h4.8l.3-2.4a7.6 7.6 0 0 0 2.6-1.5l2 .8 1.8-3.1z"/>',
-  };
-
-  function iconSvg(key, extraClass) {
-    const cls = "uc-icon" + (extraClass ? " " + extraClass : "");
-    const inner = ICONS[key] || ICONS.admin;
-    return (
-      '<svg class="' + cls + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-      'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      inner +
-      "</svg>"
-    );
-  }
-
-  // ---- Small DOM helpers (no framework) --------------------------------
-  function el(tag, className, text) {
-    const node = document.createElement(tag);
-    if (className) node.className = className;
-    if (text != null) node.textContent = text;
-    return node;
-  }
-
-  function list(items) {
-    const ul = el("ul", "uc-list");
-    items.forEach((item) => ul.appendChild(el("li", null, item)));
-    return ul;
-  }
-
-  // ---- Compact launcher card (icon + Demo badge + title) ----------------
-  function buildCard(uc) {
-    const card = el("button", "usecase-card");
-    card.type = "button";
-    card.setAttribute("data-id", uc.id);
-    card.setAttribute("aria-haspopup", "dialog");
-    // Full one-liner shown as a native tooltip on hover (the card is compact).
-    card.title = uc.tagline;
-
-    const iconWrap = el("span", "usecase-card__icon");
-    iconWrap.innerHTML = iconSvg(uc.icon);
-    card.appendChild(iconWrap);
-
-    card.appendChild(el("span", "usecase-badge usecase-card__badge", "Demo"));
-    card.appendChild(el("h3", "usecase-card__title", uc.title));
-
-    card.addEventListener("click", () => openModal(uc));
-    return card;
-  }
-
-  // Place each use-case card into its launcher slot (orbiting the robot).
-  USE_CASES.forEach((uc, i) => {
-    const slot = slots[i];
-    if (slot) slot.appendChild(buildCard(uc));
-  });
-
-  // ---- Detail modal content --------------------------------------------
-  function statusGrid(statusItems) {
-    const wrap = el("div", "uc-status-grid");
-    statusItems.forEach((s) => {
-      const cardEl = el("div", `uc-status-card tone-${s.tone || "info"}`);
-      cardEl.appendChild(el("span", "uc-status-card__label", s.label));
-      cardEl.appendChild(el("span", "uc-status-card__value", s.value));
-      wrap.appendChild(cardEl);
-    });
-    return wrap;
-  }
-
-  function section(title, node) {
-    const sec = el("section", "uc-section");
-    sec.appendChild(el("h4", "uc-section__title", title));
-    sec.appendChild(node);
-    return sec;
-  }
-
-  function actionBar(actions, context) {
-    const bar = el("div", "uc-actions");
-    actions.forEach((action) => {
-      let btn;
-      if (action.external && context.externalUrl) {
-        // Spot Admin keeps a real link to the existing admin console.
-        btn = el("a", "uc-action-btn");
-        btn.href = context.externalUrl;
-        btn.target = "_blank";
-        btn.rel = "noopener";
-        btn.textContent = action.label;
-      } else {
-        btn = el("button", "uc-action-btn");
-        btn.type = "button";
-        btn.textContent = action.label;
-        btn.addEventListener("click", () =>
-          handleMockAction(action, context, btn)
-        );
-      }
-      if (action.primary) btn.classList.add("is-primary");
-      bar.appendChild(btn);
-    });
-    return bar;
-  }
-
-  function buildUseCaseBody(uc) {
-    const frag = document.createDocumentFragment();
-
-    const header = el("div", "uc-modal__header");
-    const iconWrap = el("span", "uc-modal__icon");
-    iconWrap.innerHTML = iconSvg(uc.icon);
-    header.appendChild(iconWrap);
-    const titles = el("div", "uc-modal__titles");
-    const titleRow = el("div", "uc-modal__title-row");
-    titleRow.appendChild(el("h2", "uc-modal__title", uc.title));
-    titleRow.appendChild(el("span", "usecase-badge usecase-badge--lg", "Demo Mode"));
-    titles.appendChild(titleRow);
-    titles.appendChild(el("p", "uc-modal__tagline", uc.tagline));
-    header.appendChild(titles);
-    frag.appendChild(header);
-
-    frag.appendChild(section("Overview", el("p", "uc-text", uc.overview)));
-
-    // Live status / data cards (mocked).
-    frag.appendChild(section("Live status (demo data)", statusGrid(uc.mockStatus)));
-
-    // Optional natural-language prompt sample (Digital Twin use case).
-    if (uc.samplePrompt) {
-      const promptBox = el("div", "uc-prompt");
-      promptBox.appendChild(el("span", "uc-prompt__label", "Example instruction"));
-      promptBox.appendChild(el("p", "uc-prompt__text", `“${uc.samplePrompt}”`));
-      frag.appendChild(section("Natural-language mission", promptBox));
+    var data = window.BRIDGE_SPOT_DEMO;
+    var ui = window.BridgeUI;
+    if (!data || !ui) {
+        console.warn("[bridge-spot] use-case demo data or UI kit not found");
+        return;
     }
 
-    // Two-column: What Spot does / What the app does.
-    const cols = el("div", "uc-cols");
-    cols.appendChild(section("What Spot does", list(uc.spotDoes)));
-    cols.appendChild(section("What the external app does", list(uc.appDoes)));
-    frag.appendChild(cols);
+    var USE_CASES = data.USE_CASES;
+    var ADMIN_INFO = data.ADMIN_INFO;
+    var el = ui.el;
+    var html = ui.html;
 
-    frag.appendChild(section("Key benefits", list(uc.benefits)));
-
-    frag.appendChild(actionBar(uc.actions, uc));
-
-    // Inline log surface where mock actions report what they "did".
-    const log = el("div", "uc-log");
-    log.setAttribute("data-role", "uc-log");
-    log.setAttribute("aria-live", "polite");
-    log.hidden = true;
-    frag.appendChild(log);
-
-    return frag;
-  }
-
-  function buildAdminBody(admin) {
-    const frag = document.createDocumentFragment();
-
-    const header = el("div", "uc-modal__header");
-    const iconWrap = el("span", "uc-modal__icon");
-    iconWrap.innerHTML = iconSvg(admin.icon);
-    header.appendChild(iconWrap);
-    const titles = el("div", "uc-modal__titles");
-    const titleRow = el("div", "uc-modal__title-row");
-    titleRow.appendChild(el("h2", "uc-modal__title", admin.title));
-    titleRow.appendChild(el("span", "usecase-badge usecase-badge--lg", "Demo Mode"));
-    titles.appendChild(titleRow);
-    titles.appendChild(el("p", "uc-modal__tagline", admin.tagline));
-    header.appendChild(titles);
-    frag.appendChild(header);
-
-    frag.appendChild(section("System status (demo)", statusGrid(admin.status)));
-    frag.appendChild(actionBar(admin.actions, admin));
-
-    const log = el("div", "uc-log");
-    log.setAttribute("data-role", "uc-log");
-    log.setAttribute("aria-live", "polite");
-    log.hidden = true;
-    frag.appendChild(log);
-
-    return frag;
-  }
-
-  // ---- Open / close -----------------------------------------------------
-  function openModal(context) {
-    lastFocused = document.activeElement;
-    modalBody.innerHTML = "";
-    const isAdmin = context.id === ADMIN_INFO.id;
-    modalBody.appendChild(isAdmin ? buildAdminBody(context) : buildUseCaseBody(context));
-
-    modal.classList.add("is-open");
-    modal.setAttribute("aria-hidden", "false");
-    document.body.classList.add("modal-open");
-    // Move focus into the dialog for accessibility.
-    (modalClose || modal).focus();
-  }
-
-  function closeModal() {
-    modal.classList.remove("is-open");
-    modal.setAttribute("aria-hidden", "true");
-    document.body.classList.remove("modal-open");
-    modalBody.innerHTML = "";
-    if (lastFocused && typeof lastFocused.focus === "function") {
-      lastFocused.focus();
+    function findById(id) {
+        if (id === ADMIN_INFO.id) return ADMIN_INFO;
+        for (var i = 0; i < USE_CASES.length; i += 1) {
+            if (USE_CASES[i].id === id) return USE_CASES[i];
+        }
+        return null;
     }
-  }
 
-  // "Back to Home" + the × button both close the modal.
-  if (modalClose) modalClose.addEventListener("click", closeModal);
-  modal.querySelectorAll("[data-role='modal-dismiss']").forEach((btn) =>
-    btn.addEventListener("click", closeModal)
-  );
-  // Click on the dim backdrop closes.
-  modal.addEventListener("click", (event) => {
-    if (event.target === modal) closeModal();
-  });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && modal.classList.contains("is-open")) {
-      closeModal();
+    /* ---------------- Module cards ---------------- */
+    function buildCard(uc) {
+        var card = el("button", "module-card");
+        card.type = "button";
+        card.setAttribute("data-id", uc.id);
+        card.setAttribute("aria-haspopup", "dialog");
+
+        card.appendChild(html("span", "icon-tile", ui.icon(uc.icon)));
+
+        var body = el("div", "module-card__body");
+        body.appendChild(el("span", "badge", "Demo"));
+        body.appendChild(el("h3", "module-card__title", uc.title));
+        body.appendChild(el("p", "module-card__text", uc.short || uc.tagline));
+        card.appendChild(body);
+
+        card.appendChild(html("span", "module-card__chevron", ui.icon("chevronRight")));
+
+        card.addEventListener("click", function () {
+            openModal(uc);
+        });
+        return card;
     }
-  });
 
-  // Wire the existing "Spot Admin" launcher entry to the demo modal while
-  // keeping the original external link intact (Ctrl/Cmd/middle-click still
-  // opens the real console; a plain click opens the demo preview).
-  const adminLink = document.querySelector("[data-role='spot-admin']");
-  if (adminLink) {
-    adminLink.addEventListener("click", (event) => {
-      if (event.metaKey || event.ctrlKey || event.button === 1) {
-        return; // let the browser open the real admin console
-      }
-      event.preventDefault();
-      openModal(ADMIN_INFO);
+    function renderLists() {
+        var hosts = document.querySelectorAll("[data-role='module-list']");
+        Array.prototype.forEach.call(hosts, function (host) {
+            var filter = host.getAttribute("data-modules");
+            var items;
+            if (filter) {
+                items = filter
+                    .split(",")
+                    .map(function (id) {
+                        return findById(id.trim());
+                    })
+                    .filter(Boolean);
+            } else {
+                items = USE_CASES.slice();
+            }
+            host.innerHTML = "";
+            items.forEach(function (uc) {
+                host.appendChild(buildCard(uc));
+            });
+        });
+    }
+
+    /* ---------------- Detail dialog ---------------- */
+    function list(items) {
+        var ul = el("ul", "uc-list");
+        items.forEach(function (item) {
+            ul.appendChild(el("li", null, item));
+        });
+        return ul;
+    }
+
+    function section(title, node) {
+        var sec = el("section", "uc-section");
+        sec.appendChild(el("h4", "uc-section__title", title));
+        sec.appendChild(node);
+        return sec;
+    }
+
+    function actionBar(actions, context) {
+        var bar = el("div", "uc-actions");
+        actions.forEach(function (action) {
+            var btn;
+            if (action.external && context.externalUrl) {
+                // Spot Admin keeps a real link to the existing admin console.
+                btn = el("a", "btn", action.label);
+                btn.href = context.externalUrl;
+                btn.target = "_blank";
+                btn.rel = "noopener";
+            } else {
+                btn = el("button", "btn", action.label);
+                btn.type = "button";
+                btn.addEventListener("click", function () {
+                    handleMockAction(action, context, btn);
+                });
+            }
+            if (action.primary) btn.classList.add("btn--accent");
+            bar.appendChild(btn);
+        });
+        return bar;
+    }
+
+    function buildUseCaseBody(uc) {
+        var frag = document.createDocumentFragment();
+
+        frag.appendChild(section("Overview", el("p", "uc-text", uc.overview)));
+        frag.appendChild(section("Live status (demo data)", ui.statusGrid(uc.mockStatus)));
+
+        if (uc.samplePrompt) {
+            var promptBox = el("div", "uc-prompt");
+            promptBox.appendChild(el("span", "uc-prompt__label", "Example instruction"));
+            promptBox.appendChild(el("p", "uc-prompt__text", "“" + uc.samplePrompt + "”"));
+            frag.appendChild(section("Natural-language mission", promptBox));
+        }
+
+        var cols = el("div", "uc-cols");
+        cols.appendChild(section("What Spot does", list(uc.spotDoes)));
+        cols.appendChild(section("What the external app does", list(uc.appDoes)));
+        frag.appendChild(cols);
+
+        frag.appendChild(section("Key benefits", list(uc.benefits)));
+        frag.appendChild(actionBar(uc.actions, uc));
+
+        var log = el("div", "uc-log");
+        log.setAttribute("data-role", "uc-log");
+        log.setAttribute("aria-live", "polite");
+        log.hidden = true;
+        frag.appendChild(log);
+
+        return frag;
+    }
+
+    function buildAdminBody(admin) {
+        var frag = document.createDocumentFragment();
+        frag.appendChild(section("System status (demo)", ui.statusGrid(admin.status)));
+        frag.appendChild(actionBar(admin.actions, admin));
+
+        var log = el("div", "uc-log");
+        log.setAttribute("data-role", "uc-log");
+        log.setAttribute("aria-live", "polite");
+        log.hidden = true;
+        frag.appendChild(log);
+        return frag;
+    }
+
+    // Each module gets a sensible "go deeper" link into a real platform page.
+    var DEEP_LINKS = {
+        "inspection-copilot": { label: "Open inspection route", href: "digital_factory.html" },
+        "predictive-maintenance": { label: "Open asset health", href: "assets.html" },
+        "safety-response": { label: "Open HSSE route", href: "hsse.html" },
+        "readiness-evaluator": { label: "Open reports", href: "reports.html" },
+        "digital-twin-mission": { label: "Open mission builder", href: "missions.html" },
+        "spot-admin": { label: "Open settings", href: "settings.html" }
+    };
+
+    function openModal(context) {
+        var isAdmin = context.id === ADMIN_INFO.id;
+        var footer = [];
+        var deep = DEEP_LINKS[context.id];
+        if (deep) footer.push({ label: deep.label, href: deep.href, variant: "dark" });
+        footer.push({ label: "← Back to Home", dismiss: true });
+
+        ui.openModal({
+            title: context.title,
+            tagline: context.tagline,
+            icon: context.icon,
+            badge: "Demo Mode",
+            body: isAdmin ? buildAdminBody(context) : buildUseCaseBody(context),
+            footer: footer
+        });
+    }
+
+    /* ---------------- Wiring ---------------- */
+    renderLists();
+
+    // Any element on any page can open a module dialog.
+    document.addEventListener("click", function (event) {
+        var trigger = event.target.closest ? event.target.closest("[data-open-demo]") : null;
+        if (!trigger) return;
+        var target = findById(trigger.getAttribute("data-open-demo"));
+        if (!target) return;
+        if (event.metaKey || event.ctrlKey || event.button === 1) return;
+        event.preventDefault();
+        openModal(target);
     });
-  }
 
-  // Optional deep link: index.html#demo=<id> opens that demo directly.
-  // Handy for presenting a single use case straight from a bookmark/link.
-  function openFromHash() {
-    const match = /(?:^|#|&)demo=([\w-]+)/.exec(window.location.hash);
-    if (!match) return;
-    const id = match[1];
-    const target =
-      id === ADMIN_INFO.id ? ADMIN_INFO : USE_CASES.find((u) => u.id === id);
-    if (target) openModal(target);
-  }
-  openFromHash();
-  window.addEventListener("hashchange", openFromHash);
+    // Deep link: <page>#demo=<id>
+    function openFromHash() {
+        var match = /(?:^|#|&)demo=([\w-]+)/.exec(window.location.hash);
+        if (!match) return;
+        var target = findById(match[1]);
+        if (target) openModal(target);
+    }
+    openFromHash();
+    window.addEventListener("hashchange", openFromHash);
 
-  // ---- Mock action handling --------------------------------------------
-  function logLine(btn, message) {
-    const modalRoot = btn.closest("[data-role='modal-body']") || modalBody;
-    const log = modalRoot.querySelector("[data-role='uc-log']");
-    if (!log) return;
-    log.hidden = false;
-    const line = el("div", "uc-log__line");
-    line.appendChild(el("span", "uc-log__dot", ""));
-    line.appendChild(el("span", null, message));
-    log.appendChild(line);
-    log.scrollTop = log.scrollHeight;
-  }
+    /* ---------------- Mock actions ---------------- */
+    function logLine(btn, message) {
+        var root = btn.closest(".bs-modal__body") || document;
+        var log = root.querySelector("[data-role='uc-log']");
+        if (!log) return;
+        log.hidden = false;
+        var line = el("div", "uc-log__line");
+        line.appendChild(el("span", "uc-log__dot"));
+        line.appendChild(el("span", null, message));
+        log.appendChild(line);
+        log.scrollTop = log.scrollHeight;
+    }
 
-  /*
-   * handleMockAction — DEMO stub for every action button.
-   *
-   * FUTURE REAL API INTEGRATION:
-   *   switch (action.id) {
-   *     case "start-patrol":   return spotApi.startMission(context.id, ...);
-   *     case "generate-report":return reportApi.generate(context.id, ...);
-   *     case "run-asset-scan": return spotApi.runAssetScan(...);
-   *     case "test-connection":return spotApi.ping();
-   *     ...
-   *   }
-   * For now we just give the manager visible, believable feedback.
-   */
-  function handleMockAction(action, context, btn) {
-    const label = action.label;
-    btn.classList.add("is-busy");
-    btn.disabled = true;
-    logLine(btn, `▶ ${label} — running (demo)…`);
+    /*
+     * handleMockAction — DEMO stub for every action button.
+     *
+     * FUTURE REAL API INTEGRATION:
+     *   switch (action.id) {
+     *     case "start-patrol":    return spotApi.startMission(context.id, ...);
+     *     case "generate-report": return reportApi.generate(context.id, ...);
+     *     case "run-asset-scan":  return spotApi.runAssetScan(...);
+     *     case "test-connection": return spotApi.ping();
+     *   }
+     */
+    function handleMockAction(action, context, btn) {
+        btn.classList.add("is-busy");
+        btn.disabled = true;
+        logLine(btn, "▶ " + action.label + " — running (demo)…");
 
-    // Simulated async work so the demo feels live. No real call is made.
-    window.setTimeout(() => {
-      btn.classList.remove("is-busy");
-      btn.disabled = false;
-      logLine(btn, `✓ ${label} — completed (mock data, no robot connected).`);
-    }, 900);
-  }
+        window.setTimeout(function () {
+            btn.classList.remove("is-busy");
+            btn.disabled = false;
+            logLine(btn, "✓ " + action.label + " — completed (mock data, no robot connected).");
+            if (ui.toast) ui.toast(action.label + " completed (demo).", "ok");
+        }, 900);
+    }
+
+    window.BridgeDemo = {
+        open: function (id) {
+            var target = findById(id);
+            if (target) openModal(target);
+        },
+        find: findById,
+        render: renderLists,
+        useCases: USE_CASES,
+        admin: ADMIN_INFO
+    };
 })();

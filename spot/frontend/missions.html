@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Bridge Spot — Missions</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" type="text/css" href="styles.css?v=20260805">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
+</head>
+<body>
+    <div class="bs-app" data-shell data-nav="missions">
+        <main class="bs-main">
+            <div class="bs-content">
+                <div class="page-head">
+                    <div>
+                        <h1 class="page-head__title">Missions</h1>
+                        <p class="page-head__sub">
+                            Plan, launch and track Spot missions — or describe one in plain language and let the
+                            mission builder turn it into waypoints.
+                        </p>
+                    </div>
+                    <div class="page-head__actions">
+                        <a class="btn" href="digital_factory.html"><span data-icon="camera"></span> Digital Factory</a>
+                        <a class="btn" href="hsse.html"><span data-icon="shield"></span> HSSE</a>
+                        <button type="button" class="btn btn--accent" data-role="new-mission"><span data-icon="plus"></span> New mission</button>
+                    </div>
+                </div>
+
+                <div class="stack">
+                    <section>
+                        <div class="toolbar">
+                            <div class="seg" data-role="filter">
+                                <button type="button" class="is-active" data-status="all">All</button>
+                                <button type="button" data-status="running">Running</button>
+                                <button type="button" data-status="scheduled">Scheduled</button>
+                                <button type="button" data-status="completed">Completed</button>
+                                <button type="button" data-status="failed">Failed</button>
+                            </div>
+                            <span class="toolbar__spacer"></span>
+                            <input type="search" class="input" data-role="search" placeholder="Search missions…" aria-label="Search missions">
+                        </div>
+                        <div class="table-wrap">
+                            <table class="data">
+                                <thead>
+                                    <tr>
+                                        <th>Mission</th>
+                                        <th>Route</th>
+                                        <th>Status</th>
+                                        <th>Progress</th>
+                                        <th>Waypoints</th>
+                                        <th>Started</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody data-role="missions"></tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="card" id="builder">
+                        <div class="section-head">
+                            <h2 class="section-title">Digital Twin + Natural Language Mission Builder</h2>
+                            <span class="badge">Demo</span>
+                        </div>
+                        <p class="card__text" style="margin-bottom: 0.9rem;">
+                            Describe the mission the way you would to a colleague. The builder extracts the tasks,
+                            maps them to waypoints in the digital twin, and simulates the run.
+                        </p>
+
+                        <div class="grid-2" style="align-items: start;">
+                            <div class="stack" style="gap: 0.9rem;">
+                                <div class="field">
+                                    <label class="field__label" for="mission-input">Mission instruction</label>
+                                    <textarea class="textarea" id="mission-input" data-role="mission-input"
+                                        placeholder="Inspect the east server room and the loading dock, then log any open panels."></textarea>
+                                    <span class="field__hint">Try one of the examples below, or write your own.</span>
+                                </div>
+                                <div class="toolbar" style="margin: 0;" data-role="samples"></div>
+                                <div class="page-head__actions">
+                                    <button type="button" class="btn btn--dark" data-role="build"><span data-icon="sparkle"></span> Build Mission</button>
+                                    <button type="button" class="btn btn--accent" data-role="run" disabled><span data-icon="play"></span> Run Mission</button>
+                                    <button type="button" class="btn btn--ghost" data-role="clear">Clear</button>
+                                </div>
+                            </div>
+
+                            <div class="stack" style="gap: 0.9rem;">
+                                <div>
+                                    <div class="section-head" style="margin-bottom: 0.5rem;">
+                                        <h3 class="section-title" style="font-size: 0.95rem;">Parsed mission</h3>
+                                        <span class="chip chip--plain" data-role="step-count">0 steps</span>
+                                    </div>
+                                    <ul class="step-list" data-role="steps">
+                                        <li class="empty-state">No mission built yet.</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <div class="section-head" style="margin-bottom: 0.5rem;">
+                                        <h3 class="section-title" style="font-size: 0.95rem;">Run progress</h3>
+                                        <span class="chip chip--plain" data-role="run-state">Idle</span>
+                                    </div>
+                                    <div class="progress"><span class="progress__fill" data-role="progress"></span></div>
+                                    <div class="log-box" data-role="log"><p>Waiting for a mission…</p></div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section>
+                        <div class="section-head">
+                            <h2 class="section-title">Mission Modules</h2>
+                            <a class="link-more" href="index.html">Back to home <span data-icon="arrowRight"></span></a>
+                        </div>
+                        <div class="module-list grid-2" data-role="module-list"></div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="bridge-shell.js?v=20260805"></script>
+    <script src="usecases.data.js?v=20260805"></script>
+    <script src="usecases.js?v=20260805"></script>
+    <script src="platform.data.js?v=20260805"></script>
+    <script src="missions.js?v=20260805"></script>
+</body>
+</html>

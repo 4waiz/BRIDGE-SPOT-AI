@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Bridge Spot — Reports</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" type="text/css" href="styles.css?v=20260805">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
+</head>
+<body>
+    <div class="bs-app" data-shell data-nav="reports">
+        <main class="bs-main">
+            <div class="bs-content">
+                <div class="page-head">
+                    <div>
+                        <h1 class="page-head__title">Reports</h1>
+                        <p class="page-head__sub">
+                            Inspection, maintenance, safety and readiness reports generated from Spot's mission data.
+                        </p>
+                    </div>
+                    <div class="page-head__actions">
+                        <button type="button" class="btn" data-role="export-all"><span data-icon="download"></span> Export index (CSV)</button>
+                        <button type="button" class="btn btn--accent" data-role="generate"><span data-icon="plus"></span> Generate report</button>
+                    </div>
+                </div>
+
+                <div class="stack">
+                    <div class="grid-4" data-role="stats"></div>
+
+                    <section>
+                        <div class="toolbar">
+                            <div class="seg" data-role="filter">
+                                <button type="button" class="is-active" data-type="all">All</button>
+                                <button type="button" data-type="Inspection">Inspection</button>
+                                <button type="button" data-type="Maintenance">Maintenance</button>
+                                <button type="button" data-type="Safety">Safety</button>
+                                <button type="button" data-type="Readiness">Readiness</button>
+                            </div>
+                            <span class="toolbar__spacer"></span>
+                            <input type="search" class="input" data-role="search" placeholder="Search reports…" aria-label="Search reports">
+                        </div>
+
+                        <div class="table-wrap">
+                            <table class="data">
+                                <thead>
+                                    <tr>
+                                        <th>Report</th>
+                                        <th>Type</th>
+                                        <th>Findings</th>
+                                        <th>Author</th>
+                                        <th>Created</th>
+                                        <th>Status</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody data-role="reports"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="bridge-shell.js?v=20260805"></script>
+    <script src="usecases.data.js?v=20260805"></script>
+    <script src="usecases.js?v=20260805"></script>
+    <script src="platform.data.js?v=20260805"></script>
+    <script src="reports.js?v=20260805"></script>
+</body>
+</html>

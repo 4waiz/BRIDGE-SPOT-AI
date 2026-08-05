@@ -242,8 +242,11 @@ class SimpleSpotAssistant {
         } else if ('SpeechRecognition' in window) {
             this.recognition = new SpeechRecognition();
         } else {
-            console.error('Speech Recognition not supported');
-            alert('Speech Recognition is not supported in your browser. Please use Chrome or Edge.');
+            console.warn('Speech Recognition not supported in this browser');
+            // Non-blocking: the Smart Assistant text box still works without a mic.
+            if (window.BridgeUI) {
+                window.BridgeUI.toast('Voice input needs Chrome or Edge. You can still type your question.', 'warn');
+            }
             return;
         }
 
@@ -1338,7 +1341,11 @@ class SimpleSpotAssistant {
 
     start() {
         if (!this.recognition) {
-            alert('Speech recognition not available');
+            if (window.BridgeUI) {
+                window.BridgeUI.toast('Voice input is not available in this browser — type your question instead.', 'warn');
+            } else {
+                console.warn('Speech recognition not available');
+            }
             return;
         }
 
@@ -1371,7 +1378,9 @@ class SimpleSpotAssistant {
         this.cancelActiveRecording();
         this.recognitionBlocks.clear();
         this.stopRecognition('assistant-stop');
-        this.synthesis.cancel();
+        if (this.synthesis) {
+            this.synthesis.cancel();
+        }
         this.setState(ASSISTANT_STATES.IDLE, 'Assistant stopped');
         this.hideBubble();
     }
@@ -1552,6 +1561,17 @@ class SimpleSpotAssistant {
     }
 
     speakWithBrowser(text, onComplete, onStart, reuseActiveSession = false) {
+        // Text questions can reach this without any speech stack (no TTS in the
+        // browser): show the answer instead of failing.
+        if (!this.synthesis || typeof window.SpeechSynthesisUtterance === 'undefined') {
+            console.warn('Speech synthesis unavailable — showing the answer without audio');
+            if (onStart) {
+                onStart();
+            }
+            this.endTtsPlayback(onComplete);
+            return;
+        }
+
         this.synthesis.cancel();
 
         if (!reuseActiveSession) {

@@ -1,113 +1,119 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Spot AI</title>
-    <link rel="stylesheet" type="text/css" href="styles.css">
+    <meta charset="utf-8">
+    <title>Bridge Spot — Home</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="apple-touch-icon"
-          sizes="180x180"
-          href="favicon/apple-touch-icon.png">
-    <link rel="icon"
-          type="image/png"
-          sizes="32x32"
-          href="favicon/favicon-32x32.png">
-    <link rel="icon"
-          type="image/png"
-          sizes="16x16"
-          href="favicon/favicon-16x16.png">
-    <link rel="manifest"
-          href="favicon/site.webmanifest">
-    <link rel="mask-icon"
-          href="favicon/safari-pinned-tab.svg"
-          color="#5bbad5">
+    <link rel="stylesheet" type="text/css" href="styles.css?v=20260805">
+    <link rel="stylesheet" href="voice_assistant_simple.css?v=20260805">
+    <link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png">
+    <link rel="manifest" href="favicon/site.webmanifest">
+    <link rel="mask-icon" href="favicon/safari-pinned-tab.svg" color="#ff5622">
     <meta name="msapplication-TileColor" content="#da532c">
     <meta name="theme-color" content="#ffffff">
-    <link rel="stylesheet" href="voice_assistant_simple.css">
 </head>
 <body>
-    <header class="header-logo">
-        <img class="logo-light" src="bridge.png" alt="Bridge logo">
-        <img class="logo-dark" src="bridge (1).png" alt="Bridge logo">
-    </header>
-    <!-- Single-screen launcher: robot in the centre, all 9 cards orbit it.
-         Left column (3) + Right column (3) + Bottom row (3). The 5 new
-         Industry 5.0 use-case cards are injected by usecases.js into the
-         slots marked data-usecase-slot; the 4 original entries are kept
-         exactly as before. -->
-    <div class="container">
-        <!-- Left column -->
-        <div class="slot slot--l1">
-            <div class="dropdown">
-                <button class="neumorphic-button">Autonomous Inspection</button>
-                <div class="dropdown-content">
-                    <a href="digital_factory.html">Digital Factory</a>
-                    <a href="hsse.html">HSSE</a>
-                </div>
-            </div>
-        </div>
-        <div class="slot slot--l2" data-usecase-slot="0"></div>
-        <div class="slot slot--l3" data-usecase-slot="1"></div>
+    <!-- The sidebar and top bar are injected by bridge-shell.js so every page
+         shares exactly the same chrome. -->
+    <div class="bs-app" data-shell data-nav="home">
+        <main class="bs-main">
+            <div class="bs-content">
+                <div class="home">
+                    <div class="home__main">
+                        <section class="hero">
+                            <h1 class="hero__title">
+                                <img class="hero__wordmark hero__wordmark--light" src="brand-hero.png" alt="Bridge Spot">
+                                <img class="hero__wordmark hero__wordmark--dark" src="brand-hero-dark.png" alt="">
+                            </h1>
+                            <p class="hero__sub">Autonomous operations. Intelligent insights. Safer outcomes.</p>
 
-        <!-- Centre: Spot robot -->
-        <div class="image-container">
-            <img src="Spot_qturn.png" alt="Spot AI Robot">
-        </div>
+                            <div class="hero__robot">
+                                <img src="Spot_qturn.png" alt="Boston Dynamics Spot robot">
+                            </div>
 
-        <!-- Right column -->
-        <div class="slot slot--r1">
-            <div class="assistant-actions">
-                <div id="assistant-mode-dropdown" class="mode-dropdown mode-dropdown--launcher" data-start-on-select="true">
-                    <button type="button" class="neumorphic-button mode-button mode-button--launcher" data-role="mode-trigger" aria-haspopup="listbox" aria-expanded="false">
-                        <span class="mode-label mode-label--launcher">Smart Assistant</span>
-                        <span class="mode-caret" aria-hidden="true"></span>
-                    </button>
-                    <div class="mode-menu" role="listbox" aria-label="Assistant mode options">
-                        <button type="button" class="mode-option is-active" data-mode="online" role="option" aria-selected="true">
-                            <span class="mode-indicator online" aria-hidden="true"></span>
-                            Online Mode
-                        </button>
-                        <button type="button" class="mode-option" data-mode="offline" role="option" aria-selected="false">
-                            <span class="mode-indicator offline" aria-hidden="true"></span>
-                            Offline Mode
-                        </button>
+                            <!-- Primary entry point: the two live inspection routes. -->
+                            <div class="hero__card">
+                                <span class="icon-tile" data-icon="scan"></span>
+                                <h2>Autonomous Inspection</h2>
+                                <p>Plan, execute, and analyze autonomous inspections with advanced AI.</p>
+                                <div class="bs-menu-host" id="inspection-menu">
+                                    <button type="button" class="btn btn--dark btn--block" data-role="menu-trigger" aria-haspopup="true" aria-expanded="false">
+                                        <span>Start Inspection</span>
+                                        <span data-icon="arrowRight"></span>
+                                    </button>
+                                    <div class="bs-pop bs-pop--left">
+                                        <a class="bs-pop__item" href="digital_factory.html"><span data-icon="camera"></span><span>Digital Factory route</span></a>
+                                        <a class="bs-pop__item" href="hsse.html"><span data-icon="shield"></span><span>HSSE route</span></a>
+                                        <div class="bs-pop__sep"></div>
+                                        <a class="bs-pop__item" href="missions.html"><span data-icon="mission"></span><span>Plan a new mission</span></a>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
                     </div>
+
+                    <aside class="rail">
+                        <!-- Smart Assistant: the text field and the online/offline
+                             switch both drive the existing voice assistant. -->
+                        <section class="assistant-card" data-role="assistant-card">
+                            <div class="assistant-card__head">
+                                <span class="icon-tile icon-tile--plain" data-icon="sparkle"></span>
+                                <h2 class="assistant-card__title">Smart Assistant</h2>
+                                <button type="button" class="bs-iconbtn" data-role="assistant-collapse" aria-label="Collapse assistant" aria-expanded="true">
+                                    <span data-icon="chevronDown"></span>
+                                </button>
+                            </div>
+                            <p class="assistant-card__prompt">How can I assist your mission today?</p>
+                            <form class="assistant-form" data-role="assistant-form">
+                                <input type="text" data-role="assistant-input" placeholder="Ask anything..." autocomplete="off" aria-label="Ask the smart assistant">
+                                <button type="submit" class="assistant-send" aria-label="Send question">
+                                    <span data-icon="send"></span>
+                                </button>
+                            </form>
+                            <div class="assistant-card__foot">
+                                <span class="assistant-hint">Or say “Hey Spot” to talk.</span>
+                                <div id="assistant-mode-dropdown" class="mode-dropdown" data-start-on-select="true">
+                                    <button type="button" class="mode-button" data-role="mode-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                        <span class="mode-indicator online" data-role="mode-indicator" aria-hidden="true"></span>
+                                        <span class="mode-label" data-role="mode-label">Online Mode</span>
+                                        <span class="mode-caret" aria-hidden="true"></span>
+                                    </button>
+                                    <div class="mode-menu" role="listbox" aria-label="Assistant mode options">
+                                        <button type="button" class="mode-option is-active" data-mode="online" role="option" aria-selected="true">
+                                            <span class="mode-indicator online" aria-hidden="true"></span>
+                                            Online Mode
+                                        </button>
+                                        <button type="button" class="mode-option" data-mode="offline" role="option" aria-selected="false">
+                                            <span class="mode-indicator offline" aria-hidden="true"></span>
+                                            Offline Mode
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section>
+                            <div class="section-head">
+                                <h2 class="section-title">Mission Modules</h2>
+                                <a class="link-more" href="missions.html">View all <span data-icon="arrowRight"></span></a>
+                            </div>
+                            <div class="module-list" data-role="module-list" data-modules="safety-response,predictive-maintenance,readiness-evaluator"></div>
+                        </section>
+                    </aside>
                 </div>
-            </div>
-        </div>
-        <div class="slot slot--r2" data-usecase-slot="2"></div>
-        <div class="slot slot--r3" data-usecase-slot="3"></div>
 
-        <!-- Bottom row -->
-        <div class="slot slot--b1">
-            <a id="guided-tour-link" href="http://localhost:8004/" class="neumorphic-button" target="_blank" rel="noopener">Guided Tour</a>
-        </div>
-        <div class="slot slot--b2" data-usecase-slot="4"></div>
-        <div class="slot slot--b3">
-            <!-- Spot Admin: keeps the real admin link; a plain click opens the demo status modal (see usecases.js). -->
-            <a href="https://192.168.208.117" class="neumorphic-button" target="_blank" rel="noopener" data-role="spot-admin">Spot Admin</a>
-        </div>
-    </div>
-
-    <!-- Demo-only: use-case detail modal (populated by usecases.js). -->
-    <div id="usecase-modal" class="usecase-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="usecase-modal-title">
-        <div class="usecase-modal__dialog" role="document">
-            <button type="button" class="usecase-modal__close" data-role="modal-close" aria-label="Back to Home">&times;</button>
-            <div class="usecase-modal__body" data-role="modal-body" id="usecase-modal-title"></div>
-            <div class="usecase-modal__footer">
-                <button type="button" class="uc-action-btn uc-back" data-role="modal-dismiss">&larr; Back to Home</button>
+                <!-- Quick actions close the page, spanning its full width. -->
+                <section class="quick-actions">
+                    <div class="section-head">
+                        <h2 class="section-title">Quick Actions</h2>
+                    </div>
+                    <div class="quick-grid" data-role="quick-actions"></div>
+                </section>
             </div>
-        </div>
+        </main>
     </div>
-    <!-- Demo-only: theme toggle -->
-    <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">
-        <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="currentColor" d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 1 0 9.79 9.79z"></path>
-        </svg>
-        <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="12" r="4" fill="currentColor"></circle>
-            <path d="M12 2v3m0 14v3m10-10h-3M5 12H2m15.07-7.07-2.12 2.12M8.05 15.95l-2.12 2.12m0-12.02 2.12 2.12m9.02 9.02 2.12 2.12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
-        </svg>
-    </button>
 
     <!-- Assistant message bubble (online) / compact toast (offline) -->
     <div id="simple-chat-bubble" class="simple-chat-bubble">
@@ -121,18 +127,10 @@
     </div>
 
     <script src="voice_assistant_simple.js?v=20260114"></script>
-    <script src="smartassistant.js"></script>
-    <!-- Demo-only: Industry 5.0 use-case modules (mock data + detail modal). -->
-    <script src="usecases.data.js?v=20260602"></script>
-    <script src="usecases.js?v=20260602"></script>
-    <script>
-        (function bindGuidedTourLink() {
-            const guidedTourLink = document.getElementById('guided-tour-link');
-            if (!guidedTourLink) return;
-            const host = window.location.hostname || 'localhost';
-            guidedTourLink.href = `http://${host}:8004/`;
-        })();
-    </script>
+    <script src="bridge-shell.js?v=20260805"></script>
+    <script src="usecases.data.js?v=20260805"></script>
+    <script src="usecases.js?v=20260805"></script>
+    <script src="home.js?v=20260805"></script>
+    <script src="smartassistant.js?v=20260805"></script>
 </body>
 </html>
-

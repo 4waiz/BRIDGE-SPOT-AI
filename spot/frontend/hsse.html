@@ -1,53 +1,81 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Image Display</title>
-    <link rel="stylesheet" type="text/css" href="hsse.css">
+    <meta charset="utf-8">
+    <title>Bridge Spot — HSSE Inspection</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" type="text/css" href="styles.css?v=20260805">
     <link rel="stylesheet" type="text/css" href="spinner.css">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
 </head>
-<body>     
+<body>
     <div id="spinner" class="loading">Loading&#8230;</div>
 
-    <div class="button-container">
-        <button onclick="refresh('HSSE')">Click here to refresh data from Spot</button>
-    </div>
+    <div class="bs-app" data-shell data-nav="missions">
+        <main class="bs-main">
+            <div class="bs-content">
+                <div class="page-head">
+                    <div>
+                        <h1 class="page-head__title">HSSE Inspection</h1>
+                        <p class="page-head__sub">
+                            Health, safety, security and environment checks from Spot's latest patrol —
+                            blocked routes, missing PPE and unsafe conditions are flagged automatically.
+                        </p>
+                    </div>
+                    <div class="page-head__actions">
+                        <span class="chip chip--info chip--plain" data-role="last-updated">Updated —</span>
+                        <a class="btn" href="digital_factory.html"><span data-icon="camera"></span> Digital Factory route</a>
+                        <button type="button" class="btn btn--accent" data-role="refresh" data-route="HSSE">
+                            <span data-icon="refresh"></span> Refresh data from Spot
+                        </button>
+                    </div>
+                </div>
 
-    <hr>
+                <div class="inspection-grid">
+                    <div class="image-container">
+                        <div class="frame-head"><span>Frame 01</span><span data-icon="camera"></span></div>
+                        <img class="main_img" id="latest_image_1" src="/latest/hsse/annotated_image_1.jpg" alt="Annotated HSSE frame 1">
+                        <div class="frame-empty">No capture for this frame yet. Run “Refresh data from Spot”.</div>
+                        <div class="icon-container is-pending" id="icon_container_latest_text_1">
+                            <img class="icon tick" src="icons/tick.png" alt="">
+                            <img class="icon cross" src="icons/cross.png" alt="">
+                        </div>
+                        <p id="latest_text_1"></p>
+                    </div>
 
-    <div class="container">
-        <div class="image-container">
-            <img class="main_img" id="latest_image_1" src="/latest/hsse/annotated_image_1.jpg">
-            <p id="latest_text_1"></p>
-            <div class="icon-container" id="icon_container_latest_text_1">
-                <img class="icon tick" src="icons/tick.png">
-                <img class="icon cross" src="icons/cross.png">
+                    <div class="image-container">
+                        <div class="frame-head"><span>Frame 02</span><span data-icon="camera"></span></div>
+                        <img class="main_img" id="latest_image_2" src="/latest/hsse/annotated_image_2.jpg" alt="Annotated HSSE frame 2">
+                        <div class="frame-empty">No capture for this frame yet. Run “Refresh data from Spot”.</div>
+                        <div class="icon-container is-pending" id="icon_container_latest_text_2">
+                            <img class="icon tick" src="icons/tick.png" alt="">
+                            <img class="icon cross" src="icons/cross.png" alt="">
+                        </div>
+                        <p id="latest_text_2"></p>
+                    </div>
+
+                    <div class="image-container">
+                        <div class="frame-head"><span>Frame 03</span><span data-icon="camera"></span></div>
+                        <img class="main_img" id="latest_image_3" src="/latest/hsse/annotated_image_3.jpg" alt="Annotated HSSE frame 3">
+                        <div class="frame-empty">No capture for this frame yet. Run “Refresh data from Spot”.</div>
+                        <div class="icon-container is-pending" id="icon_container_latest_text_3">
+                            <img class="icon tick" src="icons/tick.png" alt="">
+                            <img class="icon cross" src="icons/cross.png" alt="">
+                        </div>
+                        <p id="latest_text_3"></p>
+                    </div>
+                </div>
             </div>
-        </div>
-        
-        <div class="image-container">
-            <img class="main_img" id="latest_image_2" src="/latest/hsse/annotated_image_2.jpg">
-            <p id="latest_text_2"></p>
-            <div class="icon-container" id="icon_container_latest_text_2">
-                <img class="icon tick" src="icons/tick.png">
-                <img class="icon cross" src="icons/cross.png">
-            </div>
-        </div>
-        
-        <div class="image-container">
-            <img class="main_img" id="latest_image_3" src="/latest/hsse/annotated_image_3.jpg">
-            <p id="latest_text_3"></p>
-            <div class="icon-container" id="icon_container_latest_text_3">
-                <img class="icon tick" src="icons/tick.png">
-                <img class="icon cross" src="icons/cross.png">
-            </div>
-        </div>
+        </main>
     </div>
 
     <div id="fullscreen_container" class="fullscreen-container">
-        <img id="fullscreen_image" class="fullscreen-image" onclick="closeFullscreen()">
+        <img id="fullscreen_image" class="fullscreen-image" onclick="closeFullscreen()" alt="Inspection frame, full screen">
         <span class="close-button" onclick="closeFullscreen()">Close</span>
     </div>
 
+    <script src="bridge-shell.js?v=20260805"></script>
     <script src="hsse.js"></script>
+    <script src="inspection.js?v=20260805"></script>
 </body>
 </html>
