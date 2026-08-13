@@ -45,7 +45,6 @@ if (-not (Test-Path $venvPython)) {
 
 Push-Location $staticDir
 try {
-    Write-Host "Starting frontend static server on http://localhost:3001..."
     Write-Host "Frontend: http://localhost:3001"
     & $venvPython -m http.server 3001
 } finally {

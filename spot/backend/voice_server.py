@@ -298,14 +298,8 @@ def speech_to_text():
 
 
 if __name__ == '__main__':
-    # Start server
-    print("Starting Spot Voice Server on http://localhost:5000")
-    print("Endpoints:")
-    print("  - POST /chat - Text chat with OpenAI")
-    print("  - POST /tts - Text to speech (returns WAV file)")
-    print("  - POST /tts-base64 - Text to speech (returns base64 encoded audio)")
-    print("  - POST /stt - Speech to text (returns transcription)")
-    print("  - GET /health - Health check")
-    print()
-
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Debug mode exposes the Werkzeug interactive debugger, which is remote code
+    # execution for anyone who can reach port 5000. Off unless explicitly asked
+    # for, which also drops the six-line startup banner from `npm start`.
+    debug = os.getenv("VOICE_DEBUG", "").strip().lower() in ("1", "true", "yes")
+    app.run(host='0.0.0.0', port=5000, debug=debug)

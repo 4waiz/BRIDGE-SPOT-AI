@@ -36,6 +36,23 @@ def start_logging(log_files):
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
+    # TensorFlow calls logging.basicConfig() while importing, which attaches a
+    # console handler to the root logger. Combined with the DEBUG level above
+    # that turns every third-party debug record into console spam. Clamp the
+    # console to warnings and let the files keep the full detail.
+    for handler in logger.handlers:
+        if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler):
+            handler.setLevel(logging.WARNING)
+
+    # Chatty third-party loggers with nothing useful to say at this level.
+    for noisy in ("h5py", "matplotlib", "PIL", "urllib3", "grpc"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
+
+    # Keras warns through absl once per .h5 that "compiled metrics have yet to
+    # be built". These models are only ever used for inference, so that is
+    # expected for every load and would otherwise print on every start.
+    logging.getLogger("absl").setLevel(logging.ERROR)
+
     # Redirect stderr to logger
     sys.stderr = LoggerWriter(logger.critical)
 

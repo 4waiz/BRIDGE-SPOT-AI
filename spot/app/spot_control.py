@@ -94,6 +94,34 @@ class LeaseHeldByOtherError(SpotControlError):
     """
 
 
+# The docking service reports failures as numeric proto statuses. Surfacing
+# those raw ("Code: 6 (STATUS_ERROR_NOT_DOCKED)") tells an operator nothing, so
+# translate the ones that are actually actionable.
+DOCKING_ERRORS = {
+    docking_pb2.DockingCommandResponse.STATUS_ERROR_NOT_DOCKED:
+        "Spot is not on the dock, so there is nothing to undock from.",
+    docking_pb2.DockingCommandResponse.STATUS_ERROR_DOCK_NOT_FOUND:
+        "Spot cannot see the dock. Walk it to within a couple of metres with the "
+        "dock fiducial in view of the front cameras, then try again.",
+    docking_pb2.DockingCommandResponse.STATUS_ERROR_LEASE:
+        "Another operator holds the lease, so the dock command was refused.",
+    docking_pb2.DockingCommandResponse.STATUS_ERROR_GRIPPER_HOLDING_ITEM:
+        "Spot is holding something in its gripper. Release it before docking.",
+    docking_pb2.DockingCommandResponse.STATUS_ERROR_NOT_AVAILABLE:
+        "The dock is not available. Check it has power and no other robot is on it.",
+    docking_pb2.DockingCommandResponse.STATUS_ERROR_SYSTEM:
+        "The docking system reported a fault. Check the tablet for details.",
+}
+
+
+def _docking_message(exc, fallback):
+    """Turn a docking ResponseError into something worth showing a human."""
+    status = getattr(getattr(exc, "response", None), "status", None)
+    if status in DOCKING_ERRORS:
+        return DOCKING_ERRORS[status]
+    return f"{fallback}: {exc}"
+
+
 def _clamp(value, limit):
     try:
         value = float(value)
@@ -376,6 +404,14 @@ class SpotController:
 
     # -- docking ------------------------------------------------------------
 
+    def _docked_status(self):
+        """Current DockedStatus, or None when the service cannot be reached."""
+        try:
+            return self._clients["docking"].get_docking_state().status
+        except Exception as exc:
+            logging.debug("Could not read docking state: %s", exc)
+            return None
+
     def dock(self, dock_id=None):
         """Drive onto the charging dock. Blocking, takes a while."""
         with self._lock:
@@ -383,10 +419,16 @@ class SpotController:
             target = int(dock_id) if dock_id is not None else DOCK_ID
             if not self._robot.is_powered_on():
                 raise SpotControlError("Power the motors on before docking.")
+
+            # Check first rather than letting the service reject it: the answer
+            # is instant and the message is far clearer than the proto status.
+            if self._docked_status() == docking_pb2.DockState.DOCK_STATUS_DOCKED:
+                raise SpotControlError("Spot is already docked.")
+
             try:
                 blocking_dock_robot(self._robot, target)
             except Exception as exc:
-                raise SpotControlError(f"Docking failed: {exc}") from exc
+                raise SpotControlError(_docking_message(exc, "Docking failed")) from exc
             logging.info("Docked at %s", target)
             return {"docked": True, "dock_id": target}
 
@@ -394,10 +436,17 @@ class SpotController:
         """Walk off the dock. Blocking."""
         with self._lock:
             self._require_control()
+
+            status = self._docked_status()
+            if status == docking_pb2.DockState.DOCK_STATUS_UNDOCKED:
+                raise SpotControlError(
+                    "Spot is not on the dock, so there is nothing to undock from."
+                )
+
             try:
                 blocking_undock(self._robot)
             except Exception as exc:
-                raise SpotControlError(f"Undocking failed: {exc}") from exc
+                raise SpotControlError(_docking_message(exc, "Undocking failed")) from exc
             logging.info("Undocked")
             return {"docked": False}
 

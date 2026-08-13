@@ -52,13 +52,27 @@ if ($LASTEXITCODE -ne 0) {
     & $venvPython -m ensurepip --upgrade
 }
 
-Write-Host "Installing Spot dependencies..."
-& $venvPython -m pip install -r (Join-Path $repoRoot "spot\\deployment\\requirements\\requirements.txt")
+# The dependency install is a no-op on every run after the first, but pip still
+# prints a "Requirement already satisfied" line per package. Send it to a log and
+# only surface anything when it genuinely fails.
+$pipLog = Join-Path $venvPath "pip-install.log"
+& $venvPython -m pip install --quiet --disable-pip-version-check -r (Join-Path $repoRoot "spot\\deployment\\requirements\\requirements.txt") *> $pipLog
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Spot dependency install failed:"
+    Get-Content $pipLog -Tail 30
+    throw "Dependency install failed. Full output: $pipLog"
+}
+
+# TensorFlow, gRPC and absl all announce themselves on import. None of it is
+# actionable here, so quieten them and leave the service URL as the only output.
+$env:TF_CPP_MIN_LOG_LEVEL = "3"
+$env:TF_ENABLE_ONEDNN_OPTS = "0"
+$env:GRPC_VERBOSITY = "ERROR"
+$env:GLOG_minloglevel = "2"
 
 $serviceDir = Join-Path $repoRoot "spot\\app"
 Push-Location $serviceDir
 try {
-    Write-Host "Starting Spot app..."
     Write-Host "Spot API: http://localhost:4000"
     & $venvPython main.py
 } finally {

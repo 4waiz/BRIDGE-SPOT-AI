@@ -133,6 +133,7 @@
             ["estop", "lease", "power", "battery", "dock"].forEach(function (f) { setStat(f, "—", null); });
             ["connect", "estop", "lease", "power", "stand"].forEach(function (s) { markStep(s, false); });
             robot.ready = false;
+            robot.dockStatus = "DOCK_STATUS_UNKNOWN";
             updateLocks();
             return;
         }
@@ -159,6 +160,7 @@
         }
 
         var dock = state.docking || {};
+        robot.dockStatus = dock.status || "DOCK_STATUS_UNKNOWN";
         var dockLabel = (dock.status || "").replace("DOCK_STATUS_", "").toLowerCase() || "unknown";
         setStat("dock", dockLabel + (dock.dock_id ? " (" + dock.dock_id + ")" : ""),
                 dock.status === "DOCK_STATUS_DOCKED" ? "ok" : null);
@@ -188,6 +190,25 @@
         $$("[data-needs='control']").forEach(function (btn) {
             btn.disabled = !robot.connected;
         });
+
+        /*
+         * Dock and undock are mutually exclusive on the robot's actual state.
+         * Offering both regardless just produces a STATUS_ERROR_NOT_DOCKED (or
+         * its mirror) from the docking service, so gate them here. Runs after
+         * the generic loop above, which would otherwise overwrite these.
+         */
+        var docked = robot.dockStatus === "DOCK_STATUS_DOCKED";
+        var undocked = robot.dockStatus === "DOCK_STATUS_UNDOCKED";
+        var dockBtn = $("[data-action='dock']");
+        var undockBtn = $("[data-action='undock']");
+        if (dockBtn) {
+            dockBtn.disabled = !robot.connected || docked;
+            dockBtn.title = docked ? "Spot is already docked." : "";
+        }
+        if (undockBtn) {
+            undockBtn.disabled = !robot.connected || undocked;
+            undockBtn.title = undocked ? "Spot is not on the dock." : "";
+        }
 
         var step = !robot.connected ? 1 : (!$(".ctl-step[data-step='estop']").classList.contains("is-done") ? 2
                  : (!$(".ctl-step[data-step='lease']").classList.contains("is-done") ? 3

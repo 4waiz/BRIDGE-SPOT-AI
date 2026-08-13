@@ -52,13 +52,18 @@ if ($LASTEXITCODE -ne 0) {
     & $venvPython -m ensurepip --upgrade
 }
 
-Write-Host "Installing voice backend dependencies..."
-& $venvPython -m pip install -r (Join-Path $repoRoot "spot\\backend\\requirements.txt")
+# Silent unless it actually fails -- see start_spot.ps1 for the reasoning.
+$pipLog = Join-Path $venvPath "pip-install.log"
+& $venvPython -m pip install --quiet --disable-pip-version-check -r (Join-Path $repoRoot "spot\\backend\\requirements.txt") *> $pipLog
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Voice dependency install failed:"
+    Get-Content $pipLog -Tail 30
+    throw "Dependency install failed. Full output: $pipLog"
+}
 
 $serviceDir = Join-Path $repoRoot "spot\\backend"
 Push-Location $serviceDir
 try {
-    Write-Host "Starting Spot voice server..."
     Write-Host "Spot Voice API: http://localhost:5000"
     & $venvPython voice_server.py
 } finally {

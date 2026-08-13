@@ -52,17 +52,29 @@ if ($LASTEXITCODE -ne 0) {
     & $venvPython -m ensurepip --upgrade
 }
 
-Write-Host "Installing assistant dependencies..."
+# Three installs, each a no-op after the first run but each printing a wall of
+# "Requirement already satisfied". Log them and stay quiet unless one fails.
+$pipLog = Join-Path $venvPath "pip-install.log"
+if (Test-Path $pipLog) { Remove-Item $pipLog -Force }
+
 # Ensure NumPy stays below 2.x for dependency compatibility.
-& $venvPython -m pip install --upgrade --no-cache-dir "numpy<2"
+& $venvPython -m pip install --quiet --disable-pip-version-check --upgrade --no-cache-dir "numpy<2" *>> $pipLog
 # Force a CPU-compatible torch build to avoid missing DLLs on Windows GPU-less hosts.
-& $venvPython -m pip install --upgrade --no-cache-dir torch==2.3.1 --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
-& $venvPython -m pip install -r (Join-Path $repoRoot "smart_assistant\\backend\\deployment\\requirements\\requirements_dev.txt")
+if ($LASTEXITCODE -eq 0) {
+    & $venvPython -m pip install --quiet --disable-pip-version-check --upgrade --no-cache-dir torch==2.3.1 --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple *>> $pipLog
+}
+if ($LASTEXITCODE -eq 0) {
+    & $venvPython -m pip install --quiet --disable-pip-version-check -r (Join-Path $repoRoot "smart_assistant\\backend\\deployment\\requirements\\requirements_dev.txt") *>> $pipLog
+}
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Assistant dependency install failed:"
+    Get-Content $pipLog -Tail 30
+    throw "Dependency install failed. Full output: $pipLog"
+}
 
 $serviceDir = Join-Path $repoRoot "smart_assistant\\backend\\app"
 Push-Location $serviceDir
 try {
-    Write-Host "Starting assistant service..."
     Write-Host "Assistant API: http://localhost:4001"
     & $venvPython main_lif.py
 } finally {
