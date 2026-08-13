@@ -45,13 +45,15 @@ if (-not (Test-Path $venvPython)) {
     throw "Virtualenv python missing at $venvPython"
 }
 
-$pip = Join-Path $venvPath "Scripts\\pip.exe"
-if (-not (Test-Path $pip)) {
+# Invoke pip through the venv python: pip.exe itself is blocked by Windows
+# Application Control policy on some hosts.
+& $venvPython -m pip --version *> $null
+if ($LASTEXITCODE -ne 0) {
     & $venvPython -m ensurepip --upgrade
 }
 
 Write-Host "Installing voice backend dependencies..."
-& $pip install -r (Join-Path $repoRoot "spot\\backend\\requirements.txt")
+& $venvPython -m pip install -r (Join-Path $repoRoot "spot\\backend\\requirements.txt")
 
 $serviceDir = Join-Path $repoRoot "spot\\backend"
 Push-Location $serviceDir

@@ -45,17 +45,19 @@ if (-not (Test-Path $venvPython)) {
     throw "Virtualenv python missing at $venvPython"
 }
 
-$pip = Join-Path $venvPath "Scripts\\pip.exe"
-if (-not (Test-Path $pip)) {
+# Invoke pip through the venv python: pip.exe itself is blocked by Windows
+# Application Control policy on some hosts.
+& $venvPython -m pip --version *> $null
+if ($LASTEXITCODE -ne 0) {
     & $venvPython -m ensurepip --upgrade
 }
 
 Write-Host "Installing assistant dependencies..."
 # Ensure NumPy stays below 2.x for dependency compatibility.
-& $pip install --upgrade --no-cache-dir "numpy<2"
+& $venvPython -m pip install --upgrade --no-cache-dir "numpy<2"
 # Force a CPU-compatible torch build to avoid missing DLLs on Windows GPU-less hosts.
-& $pip install --upgrade --no-cache-dir torch==2.3.1 --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
-& $pip install -r (Join-Path $repoRoot "smart_assistant\\backend\\deployment\\requirements\\requirements_dev.txt")
+& $venvPython -m pip install --upgrade --no-cache-dir torch==2.3.1 --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
+& $venvPython -m pip install -r (Join-Path $repoRoot "smart_assistant\\backend\\deployment\\requirements\\requirements_dev.txt")
 
 $serviceDir = Join-Path $repoRoot "smart_assistant\\backend\\app"
 Push-Location $serviceDir

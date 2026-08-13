@@ -12,7 +12,9 @@ PORT: int = 4001
 try:
     import sentence_transformers  # noqa: F401
 except ImportError:
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "sentence-transformers"])
+    # Pinned: transformers 5.x / sentence-transformers 4+ require torch>=2.4,
+    # but this environment runs the CPU torch 2.3.1 build.
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "transformers==4.44.2", "sentence-transformers==3.0.1"])
     subprocess.check_call([sys.executable, "-m", "pip", "install", "openai-whisper"])
 
 # Load environment variables

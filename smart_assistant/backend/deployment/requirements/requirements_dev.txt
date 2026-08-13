@@ -4,10 +4,12 @@
 torch==2.3.1
 httpx
 httpcore
-transformers
+# transformers 5.x requires torch>=2.4; keep these pinned to the last releases
+# that work with the CPU torch 2.3.1 build above.
+transformers==4.44.2
 PyPDF2
 pypdf
 pdfminer.six
-sentence-transformers
+sentence-transformers==3.0.1
 openai-whisper
 ruff
