@@ -234,8 +234,12 @@
                 if (data.battery && data.battery.temperature != null) {
                     SPOT_STATUS.temperature = data.battery.temperature + " °C";
                 }
-                if (data.comms && data.comms.length && data.comms[0].essid) {
-                    SPOT_STATUS.signal = data.comms[0].essid;
+                if (data.comms && data.comms.length) {
+                    // The robot reports an empty essid when it is on a network it
+                    // did not join itself, so fall back to the radio mode.
+                    var wifi = data.comms[0];
+                    SPOT_STATUS.signal = wifi.essid
+                        || (wifi.mode === "MODE_CLIENT" ? "Client" : wifi.mode === "MODE_ACCESS_POINT" ? "Access point" : "Connected");
                 }
                 if (data.estop) {
                     SPOT_STATUS.estop = !data.estop.registered ? "Not registered"
