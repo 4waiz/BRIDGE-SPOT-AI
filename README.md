@@ -70,8 +70,8 @@ The PowerShell scripts create virtual environments and install Python dependenci
 
 ## Known TODOs / gaps (from repo scan)
 
-- `spot/app/main.py` and `spot/app/spot_file_copy.py` load `../config.env`, but no `config.env` exists in the repo. TODO: add or document this file.
+- `spot/app/main.py` and `spot/app/spot_file_copy.py` load `../config.env`. The file is gitignored; copy `spot/config.env.example` to `spot/config.env` to create it.
 - `smart_assistant/backend/app/main_ssl.py` references `../deployment/ssl/server.cert` and `../deployment/ssl/server.key`, but `smart_assistant/backend/deployment/ssl` is missing. TODO: add SSL assets or update paths.
 - No CI/CD config found (no `.github/workflows` or similar). TODO: define pipeline if needed.
 - No automated test runner config found (no `pytest.ini`, `pyproject.toml`, `tox.ini`). TODO: add tests and tooling.
-- Spot robot IP is hard-coded in `spot/app/spot_file_copy.py` (`ip = "192.168.208.117"`). TODO: make configurable.
+- Spot robot IP is still hard-coded in `spot_legacy/app/*/config.py` and `spot/training/spot_cam_4.1.1/trainingdata.py`. The live inspection path (`spot/app/spot_file_copy.py`) now reads `SPOT_IP` from `spot/config.env`.

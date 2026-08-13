@@ -176,6 +176,7 @@
     var NAV = [
         { key: "home", label: "Home", href: "index.html", icon: "home" },
         { key: "dashboard", label: "Dashboard", href: "dashboard.html", icon: "grid" },
+        { key: "control", label: "Control", href: "control.html", icon: "robot" },
         { key: "missions", label: "Missions", href: "missions.html", icon: "mission" },
         { key: "reports", label: "Reports", href: "reports.html", icon: "report" },
         { key: "assets", label: "Assets", href: "assets.html", icon: "assets" },
@@ -183,21 +184,72 @@
     ];
 
     /*
-     * Demo robot state.
-     * FUTURE: replace with a poll of the Spot SDK robot state endpoint, e.g.
-     *   fetch('/api/robot/state').then(r => r.json())
+     * Robot state shown in the sidebar and telemetry dialog.
+     *
+     * These are placeholders only until the first /api/robot/state poll lands
+     * (see syncRobotState below), which overwrites everything it can read from
+     * the robot. Fields the robot does not report -- payloads, uptime, location
+     * -- stay as written here.
      */
     var SPOT_STATUS = {
-        connection: "Online",
-        battery: 87,
-        signal: "Strong",
-        estop: "Released",
-        temperature: "34 °C",
-        firmware: "4.1.1",
+        connection: "Offline",
+        battery: 0,
+        signal: "—",
+        estop: "Unknown",
+        temperature: "—",
+        firmware: "5.1.5",
         payloads: "Spot CAM+IR, Core I/O",
-        uptime: "3h 12m",
-        location: "Bay 4 — Digital Factory"
+        uptime: "—",
+        location: "—"
     };
+
+    // Robot address, refreshed from /api/robot/state so the admin-console link
+    // follows the robot when DHCP moves it.
+    var ROBOT_HOST = "192.168.33.137";
+
+    /*
+     * Poll live telemetry and fold it into SPOT_STATUS. Runs on every page that
+     * uses the shell, so the sidebar reflects the real robot everywhere rather
+     * than only on the Control page. Failures leave the placeholders in place.
+     */
+    function syncRobotState() {
+        return fetch("/api/robot/state")
+            .then(function (res) { return res.ok ? res.json() : null; })
+            .then(function (data) {
+                if (!data) return;
+                if (data.ip) ROBOT_HOST = data.ip;
+
+                if (!data.connected) {
+                    SPOT_STATUS.connection = "Offline";
+                    SPOT_STATUS.signal = "—";
+                    SPOT_STATUS.estop = "Unknown";
+                    renderSpotStatus();
+                    return;
+                }
+
+                SPOT_STATUS.connection = "Online";
+                if (data.battery && typeof data.battery.percentage === "number") {
+                    SPOT_STATUS.battery = Math.round(data.battery.percentage);
+                }
+                if (data.battery && data.battery.temperature != null) {
+                    SPOT_STATUS.temperature = data.battery.temperature + " °C";
+                }
+                if (data.comms && data.comms.length && data.comms[0].essid) {
+                    SPOT_STATUS.signal = data.comms[0].essid;
+                }
+                if (data.estop) {
+                    SPOT_STATUS.estop = !data.estop.registered ? "Not registered"
+                        : (data.estop.clear ? "Released" : "ENGAGED");
+                }
+                if (data.docking && data.docking.status) {
+                    SPOT_STATUS.location = data.docking.status === "DOCK_STATUS_DOCKED"
+                        ? "Docked" + (data.docking.dock_id ? " (" + data.docking.dock_id + ")" : "")
+                        : data.docking.status.replace("DOCK_STATUS_", "").toLowerCase();
+                }
+                renderSpotStatus();
+            })
+            .catch(function () { /* server down: keep the placeholders */ });
+    }
 
     var NOTIFICATIONS = [
         {
@@ -691,7 +743,7 @@
                     toast(next === "dark" ? "Dark mode on." : "Light mode on.");
                 }
             },
-            { label: "Spot admin console", icon: "external", href: "https://192.168.208.117", external: true },
+            { label: "Spot admin console", icon: "external", href: "https://" + ROBOT_HOST, external: true },
             { sep: true },
             { label: "Sign out", icon: "logout", action: function () {
                 toast("Sign-out is disabled in the demo build.", "warn");
@@ -771,6 +823,11 @@
         renderSpotStatus();
         syncThemeButton(theme.resolve(theme.preference()));
         hydrateIcons(document);
+
+        // Live telemetry for the sidebar. The Control page polls faster on its
+        // own; this slower beat is just to keep the shell honest.
+        syncRobotState();
+        setInterval(syncRobotState, 5000);
 
         document.dispatchEvent(new CustomEvent("bridge:shellready"));
     }

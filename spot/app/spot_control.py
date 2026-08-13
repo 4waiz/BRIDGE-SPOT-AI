@@ -1,0 +1,438 @@
+"""Live control layer for BRIDGE SPOT.
+
+Wraps the Boston Dynamics client library behind a single stateful controller so
+the FastAPI app can drive the robot over HTTP. Everything here talks to real
+hardware -- see the safety notes before changing it.
+
+Safety model
+------------
+Motion is gated behind three things, in order, and none of them are optional:
+
+  1. E-stop registration. `register_estop()` opens a software E-stop endpoint and
+     starts a heartbeat. If this process dies, the heartbeat stops and the robot
+     cuts motor power on its own. This is the backstop for "the server crashed
+     mid-drive".
+  2. Lease ownership. `acquire_lease()` takes the body lease. Without it the
+     robot rejects commands, which is what stops two operators fighting over it.
+  3. Command expiry. Every velocity command carries `end_time_secs`. If the UI
+     stops sending -- tab closed, wifi dropped, joystick released -- the robot
+     stops moving after SPOT_CMD_DURATION rather than running on.
+
+Speeds are clamped server-side in `move()`. The UI cannot exceed the configured
+caps no matter what it posts.
+
+None of this replaces the hardware E-stop on the tablet. The tablet controller
+should stay in reach whenever this module is driving.
+"""
+
+import logging
+import os
+import threading
+import time
+
+import dotenv
+
+dotenv.load_dotenv("../config.env")
+
+import bosdyn.client
+import bosdyn.client.util
+from bosdyn.api import image_pb2
+from bosdyn.api.docking import docking_pb2
+from bosdyn.client.docking import DockingClient, blocking_dock_robot, blocking_undock, get_dock_id
+from bosdyn.client.estop import EstopClient, EstopEndpoint, EstopKeepAlive
+from bosdyn.client.image import ImageClient
+from bosdyn.client.lease import LeaseClient, LeaseKeepAlive
+from bosdyn.client.power import PowerClient
+from bosdyn.client.robot_command import RobotCommandBuilder, RobotCommandClient
+from bosdyn.client.robot_state import RobotStateClient
+
+SPOT_IP = os.getenv("SPOT_IP", "192.168.33.137")
+DOCK_ID = int(os.getenv("SPOT_DOCK_ID", "520"))
+
+MAX_LINEAR = float(os.getenv("SPOT_MAX_LINEAR_SPEED", "0.6"))
+MAX_ANGULAR = float(os.getenv("SPOT_MAX_ANGULAR_SPEED", "0.8"))
+CMD_DURATION = float(os.getenv("SPOT_CMD_DURATION", "0.6"))
+
+# Seconds the robot waits for an E-stop heartbeat before cutting power. Kept
+# generous enough to survive a slow HTTP round trip but short enough to matter.
+ESTOP_TIMEOUT = 9.0
+CLIENT_NAME = "BridgeSpotControl"
+
+# Front cameras are physically mounted rotated; the UI corrects them.
+IMAGE_SOURCES = {
+    "frontleft": "frontleft_fisheye_image",
+    "frontright": "frontright_fisheye_image",
+    "left": "left_fisheye_image",
+    "right": "right_fisheye_image",
+    "back": "back_fisheye_image",
+}
+
+
+class SpotControlError(RuntimeError):
+    """Raised for any expected, reportable control failure."""
+
+
+def _clamp(value, limit):
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    if value != value:  # NaN
+        return 0.0
+    return max(-limit, min(limit, value))
+
+
+class SpotController:
+    """Single owner of the robot connection, lease and E-stop.
+
+    One instance per process. Every public method takes `_lock`, because the
+    SDK's lease and E-stop objects are not safe to drive from several request
+    handlers at once.
+    """
+
+    def __init__(self):
+        self._lock = threading.RLock()
+        self._robot = None
+        self._clients = {}
+        self._estop_endpoint = None
+        self._estop_keepalive = None
+        self._lease_keepalive = None
+        self._last_error = None
+
+    # -- connection ---------------------------------------------------------
+
+    @property
+    def is_connected(self):
+        return self._robot is not None
+
+    def connect(self):
+        """Authenticate and build the service clients. Safe to call repeatedly."""
+        with self._lock:
+            if self._robot is not None:
+                return self.describe()
+
+            username = os.getenv("BOSDYN_CLIENT_USERNAME", "").strip()
+            password = os.getenv("BOSDYN_CLIENT_PASSWORD", "").strip()
+            if not username or not password:
+                raise SpotControlError(
+                    "Robot credentials are not configured. Set BOSDYN_CLIENT_USERNAME "
+                    "and BOSDYN_CLIENT_PASSWORD in spot/config.env."
+                )
+
+            sdk = bosdyn.client.create_standard_sdk(CLIENT_NAME)
+            robot = sdk.create_robot(SPOT_IP)
+            try:
+                robot.authenticate(username, password)
+            except Exception as exc:
+                raise SpotControlError(f"Authentication failed for {SPOT_IP}: {exc}") from exc
+
+            # Robot commands are rejected without a synced clock.
+            robot.time_sync.wait_for_sync()
+
+            self._robot = robot
+            self._clients = {
+                "state": robot.ensure_client(RobotStateClient.default_service_name),
+                "command": robot.ensure_client(RobotCommandClient.default_service_name),
+                "lease": robot.ensure_client(LeaseClient.default_service_name),
+                "estop": robot.ensure_client(EstopClient.default_service_name),
+                "power": robot.ensure_client(PowerClient.default_service_name),
+                "image": robot.ensure_client(ImageClient.default_service_name),
+                "docking": robot.ensure_client(DockingClient.default_service_name),
+            }
+            logging.info("Connected to Spot at %s as %s", SPOT_IP, username)
+            return self.describe()
+
+    def describe(self):
+        rid = self._robot.get_id()
+        version = rid.software_release.version
+        return {
+            "nickname": rid.nickname,
+            "serial": rid.serial_number,
+            "software": f"{version.major_version}.{version.minor_version}.{version.patch_level}",
+            "ip": SPOT_IP,
+        }
+
+    def disconnect(self):
+        """Give everything back and drop the connection."""
+        with self._lock:
+            self.return_lease()
+            self.release_estop()
+            self._robot = None
+            self._clients = {}
+
+    def _require(self):
+        if self._robot is None:
+            raise SpotControlError("Not connected to the robot. Connect first.")
+        return self._robot
+
+    # -- E-stop -------------------------------------------------------------
+
+    def register_estop(self):
+        """Open a software E-stop endpoint and start its heartbeat."""
+        with self._lock:
+            self._require()
+            if self._estop_keepalive is not None:
+                return {"estop": "registered"}
+
+            client = self._clients["estop"]
+            if client.get_status().stop_level_details and client.get_status().endpoints:
+                logging.info("Existing E-stop endpoints present; registering alongside them.")
+
+            endpoint = EstopEndpoint(client, CLIENT_NAME, ESTOP_TIMEOUT)
+            # Claims the whole E-stop config for this endpoint. Any other
+            # software endpoint (a stale session, another script) is displaced.
+            endpoint.force_simple_setup()
+            self._estop_endpoint = endpoint
+            self._estop_keepalive = EstopKeepAlive(endpoint)
+            logging.info("E-stop endpoint registered (timeout %.1fs)", ESTOP_TIMEOUT)
+            return {"estop": "registered"}
+
+    def emergency_stop(self):
+        """Cut motor power now. The robot will sit down hard."""
+        with self._lock:
+            if self._estop_keepalive is None:
+                raise SpotControlError("No E-stop endpoint registered.")
+            self._estop_keepalive.stop()
+            logging.warning("EMERGENCY STOP triggered")
+            return {"estop": "engaged"}
+
+    def clear_estop(self):
+        """Release a triggered E-stop so the robot can be powered again."""
+        with self._lock:
+            if self._estop_keepalive is None:
+                raise SpotControlError("No E-stop endpoint registered.")
+            self._estop_keepalive.allow()
+            logging.info("E-stop cleared")
+            return {"estop": "cleared"}
+
+    def release_estop(self):
+        """Tear the endpoint down entirely."""
+        with self._lock:
+            if self._estop_keepalive is not None:
+                try:
+                    self._estop_keepalive.shutdown()
+                except Exception as exc:
+                    logging.warning("E-stop shutdown failed: %s", exc)
+            self._estop_keepalive = None
+            self._estop_endpoint = None
+            return {"estop": "released"}
+
+    # -- lease --------------------------------------------------------------
+
+    def acquire_lease(self):
+        with self._lock:
+            self._require()
+            if self._lease_keepalive is not None:
+                return {"lease": "held"}
+            try:
+                self._lease_keepalive = LeaseKeepAlive(
+                    self._clients["lease"], must_acquire=True, return_at_exit=True
+                )
+            except Exception as exc:
+                raise SpotControlError(
+                    f"Could not take the body lease: {exc}. Another operator "
+                    "(usually the tablet) may still hold it."
+                ) from exc
+            logging.info("Body lease acquired")
+            return {"lease": "held"}
+
+    def return_lease(self):
+        with self._lock:
+            if self._lease_keepalive is not None:
+                try:
+                    self._lease_keepalive.shutdown()
+                except Exception as exc:
+                    logging.warning("Lease shutdown failed: %s", exc)
+            self._lease_keepalive = None
+            return {"lease": "released"}
+
+    def _require_control(self):
+        """Guard for anything that physically moves the robot."""
+        self._require()
+        if self._estop_keepalive is None:
+            raise SpotControlError("Register the E-stop before commanding the robot.")
+        if self._lease_keepalive is None:
+            raise SpotControlError("Acquire the lease before commanding the robot.")
+
+    # -- power and posture --------------------------------------------------
+
+    def power_on(self):
+        with self._lock:
+            self._require_control()
+            robot = self._robot
+            if robot.is_powered_on():
+                return {"power": "on"}
+            robot.power_on(timeout_sec=20)
+            if not robot.is_powered_on():
+                raise SpotControlError("Motor power did not come up.")
+            logging.info("Motors powered on")
+            return {"power": "on"}
+
+    def power_off(self):
+        with self._lock:
+            self._require_control()
+            # safe_power_off sits the robot down before cutting power.
+            self._robot.power_off(cut_immediately=False, timeout_sec=20)
+            logging.info("Motors powered off")
+            return {"power": "off"}
+
+    def _command(self, proto, end_time_secs=None, description=""):
+        self._require_control()
+        try:
+            self._clients["command"].robot_command(command=proto, end_time_secs=end_time_secs)
+        except Exception as exc:
+            raise SpotControlError(f"Command '{description}' rejected: {exc}") from exc
+        return {"command": description or "ok"}
+
+    def stand(self):
+        with self._lock:
+            return self._command(RobotCommandBuilder.synchro_stand_command(), description="stand")
+
+    def sit(self):
+        with self._lock:
+            return self._command(RobotCommandBuilder.synchro_sit_command(), description="sit")
+
+    def selfright(self):
+        with self._lock:
+            return self._command(RobotCommandBuilder.selfright_command(), description="selfright")
+
+    def stop(self):
+        """Halt motion but keep power and lease."""
+        with self._lock:
+            return self._command(RobotCommandBuilder.stop_command(), description="stop")
+
+    # -- drive --------------------------------------------------------------
+
+    def move(self, v_x, v_y, v_rot):
+        """Drive at a velocity for one command window.
+
+        Values are clamped to the configured caps, and the command carries an
+        expiry so the robot stops on its own if the UI goes quiet.
+        """
+        with self._lock:
+            v_x = _clamp(v_x, MAX_LINEAR)
+            v_y = _clamp(v_y, MAX_LINEAR)
+            v_rot = _clamp(v_rot, MAX_ANGULAR)
+            proto = RobotCommandBuilder.synchro_velocity_command(v_x=v_x, v_y=v_y, v_rot=v_rot)
+            self._command(proto, end_time_secs=time.time() + CMD_DURATION, description="move")
+            return {"v_x": v_x, "v_y": v_y, "v_rot": v_rot, "expires_in": CMD_DURATION}
+
+    # -- docking ------------------------------------------------------------
+
+    def dock(self, dock_id=None):
+        """Drive onto the charging dock. Blocking, takes a while."""
+        with self._lock:
+            self._require_control()
+            target = int(dock_id) if dock_id is not None else DOCK_ID
+            if not self._robot.is_powered_on():
+                raise SpotControlError("Power the motors on before docking.")
+            try:
+                blocking_dock_robot(self._robot, target)
+            except Exception as exc:
+                raise SpotControlError(f"Docking failed: {exc}") from exc
+            logging.info("Docked at %s", target)
+            return {"docked": True, "dock_id": target}
+
+    def undock(self):
+        """Walk off the dock. Blocking."""
+        with self._lock:
+            self._require_control()
+            try:
+                blocking_undock(self._robot)
+            except Exception as exc:
+                raise SpotControlError(f"Undocking failed: {exc}") from exc
+            logging.info("Undocked")
+            return {"docked": False}
+
+    # -- telemetry ----------------------------------------------------------
+
+    def get_state(self):
+        """Read-only snapshot. Needs no lease and no E-stop, so the UI can poll
+        it before the operator has taken control."""
+        with self._lock:
+            self._require()
+            state = self._clients["state"].get_robot_state()
+
+            battery = {}
+            if state.battery_states:
+                bat = state.battery_states[0]
+                battery = {
+                    "percentage": round(bat.charge_percentage.value, 1)
+                    if bat.HasField("charge_percentage") else None,
+                    "status": bat.Status.Name(bat.status),
+                    "temperature": round(max(bat.temperatures), 1) if bat.temperatures else None,
+                }
+
+            power_state = state.power_state
+            estop_levels = [
+                {"name": e.name, "state": e.State.Name(e.state)} for e in state.estop_states
+            ]
+            estop_ok = all(e["state"] == "STATE_NOT_ESTOPPED" for e in estop_levels) if estop_levels else False
+
+            comms = []
+            for c in state.comms_states:
+                if c.HasField("wifi_state"):
+                    wifi = c.wifi_state
+                    comms.append(
+                        {
+                            "mode": wifi.Mode.Name(wifi.current_mode),
+                            "essid": wifi.essid,
+                        }
+                    )
+
+            try:
+                ds = self._clients["docking"].get_docking_state()
+                docking = {
+                    "status": docking_pb2.DockState.DockedStatus.Name(ds.status),
+                    "dock_id": ds.dock_id or None,
+                }
+            except Exception as exc:
+                logging.debug("Docking state unavailable: %s", exc)
+                docking = {"status": "DOCK_STATUS_UNKNOWN", "dock_id": None}
+
+            faults = [f.name for f in state.system_fault_state.faults] if state.system_fault_state else []
+
+            return {
+                "connected": True,
+                "battery": battery,
+                "power": power_state.MotorPowerState.Name(power_state.motor_power_state),
+                "powered_on": self._robot.is_powered_on(),
+                "estop": {
+                    "levels": estop_levels,
+                    "clear": estop_ok,
+                    "registered": self._estop_keepalive is not None,
+                },
+                "lease_held": self._lease_keepalive is not None,
+                "comms": comms,
+                "docking": docking,
+                "faults": faults,
+                "limits": {
+                    "max_linear": MAX_LINEAR,
+                    "max_angular": MAX_ANGULAR,
+                    "cmd_duration": CMD_DURATION,
+                },
+            }
+
+    def get_image(self, view="frontleft"):
+        """Return (jpeg_bytes, rotation_degrees) for one camera."""
+        with self._lock:
+            self._require()
+            source = IMAGE_SOURCES.get(view)
+            if source is None:
+                raise SpotControlError(
+                    f"Unknown camera '{view}'. Options: {', '.join(IMAGE_SOURCES)}"
+                )
+            responses = self._clients["image"].get_image_from_sources([source])
+            if not responses:
+                raise SpotControlError(f"No image returned for {source}.")
+            image = responses[0].shot.image
+            if image.format != image_pb2.Image.FORMAT_JPEG:
+                raise SpotControlError(f"Unexpected image format for {source}.")
+            # The two front cameras sit rotated 90 degrees on the body; the
+            # side cameras sit at 180. The client rotates for display.
+            rotation = {"frontleft": -90, "frontright": -90, "left": 0, "right": 180, "back": 0}
+            return image.data, rotation.get(view, 0)
+
+
+# Process-wide singleton used by the API layer.
+controller = SpotController()

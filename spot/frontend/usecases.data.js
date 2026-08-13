@@ -225,7 +225,7 @@ const ADMIN_INFO = {
   icon: "userGear",
   // The real admin console already lives behind this link; the modal is a
   // demo-friendly status preview that does not require a live robot.
-  externalUrl: "https://192.168.208.117",
+  externalUrl: "https://192.168.33.137",
   status: [
     { label: "Robot connection", value: "Demo / Not Connected", tone: "warn" },
     { label: "API mode", value: "Mock", tone: "info" },

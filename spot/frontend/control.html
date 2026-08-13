@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Bridge Spot — Robot Control</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" type="text/css" href="styles.css?v=20260813">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
+</head>
+<body>
+    <div class="bs-app" data-shell data-nav="control">
+        <main class="bs-main">
+            <div class="bs-content">
+                <div class="page-head">
+                    <div>
+                        <h1 class="page-head__title">Robot Control</h1>
+                        <p class="page-head__sub">
+                            Live manual control of BRIDGE SPOT. Keep the tablet controller within reach —
+                            the hardware E-stop is the only stop that cannot fail.
+                        </p>
+                    </div>
+                    <div class="page-head__actions">
+                        <span class="chip chip--plain" data-role="conn-chip">Disconnected</span>
+                        <button type="button" class="ctl-estop" data-role="estop">
+                            <span data-icon="alert"></span> EMERGENCY STOP
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Live status, polled from /api/robot/state -->
+                <div class="ctl-status" data-role="status-strip">
+                    <div class="ctl-stat" data-stat="connection">
+                        <span class="ctl-stat__label">Connection</span>
+                        <span class="ctl-stat__value" data-field="connection">—</span>
+                    </div>
+                    <div class="ctl-stat" data-stat="estop">
+                        <span class="ctl-stat__label">E-stop</span>
+                        <span class="ctl-stat__value" data-field="estop">—</span>
+                    </div>
+                    <div class="ctl-stat" data-stat="lease">
+                        <span class="ctl-stat__label">Lease</span>
+                        <span class="ctl-stat__value" data-field="lease">—</span>
+                    </div>
+                    <div class="ctl-stat" data-stat="power">
+                        <span class="ctl-stat__label">Motors</span>
+                        <span class="ctl-stat__value" data-field="power">—</span>
+                    </div>
+                    <div class="ctl-stat" data-stat="battery">
+                        <span class="ctl-stat__label">Battery</span>
+                        <span class="ctl-stat__value" data-field="battery">—</span>
+                    </div>
+                    <div class="ctl-stat" data-stat="dock">
+                        <span class="ctl-stat__label">Dock</span>
+                        <span class="ctl-stat__value" data-field="dock">—</span>
+                    </div>
+                </div>
+
+                <div class="ctl-layout">
+                    <!-- Camera -->
+                    <section class="card ctl-camera">
+                        <div class="ctl-panel-head">
+                            <h2 class="card__title">Camera</h2>
+                            <select class="ctl-select" data-role="camera-view" aria-label="Camera view">
+                                <option value="frontleft">Front left</option>
+                                <option value="frontright">Front right</option>
+                                <option value="left">Left</option>
+                                <option value="right">Right</option>
+                                <option value="back">Back</option>
+                            </select>
+                        </div>
+                        <div class="ctl-feed">
+                            <img data-role="camera-img" alt="Live camera feed from Spot">
+                            <div class="ctl-feed__empty" data-role="camera-empty">
+                                Connect to the robot to see the live feed.
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Bring-up sequence -->
+                    <section class="card ctl-sequence">
+                        <div class="ctl-panel-head">
+                            <h2 class="card__title">Bring-up</h2>
+                            <span class="chip chip--plain chip--sm" data-role="step-hint">Step 1 of 5</span>
+                        </div>
+                        <p class="ctl-note">
+                            Each step is refused by the robot until the one before it is done.
+                        </p>
+                        <ol class="ctl-steps">
+                            <li class="ctl-step" data-step="connect">
+                                <span class="ctl-step__n">1</span>
+                                <span class="ctl-step__label">Connect &amp; authenticate</span>
+                                <button type="button" class="btn btn--sm" data-action="connect">Connect</button>
+                            </li>
+                            <li class="ctl-step" data-step="estop">
+                                <span class="ctl-step__n">2</span>
+                                <span class="ctl-step__label">Register E-stop</span>
+                                <button type="button" class="btn btn--sm" data-action="estop-register">Register</button>
+                            </li>
+                            <li class="ctl-step" data-step="lease">
+                                <span class="ctl-step__n">3</span>
+                                <span class="ctl-step__label">Acquire body lease</span>
+                                <button type="button" class="btn btn--sm" data-action="lease-acquire">Acquire</button>
+                            </li>
+                            <li class="ctl-step" data-step="power">
+                                <span class="ctl-step__n">4</span>
+                                <span class="ctl-step__label">Power on motors</span>
+                                <button type="button" class="btn btn--sm" data-action="power-on">Power on</button>
+                            </li>
+                            <li class="ctl-step" data-step="stand">
+                                <span class="ctl-step__n">5</span>
+                                <span class="ctl-step__label">Stand up</span>
+                                <button type="button" class="btn btn--sm" data-action="stand">Stand</button>
+                            </li>
+                        </ol>
+
+                        <div class="ctl-divider"></div>
+
+                        <div class="ctl-actions">
+                            <button type="button" class="btn btn--sm" data-action="sit" data-needs="control">
+                                <span data-icon="chevronDown"></span> Sit
+                            </button>
+                            <button type="button" class="btn btn--sm" data-action="selfright" data-needs="control">
+                                <span data-icon="refresh"></span> Self-right
+                            </button>
+                            <button type="button" class="btn btn--sm" data-action="undock" data-needs="control">
+                                <span data-icon="play"></span> Undock
+                            </button>
+                            <button type="button" class="btn btn--sm" data-action="dock" data-needs="control">
+                                <span data-icon="target"></span> Dock
+                            </button>
+                            <button type="button" class="btn btn--sm btn--ghost" data-action="power-off" data-needs="control">
+                                <span data-icon="logout"></span> Power off
+                            </button>
+                            <button type="button" class="btn btn--sm btn--ghost" data-action="release">
+                                <span data-icon="close"></span> Release all
+                            </button>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Drive -->
+                <section class="card ctl-drive is-locked" data-role="drive">
+                    <div class="ctl-panel-head">
+                        <h2 class="card__title">Drive</h2>
+                        <span class="ctl-locked-note" data-role="drive-lock">
+                            Complete bring-up to unlock the sticks.
+                        </span>
+                        <span class="ctl-speed" data-role="speed">v 0.00 m/s · ω 0.00 rad/s</span>
+                    </div>
+
+                    <div class="ctl-sticks">
+                        <div class="ctl-stick-wrap">
+                            <div class="ctl-stick" data-stick="translate" role="application"
+                                 aria-label="Translation joystick: drag to walk forward, back and sideways" tabindex="0">
+                                <div class="ctl-stick__ring"></div>
+                                <div class="ctl-stick__crosshair"></div>
+                                <div class="ctl-stick__knob"></div>
+                            </div>
+                            <span class="ctl-stick__label">Move — forward / back / strafe</span>
+                        </div>
+
+                        <div class="ctl-stick-wrap">
+                            <div class="ctl-stick" data-stick="turn" role="application"
+                                 aria-label="Rotation joystick: drag left or right to turn" tabindex="0">
+                                <div class="ctl-stick__ring"></div>
+                                <div class="ctl-stick__crosshair"></div>
+                                <div class="ctl-stick__knob"></div>
+                            </div>
+                            <span class="ctl-stick__label">Turn — left / right</span>
+                        </div>
+                    </div>
+
+                    <p class="ctl-note ctl-note--center">
+                        Keyboard: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move,
+                        <kbd>Q</kbd><kbd>E</kbd> to turn, <kbd>Space</kbd> to stop.
+                        Release to stop — commands expire automatically.
+                    </p>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="bridge-shell.js?v=20260813"></script>
+    <script src="control.js?v=20260813"></script>
+</body>
+</html>

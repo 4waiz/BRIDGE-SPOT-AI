@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Query
+import control_api
 import digital_factory
 import hsse
 import spot_file_copy
@@ -34,6 +35,9 @@ os.makedirs(LATEST_FOLDER_PATH, exist_ok=True)
 app.mount("/static", StaticFiles(directory="../frontend"), name="static")
 app.mount("/latest", StaticFiles(directory=LATEST_FOLDER_PATH), name="latest")
 
+# Live robot control endpoints under /api/robot
+app.include_router(control_api.router)
+
 
 # Frontend
 @app.get("/")
@@ -43,7 +47,7 @@ async def forward():
 
 
 @app.get("/analyzefromspot")
-def analyze_spot(source: str = Query("digital_factory", enum=["DigitalFactory", "HSSE"])):
+def analyze_spot(source: str = Query("DigitalFactory", enum=["DigitalFactory", "HSSE"])):
     try:
         spot_file_copy.get_data_from_spot(source)
 

@@ -7,7 +7,10 @@ import zipfile
 from exceptions import NoDataOnSpotException
 
 dotenv.load_dotenv("../config.env")
-ip = "192.168.208.117"
+
+# Spot's address on the demo network. DHCP-assigned, so it can change --
+# override via SPOT_IP in ../config.env when it does.
+SPOT_IP = os.getenv("SPOT_IP", "192.168.33.137")
 
 
 temp_folder_path = "../data/download_spot_temp/"
@@ -32,7 +35,7 @@ def get_data_from_spot(mission_name):
 
     # Get data from spot
     arguments = [
-        ip,
+        SPOT_IP,
         "--query-from-timestamp",
         from_time,
         "--query-to-timestamp",

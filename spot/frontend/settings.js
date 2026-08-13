@@ -15,7 +15,7 @@
     if (!ui) return;
 
     var DEFAULTS = {
-        "robot-host": "192.168.208.117",
+        "robot-host": "192.168.33.137",
         "api-mode": "mock",
         "default-route": "digital_factory.html",
         "assistant-mode": "online",
