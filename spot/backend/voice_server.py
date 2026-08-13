@@ -300,6 +300,18 @@ def speech_to_text():
 if __name__ == '__main__':
     # Debug mode exposes the Werkzeug interactive debugger, which is remote code
     # execution for anyone who can reach port 5000. Off unless explicitly asked
-    # for, which also drops the six-line startup banner from `npm start`.
+    # for.
     debug = os.getenv("VOICE_DEBUG", "").strip().lower() in ("1", "true", "yes")
+
+    if not debug:
+        # Werkzeug prints a seven-line banner on start regardless of debug mode.
+        # The start script already prints the service URL, so this is pure
+        # duplication in the `npm start` console. Kept when debugging.
+        import logging as _logging
+
+        from flask import cli as _flask_cli
+
+        _flask_cli.show_server_banner = lambda *args, **kwargs: None
+        _logging.getLogger("werkzeug").setLevel(_logging.ERROR)
+
     app.run(host='0.0.0.0', port=5000, debug=debug)

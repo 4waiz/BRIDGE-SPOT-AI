@@ -43,6 +43,14 @@ if (-not (Test-Path $venvPython)) {
     throw "Virtualenv python missing at $venvPython"
 }
 
+# Report a busy port plainly rather than letting the server fail with winerror 10048.
+$busy = Get-NetTCPConnection -LocalPort 3001 -State Listen -ErrorAction SilentlyContinue
+if ($busy) {
+    $pid3001 = $busy[0].OwningProcess
+    $owner = (Get-Process -Id $pid3001 -ErrorAction SilentlyContinue).ProcessName
+    throw "Port 3001 is already in use by PID $pid3001 ($owner). Stop it first: Stop-Process -Id $pid3001 -Force"
+}
+
 Push-Location $staticDir
 try {
     Write-Host "Frontend: http://localhost:3001"

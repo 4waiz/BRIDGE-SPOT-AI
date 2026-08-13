@@ -72,6 +72,14 @@ if ($LASTEXITCODE -ne 0) {
     throw "Dependency install failed. Full output: $pipLog"
 }
 
+# Report a busy port plainly rather than letting the server fail with winerror 10048.
+$busy = Get-NetTCPConnection -LocalPort 4001 -State Listen -ErrorAction SilentlyContinue
+if ($busy) {
+    $pid4001 = $busy[0].OwningProcess
+    $owner = (Get-Process -Id $pid4001 -ErrorAction SilentlyContinue).ProcessName
+    throw "Port 4001 is already in use by PID $pid4001 ($owner). Stop it first: Stop-Process -Id $pid4001 -Force"
+}
+
 $serviceDir = Join-Path $repoRoot "smart_assistant\\backend\\app"
 Push-Location $serviceDir
 try {

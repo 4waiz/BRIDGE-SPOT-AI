@@ -61,6 +61,14 @@ if ($LASTEXITCODE -ne 0) {
     throw "Dependency install failed. Full output: $pipLog"
 }
 
+# Report a busy port plainly rather than letting the server fail with winerror 10048.
+$busy = Get-NetTCPConnection -LocalPort 5000 -State Listen -ErrorAction SilentlyContinue
+if ($busy) {
+    $pid5000 = $busy[0].OwningProcess
+    $owner = (Get-Process -Id $pid5000 -ErrorAction SilentlyContinue).ProcessName
+    throw "Port 5000 is already in use by PID $pid5000 ($owner). Stop it first: Stop-Process -Id $pid5000 -Force"
+}
+
 $serviceDir = Join-Path $repoRoot "spot\\backend"
 Push-Location $serviceDir
 try {

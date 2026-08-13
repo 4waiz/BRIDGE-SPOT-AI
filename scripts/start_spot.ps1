@@ -70,6 +70,15 @@ $env:TF_ENABLE_ONEDNN_OPTS = "0"
 $env:GRPC_VERBOSITY = "ERROR"
 $env:GLOG_minloglevel = "2"
 
+# A stale server on the port makes uvicorn fail with a bare winerror 10048,
+# which reads like a code fault rather than "something is already running".
+$busy = Get-NetTCPConnection -LocalPort 4000 -State Listen -ErrorAction SilentlyContinue
+if ($busy) {
+    $pid4000 = $busy[0].OwningProcess
+    $owner = (Get-Process -Id $pid4000 -ErrorAction SilentlyContinue).ProcessName
+    throw "Port 4000 is already in use by PID $pid4000 ($owner). Stop it first: Stop-Process -Id $pid4000 -Force"
+}
+
 $serviceDir = Join-Path $repoRoot "spot\\app"
 Push-Location $serviceDir
 try {

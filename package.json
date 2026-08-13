@@ -7,7 +7,7 @@
     "start:assistant": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_assistant.ps1",
     "start:frontend": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_frontend.ps1",
     "start:voice": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_voice.ps1",
-    "start": "concurrently -n spot,assistant,frontend,voice -c \"blue,magenta,green,yellow\" \"npm run start:spot\" \"npm run start:assistant\" \"npm run start:frontend\" \"npm run start:voice\""
+    "start": "concurrently -n spot,assistant,frontend,voice -c \"blue,magenta,green,yellow\" \"npm run --silent start:spot\" \"npm run --silent start:assistant\" \"npm run --silent start:frontend\" \"npm run --silent start:voice\""
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
