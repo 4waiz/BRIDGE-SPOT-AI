@@ -38,13 +38,21 @@
 
     --bg: #ffffff;
     --bg-alt: #f6f7f9;
-    --surface: #ffffff;
-    --surface-alt: #fafbfc;
+    /* Containers sit a step darker than the page so cards read as distinct
+       panels rather than dissolving into a white-on-white background. */
+    --surface: #eceff3;
+    --surface-alt: #e3e7ed;
+    /* Form controls stay light so they still recess against the darker cards
+       they sit inside. Without this they would flatten into the container. */
+    --field: #ffffff;
     --text: #0f1216;
     --text-soft: #414852;
-    --muted: #7b828d;
-    --border: #e8eaee;
-    --border-strong: #d7dbe1;
+    /* Darkened alongside the surfaces above: the old #7b828d fell to 3.4:1 on
+       the new card background, under the 4.5:1 WCAG AA floor. This clears it on
+       both --surface (5.3:1) and --surface-alt (4.9:1). */
+    --muted: #5c636e;
+    --border: #d9dde4;
+    --border-strong: #c2c8d1;
 
     --sidebar-bg: #0a0a0b;
     --sidebar-surface: #16171a;
@@ -78,6 +86,9 @@
     --bg-alt: #16181b;
     --surface: #17191d;
     --surface-alt: #1c1f24;
+    /* Inverted for dark mode: fields recess below the surface rather than
+       rising above it. */
+    --field: #101216;
     --text: #eef1f5;
     --text-soft: #c4cad3;
     --muted: #9aa1ac;
@@ -819,7 +830,7 @@ button {
     padding: 0.7rem 0.9rem;
     border-radius: var(--r-md);
     border: 1px solid var(--border);
-    background: var(--surface);
+    background: var(--field);
     color: var(--text);
     font-family: inherit;
     font-size: 0.94rem;
@@ -2793,7 +2804,7 @@ table.data tbody tr.is-clickable {
     padding: 0.4rem 0.6rem;
     border: 1px solid var(--border-strong);
     border-radius: var(--r-sm);
-    background: var(--surface);
+    background: var(--field);
     color: var(--text);
     font: inherit;
     font-size: 0.85rem;
