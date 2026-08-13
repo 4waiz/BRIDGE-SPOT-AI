@@ -532,7 +532,9 @@
                     var url = URL.createObjectURL(blob);
                     img.src = url;
                     img.style.transform = rotation ? "rotate(" + rotation + "deg)" : "";
-                    img.style.display = "";
+                    // Must be an explicit value: the stylesheet hides this img by
+                    // default as the empty state, so "" would re-hide it.
+                    img.style.display = "block";
                     if (empty) empty.style.display = "none";
                     // Release the previous frame or the tab leaks a blob per frame.
                     if (cameraUrl) URL.revokeObjectURL(cameraUrl);
