@@ -203,7 +203,6 @@
     var ACTIONS = {
         "connect":        { path: "/connect",        label: "Connected to robot." },
         "estop-register": { path: "/estop/register", label: "E-stop registered." },
-        "lease-acquire":  { path: "/lease/acquire",  label: "Lease acquired." },
         "power-on":       { path: "/power/on",       label: "Motors on." },
         "stand":          { path: "/stand",          label: "Standing." },
         "sit":            { path: "/sit",            label: "Sitting." },
@@ -228,6 +227,44 @@
         api(path)
             .then(function () {
                 toast(spec ? spec.label : name + " done.", "ok");
+                // Connecting is what makes the Spot CAM sources resolvable.
+                if (name === "connect") syncCameras();
+                return refreshState();
+            })
+            .catch(function (err) { toast(err.message, "bad"); })
+            .then(function () { if (button) button.disabled = false; });
+    }
+
+    /*
+     * Lease acquisition is a two-stage affair. The polite Acquire fails with
+     * 423 when someone else holds the lease -- nearly always the tablet, since
+     * it grabs the lease as soon as it connects. Rather than dead-ending there,
+     * offer the forced Take behind a dialog that spells out the consequence,
+     * because the tablet operator loses control the instant it goes through.
+     */
+    function acquireLease(button) {
+        if (button) button.disabled = true;
+        api("/lease/acquire")
+            .then(function () { toast("Lease acquired.", "ok"); return refreshState(); })
+            .catch(function (err) {
+                if (err.status !== 423) { toast(err.message, "bad"); return; }
+                confirmAction(
+                    "Lease held by another operator",
+                    err.message +
+                    "<br><br><strong>Taking it drops the tablet's control immediately.</strong> " +
+                    "Only do this if you can see the robot and nobody else is driving it.",
+                    "Take lease anyway",
+                    function () { takeLease(button); }
+                );
+            })
+            .then(function () { if (button) button.disabled = false; });
+    }
+
+    function takeLease(button) {
+        if (button) button.disabled = true;
+        api("/lease/take")
+            .then(function () {
+                toast("Lease taken — the tablet no longer has control.", "warn");
                 return refreshState();
             })
             .catch(function (err) { toast(err.message, "bad"); })
@@ -238,6 +275,7 @@
         $$("[data-action]").forEach(function (btn) {
             var name = btn.getAttribute("data-action");
             btn.addEventListener("click", function () {
+                if (name === "lease-acquire") { acquireLease(btn); return; }
                 if (CONFIRMED[name]) {
                     var c = CONFIRMED[name];
                     confirmAction(c[0], c[1], c[2], function () { runAction(name, btn); });
@@ -446,12 +484,44 @@
        Camera
        ------------------------------------------------------------------ */
 
+    /*
+     * Hide the Spot CAM options when the payload is not fitted, so the operator
+     * is not offered cameras that will only ever return an error.
+     */
+    function syncCameras() {
+        return api("/cameras", { method: "GET" })
+            .then(function (data) {
+                var list = (data && data.cameras) || [];
+                if (!list.length) return;
+                var hasPayload = list.some(function (c) { return c.payload; });
+                var group = $("optgroup[data-group='spotcam']");
+                if (!group) return;
+                group.disabled = !hasPayload;
+                group.label = hasPayload ? "Spot CAM" : "Spot CAM (not fitted)";
+                if (!hasPayload) {
+                    var select = $("[data-role='camera-view']");
+                    if (select && select.value.indexOf("cam-") === 0) select.value = "frontleft";
+                }
+            })
+            .catch(function () { /* leave the static list in place */ });
+    }
+
+    // The panoramic source is 9600x1080 and roughly a megabyte a frame, so it
+    // gets a slower beat than the 1080p PTZ feed.
+    var VIEW_INTERVAL = { "cam-pano": 1500, "cam-ptz": 400 };
+    var lastFrameAt = 0;
+
     function cameraTick() {
         if (!robot.connected || cameraBusy) return;
         var select = $("[data-role='camera-view']");
         var img = $("[data-role='camera-img']");
         var empty = $("[data-role='camera-empty']");
         if (!select || !img) return;
+
+        var minGap = VIEW_INTERVAL[select.value] || 0;
+        var now = Date.now();
+        if (minGap && now - lastFrameAt < minGap) return;
+        lastFrameAt = now;
 
         cameraBusy = true;
         fetch(API + "/camera/" + select.value)
@@ -484,7 +554,7 @@
         setupSticks();
         bindKeyboard();
 
-        refreshState();
+        refreshState().then(syncCameras);
         setInterval(refreshState, POLL_MS);
         setInterval(driveTick, DRIVE_MS);
         setInterval(cameraTick, CAMERA_MS);

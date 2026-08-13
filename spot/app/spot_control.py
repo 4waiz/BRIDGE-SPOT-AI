@@ -41,7 +41,7 @@ from bosdyn.api.docking import docking_pb2
 from bosdyn.client.docking import DockingClient, blocking_dock_robot, blocking_undock, get_dock_id
 from bosdyn.client.estop import EstopClient, EstopEndpoint, EstopKeepAlive
 from bosdyn.client.image import ImageClient
-from bosdyn.client.lease import LeaseClient, LeaseKeepAlive
+from bosdyn.client.lease import LeaseClient, LeaseKeepAlive, ResourceAlreadyClaimedError
 from bosdyn.client.power import PowerClient
 from bosdyn.client.robot_command import RobotCommandBuilder, RobotCommandClient
 from bosdyn.client.robot_state import RobotStateClient
@@ -58,18 +58,40 @@ CMD_DURATION = float(os.getenv("SPOT_CMD_DURATION", "0.6"))
 ESTOP_TIMEOUT = 9.0
 CLIENT_NAME = "BridgeSpotControl"
 
-# Front cameras are physically mounted rotated; the UI corrects them.
-IMAGE_SOURCES = {
-    "frontleft": "frontleft_fisheye_image",
-    "frontright": "frontright_fisheye_image",
-    "left": "left_fisheye_image",
-    "right": "right_fisheye_image",
-    "back": "back_fisheye_image",
+# The Spot CAM payload runs its own ImageService alongside the body one, so it
+# needs a separately registered client keyed on this service name.
+SPOT_CAM_IMAGE_SERVICE = "spot-cam-image"
+
+# view name -> (service, source name, display rotation in degrees)
+#
+# The body fisheyes are mounted rotated, so the UI has to spin them upright.
+# Spot CAM sources come off the payload already the right way up.
+CAMERAS = {
+    # Body cameras (640x480 greyscale fisheye)
+    "frontleft": ("body", "frontleft_fisheye_image", -90),
+    "frontright": ("body", "frontright_fisheye_image", -90),
+    "left": ("body", "left_fisheye_image", 0),
+    "right": ("body", "right_fisheye_image", 180),
+    "back": ("body", "back_fisheye_image", 0),
+    # Spot CAM payload
+    "cam-ptz": ("spotcam", "ptz", 0),               # 1920x1080 colour PTZ
+    "cam-stream": ("spotcam", "stream", 0),         # 1280x720 composited stream
+    "cam-ir": ("spotcam", "ir", 0),                 # 640x512 thermal
+    "cam-ir-overlay": ("spotcam", "ptz-ir-overlay", 0),  # thermal over visible
+    "cam-pano": ("spotcam", "pano", 0),             # 9600x1080 panoramic, large
 }
 
 
 class SpotControlError(RuntimeError):
     """Raised for any expected, reportable control failure."""
+
+
+class LeaseHeldByOtherError(SpotControlError):
+    """The lease belongs to someone else -- usually the tablet.
+
+    Distinct from the generic error so the API can tell the UI to offer a
+    forced take rather than just reporting a dead end.
+    """
 
 
 def _clamp(value, limit):
@@ -120,6 +142,9 @@ class SpotController:
                 )
 
             sdk = bosdyn.client.create_standard_sdk(CLIENT_NAME)
+            # Bind a second ImageClient to the Spot CAM payload's own image
+            # service. Without this only the five body fisheyes are reachable.
+            sdk.register_service_client(ImageClient, service_name=SPOT_CAM_IMAGE_SERVICE)
             robot = sdk.create_robot(SPOT_IP)
             try:
                 robot.authenticate(username, password)
@@ -139,6 +164,16 @@ class SpotController:
                 "image": robot.ensure_client(ImageClient.default_service_name),
                 "docking": robot.ensure_client(DockingClient.default_service_name),
             }
+
+            # Spot CAM is a payload and may simply not be fitted. Treat it as
+            # optional so a robot without one still gets body cameras.
+            try:
+                self._clients["spotcam_image"] = robot.ensure_client(SPOT_CAM_IMAGE_SERVICE)
+                logging.info("Spot CAM image service available")
+            except Exception as exc:
+                self._clients["spotcam_image"] = None
+                logging.warning("Spot CAM not available: %s", exc)
+
             logging.info("Connected to Spot at %s as %s", SPOT_IP, username)
             return self.describe()
 
@@ -219,22 +254,44 @@ class SpotController:
 
     # -- lease --------------------------------------------------------------
 
-    def acquire_lease(self):
+    def acquire_lease(self, force=False):
+        """Take the body lease.
+
+        `force=True` uses the lease service's Take rather than Acquire, which
+        wrests the lease off whoever currently holds it. That is almost always
+        the tablet, and the tablet operator loses control the moment it lands --
+        so the caller is expected to have confirmed with a human first. The API
+        layer keeps this on a separate endpoint for exactly that reason.
+        """
         with self._lock:
             self._require()
             if self._lease_keepalive is not None:
                 return {"lease": "held"}
+
+            client = self._clients["lease"]
             try:
+                if force:
+                    # Take() displaces the current holder, then the keepalive
+                    # adopts the lease already sitting in the wallet.
+                    client.take()
+                    self._lease_keepalive = LeaseKeepAlive(client, return_at_exit=True)
+                    logging.warning("Body lease FORCIBLY taken from the previous holder")
+                    return {"lease": "held", "forced": True}
+
                 self._lease_keepalive = LeaseKeepAlive(
-                    self._clients["lease"], must_acquire=True, return_at_exit=True
+                    client, must_acquire=True, return_at_exit=True
                 )
-            except Exception as exc:
-                raise SpotControlError(
-                    f"Could not take the body lease: {exc}. Another operator "
-                    "(usually the tablet) may still hold it."
+            except ResourceAlreadyClaimedError as exc:
+                raise LeaseHeldByOtherError(
+                    "The body lease is held by another operator, usually the tablet. "
+                    "Take it only if you can see the robot and know nobody else is "
+                    "driving it."
                 ) from exc
+            except Exception as exc:
+                raise SpotControlError(f"Could not take the body lease: {exc}") from exc
+
             logging.info("Body lease acquired")
-            return {"lease": "held"}
+            return {"lease": "held", "forced": False}
 
     def return_lease(self):
         with self._lock:
@@ -413,25 +470,46 @@ class SpotController:
                 },
             }
 
+    def list_cameras(self):
+        """Camera views this robot can actually serve right now."""
+        with self._lock:
+            has_spotcam = bool(self._clients.get("spotcam_image"))
+            return [
+                {"view": view, "source": source, "payload": service == "spotcam"}
+                for view, (service, source, _) in CAMERAS.items()
+                if service == "body" or has_spotcam
+            ]
+
     def get_image(self, view="frontleft"):
-        """Return (jpeg_bytes, rotation_degrees) for one camera."""
+        """Return (jpeg_bytes, rotation_degrees) for one camera view."""
         with self._lock:
             self._require()
-            source = IMAGE_SOURCES.get(view)
-            if source is None:
+            entry = CAMERAS.get(view)
+            if entry is None:
                 raise SpotControlError(
-                    f"Unknown camera '{view}'. Options: {', '.join(IMAGE_SOURCES)}"
+                    f"Unknown camera '{view}'. Options: {', '.join(CAMERAS)}"
                 )
-            responses = self._clients["image"].get_image_from_sources([source])
+            service, source, rotation = entry
+
+            if service == "spotcam":
+                client = self._clients.get("spotcam_image")
+                if client is None:
+                    raise SpotControlError(
+                        "Spot CAM is not available on this robot. Use a body camera."
+                    )
+            else:
+                client = self._clients["image"]
+
+            responses = client.get_image_from_sources([source])
             if not responses:
                 raise SpotControlError(f"No image returned for {source}.")
             image = responses[0].shot.image
             if image.format != image_pb2.Image.FORMAT_JPEG:
-                raise SpotControlError(f"Unexpected image format for {source}.")
-            # The two front cameras sit rotated 90 degrees on the body; the
-            # side cameras sit at 180. The client rotates for display.
-            rotation = {"frontleft": -90, "frontright": -90, "left": 0, "right": 180, "back": 0}
-            return image.data, rotation.get(view, 0)
+                raise SpotControlError(
+                    f"Unexpected image format for {source}: "
+                    f"{image_pb2.Image.Format.Name(image.format)}."
+                )
+            return image.data, rotation
 
 
 # Process-wide singleton used by the API layer.

@@ -17,7 +17,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 import spot_control
-from spot_control import SpotControlError, controller
+from spot_control import LeaseHeldByOtherError, SpotControlError, controller
 
 router = APIRouter(prefix="/api/robot", tags=["robot"])
 
@@ -42,6 +42,10 @@ def _guard(fn, *args, **kwargs):
     """Run a controller call, turning expected failures into clean HTTP errors."""
     try:
         return fn(*args, **kwargs)
+    except LeaseHeldByOtherError as exc:
+        # 423 Locked, kept distinct from the generic 409 so the UI knows it can
+        # offer a forced take instead of just showing a dead end.
+        raise HTTPException(status_code=423, detail=str(exc)) from exc
     except SpotControlError as exc:
         # 409: the robot is reachable but not in a state where this makes sense
         # (no lease, no E-stop, already docked, credentials missing).
@@ -110,7 +114,19 @@ def estop_release():
 
 @router.post("/lease/acquire")
 def lease_acquire():
-    return _guard(controller.acquire_lease)
+    """Politely acquire the lease. 423 if someone else already holds it."""
+    return _guard(controller.acquire_lease, False)
+
+
+@router.post("/lease/take")
+def lease_take():
+    """Forcibly take the lease off the current holder.
+
+    Whoever holds it -- almost always the tablet -- loses control immediately.
+    Deliberately a separate endpoint from /lease/acquire so it can never happen
+    as an automatic retry; a human has to ask for it.
+    """
+    return _guard(controller.acquire_lease, True)
 
 
 @router.post("/lease/return")
@@ -175,6 +191,14 @@ def undock():
 
 
 # -- cameras ----------------------------------------------------------------
+
+
+@router.get("/cameras")
+def cameras():
+    """Views this robot can serve, so the UI can hide Spot CAM when absent."""
+    if not controller.is_connected:
+        return {"cameras": []}
+    return {"cameras": _guard(controller.list_cameras)}
 
 
 @router.get("/camera/{view}")

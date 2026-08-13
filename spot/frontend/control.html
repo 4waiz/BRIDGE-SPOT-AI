@@ -61,11 +61,20 @@
                         <div class="ctl-panel-head">
                             <h2 class="card__title">Camera</h2>
                             <select class="ctl-select" data-role="camera-view" aria-label="Camera view">
-                                <option value="frontleft">Front left</option>
-                                <option value="frontright">Front right</option>
-                                <option value="left">Left</option>
-                                <option value="right">Right</option>
-                                <option value="back">Back</option>
+                                <optgroup label="Spot CAM" data-group="spotcam">
+                                    <option value="cam-ptz" selected>PTZ (1920×1080)</option>
+                                    <option value="cam-stream">Stream (1280×720)</option>
+                                    <option value="cam-ir">Thermal</option>
+                                    <option value="cam-ir-overlay">Thermal overlay</option>
+                                    <option value="cam-pano">Panoramic</option>
+                                </optgroup>
+                                <optgroup label="Body cameras" data-group="body">
+                                    <option value="frontleft">Front left</option>
+                                    <option value="frontright">Front right</option>
+                                    <option value="left">Left</option>
+                                    <option value="right">Right</option>
+                                    <option value="back">Back</option>
+                                </optgroup>
                             </select>
                         </div>
                         <div class="ctl-feed">
