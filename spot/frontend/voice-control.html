@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Bridge Spot — Voice Control</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" type="text/css" href="styles.css?v=20260817">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
+</head>
+<body>
+    <div class="bs-app" data-shell data-nav="voice">
+        <main class="bs-main">
+            <div class="bs-content">
+                <div class="page-head">
+                    <div>
+                        <h1 class="page-head__title">Voice Control</h1>
+                        <p class="page-head__sub">
+                            Spot operator interface. Speak a command and it runs through the same
+                            control path as the manual dashboard — no shortcuts, no special privileges.
+                        </p>
+                    </div>
+                    <div class="page-head__actions">
+                        <span class="chip chip--plain" data-role="vc-conn">Checking…</span>
+                        <a class="btn" href="control.html"><span data-icon="robot"></span> Manual control</a>
+                        <button type="button" class="ctl-estop" data-role="vc-estop">
+                            <span data-icon="alert"></span> EMERGENCY STOP
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Surfaces microphone/permission problems without breaking the page -->
+                <div class="vc-banner" data-role="vc-banner" hidden></div>
+
+                <div class="vc-layout">
+                    <!-- ============ main voice stage ============ -->
+                    <section class="card vc-stage">
+                        <div class="vc-orb-wrap">
+                            <!-- Reactive rings sit behind the button; the button
+                                 itself is a real <button> for keyboard users. -->
+                            <div class="vc-orb__rings" aria-hidden="true">
+                                <span class="vc-orb__ring vc-orb__ring--1"></span>
+                                <span class="vc-orb__ring vc-orb__ring--2"></span>
+                                <span class="vc-orb__ring vc-orb__ring--3"></span>
+                            </div>
+                            <svg class="vc-orb__progress" viewBox="0 0 240 240" aria-hidden="true">
+                                <circle class="vc-orb__progress-track" cx="120" cy="120" r="112"></circle>
+                                <circle class="vc-orb__progress-bar" cx="120" cy="120" r="112"></circle>
+                            </svg>
+                            <button type="button" class="vc-orb" data-role="vc-mic"
+                                    aria-label="Start listening for a Spot command">
+                                <span class="vc-orb__icon" data-role="vc-mic-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="9" y="2.5" width="6" height="11" rx="3"></rect>
+                                        <path d="M5.5 11a6.5 6.5 0 0 0 13 0"></path>
+                                        <path d="M12 17.5V21M8.5 21h7"></path>
+                                    </svg>
+                                </span>
+                            </button>
+                        </div>
+
+                        <div class="vc-stage__status">
+                            <span class="vc-state" data-role="vc-state">Ready for command</span>
+                            <span class="vc-hint" data-role="vc-hint">Tap the microphone, or press Space</span>
+                        </div>
+
+                        <!-- Live waveform. Canvas keeps this to one draw call a
+                             frame rather than animating dozens of DOM nodes. -->
+                        <canvas class="vc-wave" data-role="vc-wave" height="64" aria-hidden="true"></canvas>
+
+                        <div class="vc-live" data-role="vc-live" hidden>
+                            <span class="vc-live__label">You</span>
+                            <span class="vc-live__text" data-role="vc-live-text"></span>
+                        </div>
+                    </section>
+
+                    <!-- ============ side panels ============ -->
+                    <div class="vc-side">
+                        <section class="card vc-panel">
+                            <h2 class="card__title">Robot</h2>
+                            <dl class="vc-facts" data-role="vc-facts">
+                                <div><dt>Connection</dt><dd data-fact="connection">—</dd></div>
+                                <div><dt>Power</dt><dd data-fact="power">—</dd></div>
+                                <div><dt>Mobility</dt><dd data-fact="mobility">—</dd></div>
+                                <div><dt>Lease</dt><dd data-fact="lease">—</dd></div>
+                                <div><dt>E-stop</dt><dd data-fact="estop">—</dd></div>
+                                <div><dt>Battery</dt><dd data-fact="battery">—</dd></div>
+                                <div><dt>Dock</dt><dd data-fact="dock">—</dd></div>
+                                <div><dt>Command state</dt><dd data-fact="command">Ready</dd></div>
+                            </dl>
+                        </section>
+
+                        <section class="card vc-panel">
+                            <h2 class="card__title">Voice system</h2>
+                            <dl class="vc-facts vc-facts--compact" data-role="vc-voice-facts">
+                                <div><dt>Microphone</dt><dd data-vfact="mic">—</dd></div>
+                                <div><dt>Speech recognition</dt><dd data-vfact="stt">—</dd></div>
+                                <div><dt>Spot voice</dt><dd data-vfact="tts">—</dd></div>
+                                <div><dt>Command engine</dt><dd data-vfact="engine">—</dd></div>
+                            </dl>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- ============ quick commands ============ -->
+                <section class="card">
+                    <div class="ctl-panel-head">
+                        <h2 class="card__title">Quick commands</h2>
+                        <span class="ctl-note" style="margin:0">Runs exactly as if spoken</span>
+                    </div>
+                    <div class="vc-quick" data-role="vc-quick"></div>
+                </section>
+
+                <!-- ============ transcript ============ -->
+                <section class="card">
+                    <div class="ctl-panel-head">
+                        <h2 class="card__title">Command history</h2>
+                        <button type="button" class="btn btn--sm btn--ghost" data-role="vc-clear">Clear</button>
+                    </div>
+                    <div class="vc-log" data-role="vc-log">
+                        <p class="vc-log__empty">No commands yet. Speak to Spot, or use a quick command.</p>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="bridge-shell.js?v=20260817"></script>
+    <script src="robot-service.js?v=20260817"></script>
+    <script src="voice-engine.js?v=20260817"></script>
+    <script src="voice-commands.js?v=20260817"></script>
+    <script src="voice-control.js?v=20260817"></script>
+</body>
+</html>

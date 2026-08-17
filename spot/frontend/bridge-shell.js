@@ -72,6 +72,7 @@
         user: '<circle cx="12" cy="8.2" r="3.5"/><path d="M4.8 20c0-3.6 3.2-6 7.2-6s7.2 2.4 7.2 6"/>',
         gauge: '<path d="M4 17.5a8.5 8.5 0 1 1 16 0"/><path d="M12 17.5 15.8 10"/><circle cx="12" cy="17.5" r="1.2" fill="currentColor" stroke="none"/>',
         camera: '<path d="M3.5 8.5h3.2l1.6-2.4h7.4l1.6 2.4h3.2v10a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/><circle cx="12" cy="13.5" r="3.4"/>',
+        mic: '<rect x="9" y="2.6" width="6" height="11" rx="3"/><path d="M5.6 11a6.4 6.4 0 0 0 12.8 0"/><path d="M12 17.4V21M8.8 21h6.4"/>',
         thermometer: '<path d="M14 13.7V5.5a2 2 0 1 0-4 0v8.2a4.2 4.2 0 1 0 4 0z"/><path d="M12 9.5v5.2"/>',
         clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.2V12l3.2 2"/>',
         pin: '<path d="M12 21s6.5-5.6 6.5-10.2A6.5 6.5 0 0 0 5.5 10.8C5.5 15.4 12 21 12 21z"/><circle cx="12" cy="10.6" r="2.4"/>'
@@ -177,6 +178,7 @@
         { key: "home", label: "Home", href: "index.html", icon: "home" },
         { key: "dashboard", label: "Dashboard", href: "dashboard.html", icon: "grid" },
         { key: "control", label: "Control", href: "control.html", icon: "robot" },
+        { key: "voice", label: "Voice Control", href: "voice-control.html", icon: "mic" },
         { key: "choreography", label: "Choreography", href: "choreography.html", icon: "sparkle" },
         { key: "missions", label: "Missions", href: "missions.html", icon: "mission" },
         { key: "reports", label: "Reports", href: "reports.html", icon: "report" },

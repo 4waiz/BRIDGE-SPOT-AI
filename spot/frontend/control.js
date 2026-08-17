@@ -49,24 +49,25 @@
        API helper
        ------------------------------------------------------------------ */
 
+    /*
+     * Thin adapter over the shared RobotService so manual control and voice
+     * control go through one HTTP layer rather than two near-identical copies.
+     * RobotService resolves a result object either way; this page was written
+     * against a throwing API, so failures are re-thrown here to keep the
+     * existing .catch() handlers working unchanged.
+     */
     function api(path, options) {
         var opts = options || {};
-        var init = { method: opts.method || "POST", headers: {} };
-        if (opts.body !== undefined) {
-            init.headers["Content-Type"] = "application/json";
-            init.body = JSON.stringify(opts.body);
-        }
-        return fetch(API + path, init).then(function (res) {
-            return res.json().catch(function () { return {}; }).then(function (data) {
-                if (!res.ok) {
-                    // The service layer puts the human-readable reason in `detail`.
-                    var reason = data && data.detail ? data.detail : res.statusText;
-                    var err = new Error(reason);
-                    err.status = res.status;
-                    throw err;
-                }
-                return data;
-            });
+        return window.RobotService.call(path, path, {
+            method: opts.method,
+            body: opts.body
+        }).then(function (result) {
+            if (!result.ok) {
+                var err = new Error(result.error);
+                err.status = result.status;
+                throw err;
+            }
+            return result.data;
         });
     }
 
