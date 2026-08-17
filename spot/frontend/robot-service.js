@@ -1,5 +1,5 @@
 /*
- * BRIDGE SPOT — robot command service.
+ * BRIDGE SPOT - robot command service.
  *
  * The single place the frontend talks to the robot. Both the manual Control
  * page and the Voice Control page call these functions, so there is exactly one

@@ -1,5 +1,5 @@
 /*
- * BRIDGE SPOT — Autowalk mission playback.
+ * BRIDGE SPOT - Autowalk mission playback.
  *
  * Drives the real Autowalk section at the top of the Missions page. Everything
  * else on that page is the demo mission builder; nothing here touches it.
@@ -66,7 +66,7 @@
             } else if (mission.actions === 0) {
                 // Worth saying plainly: this route walks and docks but captures
                 // nothing, so no inspection images will appear afterwards.
-                warn = '<p class="aw-card__warn aw-card__warn--info">Navigation only — no capture actions</p>';
+                warn = '<p class="aw-card__warn aw-card__warn--info">Navigation only, no capture actions</p>';
             }
 
             card.innerHTML =
@@ -164,7 +164,7 @@
     function bind() {
         var upload = $("[data-action='aw-upload']");
         if (upload) upload.addEventListener("click", function () {
-            toast("Uploading map — this can take a minute.", "info");
+            toast("Uploading map, this can take a minute.", "info");
             run("aw-upload", "/missions/upload", { mission: selected }, "Upload");
         });
 
@@ -178,7 +178,7 @@
             var mission = library.find(function (m) { return m.id === selected; }) || {};
             confirmAction(
                 "Play " + (mission.name || "mission"),
-                "Spot will walk the recorded route <strong>autonomously</strong> — about " +
+                "Spot will walk the recorded route <strong>autonomously</strong>, about " +
                 (mission.route_ft || "?") + " ft across " + (mission.waypoints || "?") +
                 " waypoints, with nobody steering.<br><br>" +
                 "Clear the route, keep the tablet controller in reach, and stay with the robot.",

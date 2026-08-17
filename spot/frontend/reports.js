@@ -1,12 +1,12 @@
 /*
- * BRIDGE SPOT — reports page.
+ * BRIDGE SPOT - reports page.
  *
  * Lists the demo report catalogue plus any report generated in this browser
  * (mission builder or the "Generate report" dialog). Reports created here are
  * stored under localStorage["bridge-spot:reports"] so they survive a reload
  * and show up wherever reports are listed.
  *
- * Download produces a real file client-side — no backend required.
+ * Download produces a real file client-side, no backend required.
  *
  * FUTURE: GET /api/reports for the catalogue, POST /api/reports to generate,
  * and GET /api/reports/{id}/download for the PDF.
@@ -78,7 +78,7 @@
     /* ---------------- Report body ---------------- */
     function reportText(report) {
         var lines = [];
-        lines.push("BRIDGE SPOT — " + report.title);
+        lines.push("BRIDGE SPOT - " + report.title);
         lines.push("=".repeat(60));
         lines.push("Report ID : " + report.id);
         lines.push("Type      : " + report.type);
@@ -260,7 +260,7 @@
         titleField.appendChild(el("label", "field__label", "Title"));
         var input = el("input", "input");
         input.type = "text";
-        input.value = "Inspection summary — " + ui.formatDateTime(new Date());
+        input.value = "Inspection summary, " + ui.formatDateTime(new Date());
         titleField.appendChild(input);
         form.appendChild(titleField);
 

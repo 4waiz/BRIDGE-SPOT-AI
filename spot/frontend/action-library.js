@@ -1,12 +1,12 @@
 /*
- * BRIDGE SPOT — inspection action library UI.
+ * BRIDGE SPOT - inspection action library UI.
  *
  * Attaches reusable capture actions to waypoints on an Autowalk route. Lives in
  * the Autowalk panel on the Missions page and is driven by the mission
  * autowalk.js selects, so the two stay on the same mission.
  *
  * The preview is the point of this screen. A capture action is only as good as
- * its framing, and pan/tilt/zoom numbers mean nothing on their own — so Aim
+ * its framing, and pan/tilt/zoom numbers mean nothing on their own, so Aim
  * drives the real Spot CAM to those angles and pulls back the actual frame the
  * action would record. That moves the camera but never the robot, so it needs
  * a connection and neither the lease nor the E-stop.
@@ -102,7 +102,7 @@
         var note = $("[data-role='al-preview-note']");
         if (note) {
             note.textContent = template.uses_ptz
-                ? "Aiming moves the Spot CAM only — the robot stays put."
+                ? "Aiming moves the Spot CAM only, the robot stays put."
                 : "This action captures " + template.sources.join(", ") + " and does not use the PTZ.";
         }
 
@@ -161,7 +161,7 @@
                 }
                 // The PTZ autofocuses after it moves. Grabbing the frame too
                 // early returns a blurred image, which looks like a bad camera
-                // rather than a still-settling one — 2.5s clears it.
+                // rather than a still-settling one, 2.5s clears it.
                 return new Promise(function (resolve) { setTimeout(resolve, 2500); })
                     .then(function () {
                         var source = template.sources[0] === "ir" ? "cam-ir" : "cam-ptz";

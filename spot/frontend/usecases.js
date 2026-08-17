@@ -1,9 +1,9 @@
 /*
- * BRIDGE SPOT — mission modules (Industry 5.0 use cases) + detail dialog.
+ * BRIDGE SPOT - mission modules (Industry 5.0 use cases) + detail dialog.
  *
  * DEMO ONLY. Renders the cards defined in usecases.data.js and opens a
  * client-side detail dialog through the shared BridgeUI modal. No backend
- * calls are made — every action button is mocked (see handleMockAction).
+ * calls are made, every action button is mocked (see handleMockAction).
  *
  * How pages use it:
  *   <div class="module-list" data-role="module-list"
@@ -14,7 +14,7 @@
  *   index.html#demo=<id>
  *        ... deep link straight into a module
  *
- * FUTURE REAL API INTEGRATION: see handleMockAction() at the bottom — each
+ * FUTURE REAL API INTEGRATION: see handleMockAction() at the bottom, each
  * action id is where a real Spot SDK / BRIDGE backend call should be wired.
  */
 (function initUseCases() {
@@ -230,7 +230,7 @@
     }
 
     /*
-     * handleMockAction — DEMO stub for every action button.
+     * handleMockAction, DEMO stub for every action button.
      *
      * FUTURE REAL API INTEGRATION:
      *   switch (action.id) {
@@ -243,12 +243,12 @@
     function handleMockAction(action, context, btn) {
         btn.classList.add("is-busy");
         btn.disabled = true;
-        logLine(btn, "▶ " + action.label + " — running (demo)…");
+        logLine(btn, "▶ " + action.label + ", running (demo)…");
 
         window.setTimeout(function () {
             btn.classList.remove("is-busy");
             btn.disabled = false;
-            logLine(btn, "✓ " + action.label + " — completed (mock data, no robot connected).");
+            logLine(btn, "✓ " + action.label + ", completed (mock data, no robot connected).");
             if (ui.toast) ui.toast(action.label + " completed (demo).", "ok");
         }, 900);
     }

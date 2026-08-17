@@ -1,5 +1,5 @@
 /*
- * BRIDGE SPOT — shared behaviour for the live inspection pages
+ * BRIDGE SPOT - shared behaviour for the live inspection pages
  * (digital_factory.html and hsse.html).
  *
  * The data plumbing still lives in digital_factory.js / hsse.js (they call
@@ -63,7 +63,7 @@
         });
     }
 
-    // A missing capture returns 404 from /latest/<route>/… — show a friendly
+    // A missing capture returns 404 from /latest/<route>/…, show a friendly
     // placeholder rather than a broken image icon.
     function watchImages() {
         Array.prototype.forEach.call(document.querySelectorAll(".main_img"), function (img) {

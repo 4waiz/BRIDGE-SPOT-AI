@@ -1,5 +1,5 @@
 /*
- * BRIDGE SPOT — Choreography page.
+ * BRIDGE SPOT - Choreography page.
  *
  * A browsable view of Spot's dance repertoire that can also drive it. Shares
  * the /api/robot/choreography endpoints and the .dance-tile styling with the
@@ -100,7 +100,7 @@
     }
 
     /* ------------------------------------------------------------------
-       Gating — say plainly why the tiles are inert
+       Gating, say plainly why the tiles are inert
        ------------------------------------------------------------------ */
 
     function setBanner(message, tone) {
@@ -140,7 +140,7 @@
                 ready = !!estop.registered && !!estop.clear && !!s.lease_held && !!s.powered_on;
 
                 if (chip) {
-                    chip.textContent = ready ? "Ready to dance" : "Connected — bring-up incomplete";
+                    chip.textContent = ready ? "Ready to dance" : "Connected, bring-up incomplete";
                     chip.className = "chip " + (ready ? "chip--ok" : "chip--warn");
                 }
 
@@ -159,7 +159,7 @@
                     if (!s.lease_held) missing.push("acquire the lease");
                     if (!s.powered_on) missing.push("power on the motors");
                     setBanner(
-                        "Almost there — still need to " + missing.join(", ") + ". " +
+                        "Almost there, still need to " + missing.join(", ") + ". " +
                         'Do it on the <a href="control.html">Control page</a>.', "info");
                 } else {
                     setBanner(null);

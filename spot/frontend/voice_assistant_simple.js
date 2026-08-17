@@ -1342,7 +1342,7 @@ class SimpleSpotAssistant {
     start() {
         if (!this.recognition) {
             if (window.BridgeUI) {
-                window.BridgeUI.toast('Voice input is not available in this browser — type your question instead.', 'warn');
+                window.BridgeUI.toast('Voice input is not available in this browser, type your question instead.', 'warn');
             } else {
                 console.warn('Speech recognition not available');
             }
@@ -1564,7 +1564,7 @@ class SimpleSpotAssistant {
         // Text questions can reach this without any speech stack (no TTS in the
         // browser): show the answer instead of failing.
         if (!this.synthesis || typeof window.SpeechSynthesisUtterance === 'undefined') {
-            console.warn('Speech synthesis unavailable — showing the answer without audio');
+            console.warn('Speech synthesis unavailable, showing the answer without audio');
             if (onStart) {
                 onStart();
             }

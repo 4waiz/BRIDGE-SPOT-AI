@@ -1,14 +1,14 @@
 /*
- * BRIDGE SPOT — settings page.
+ * BRIDGE SPOT - settings page.
  *
  * Every control writes straight to localStorage through BridgeUI.store, so
  * the rest of the platform picks the value up on the next render:
- *   robot-host / api-mode      — used by the connection test and shown in dialogs
- *   default-route              — orders the "Start Inspection" menu on home
- *   assistant-mode/-autostart  — applied by home.js to the voice assistant
- *   assistant-collapsed        — assistant panel default state
- *   sidebar-collapsed          — shared app shell
- *   notify-dot                 — unread indicator in the top bar
+ *   robot-host / api-mode     , used by the connection test and shown in dialogs
+ *   default-route             , orders the "Start Inspection" menu on home
+ *   assistant-mode/-autostart , applied by home.js to the voice assistant
+ *   assistant-collapsed       , assistant panel default state
+ *   sidebar-collapsed         , shared app shell
+ *   notify-dot                , unread indicator in the top bar
  */
 (function initSettings() {
     var ui = window.BridgeUI;
@@ -106,7 +106,7 @@
             }
         };
 
-        // Ping a static asset served by the FastAPI app — this proves the
+        // Ping a static asset served by the FastAPI app, this proves the
         // platform backend is reachable without waking the robot.
         // FUTURE (live mode): call GET /api/robot/ping instead.
         var url = "favicon/favicon-32x32.png?ping=" + new Date().getTime();

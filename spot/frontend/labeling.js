@@ -1,5 +1,5 @@
 /*
- * BRIDGE SPOT — dataset labelling.
+ * BRIDGE SPOT - dataset labelling.
  *
  * Built for throughput. There are 623 door images and 290 fire-safety images to
  * get through, so every decision is one keystroke and the next image is already
@@ -7,8 +7,8 @@
  * per image would make the job take an afternoon instead of half an hour.
  *
  * Two modes, chosen by the dataset rather than the operator:
- *   classify — one class per image, number keys, auto-advance
- *   detect   — drag boxes on the image, Enter to save
+ *   classify, one class per image, number keys, auto-advance
+ *   detect  , drag boxes on the image, Enter to save
  *
  * Labels are written to a sidecar on the server; nothing moves the source
  * images, and Z undoes the last decision.
@@ -125,7 +125,7 @@
         $("[data-role='lb-picker']").hidden = false;
         $("[data-role='lb-stage']").hidden = true;
         $("[data-role='lb-back']").hidden = true;
-        $("[data-role='lb-progress']").textContent = "—";
+        $("[data-role='lb-progress']").textContent = "-";
         loadDatasets();
     }
 

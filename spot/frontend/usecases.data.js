@@ -1,5 +1,5 @@
 /*
- * BRIDGE SPOT — Industry 5.0 demo use cases (DEMO DATA ONLY).
+ * BRIDGE SPOT - Industry 5.0 demo use cases (DEMO DATA ONLY).
  *
  * This file is the single source of truth for the use-case cards on the
  * launcher and the content shown in each demo detail modal. It is intentionally
@@ -212,7 +212,7 @@ const USE_CASES = [
 ];
 
 /*
- * Spot Admin — kept as the admin/settings entry. Demo-only status block.
+ * Spot Admin, kept as the admin/settings entry. Demo-only status block.
  *
  * FUTURE: replace these static values with live robot state from the Spot SDK
  * (robot.get_robot_state) and the BRIDGE config service.
@@ -240,5 +240,5 @@ const ADMIN_INFO = {
   ],
 };
 
-// Expose to the launcher script (kept as plain globals — no build step here).
+// Expose to the launcher script (kept as plain globals, no build step here).
 window.BRIDGE_SPOT_DEMO = { USE_CASES, ADMIN_INFO, BRIDGE_ACCENT };

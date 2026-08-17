@@ -1,5 +1,5 @@
 /*
- * BRIDGE SPOT — home page behaviour.
+ * BRIDGE SPOT - home page behaviour.
  *
  * Wires the launcher screen: quick-action tiles, the "Start Inspection"
  * split button, and the Smart Assistant panel (text box + collapse). The
@@ -89,7 +89,7 @@
     function askAssistant(question) {
         var assistant = assistantInstance();
         if (!assistant) {
-            ui.toast("Smart Assistant is still starting up — try again in a moment.", "warn");
+            ui.toast("Smart Assistant is still starting up, try again in a moment.", "warn");
             return;
         }
 
@@ -98,7 +98,7 @@
                 // Normal path: start the full voice session, then send the text.
                 assistant.start();
             } else {
-                // No speech recognition in this browser — run text-only.
+                // No speech recognition in this browser, run text-only.
                 assistant.isListening = true;
                 if (typeof assistant.showBubble === "function") assistant.showBubble();
             }
@@ -160,7 +160,7 @@
     }
 
     /* ------------------------------------------------------------------
-       "Start Inspection" menu — the default route from Settings goes first.
+       "Start Inspection" menu, the default route from Settings goes first.
        ------------------------------------------------------------------ */
     function bindInspectionMenu() {
         var menu = document.getElementById("inspection-menu");

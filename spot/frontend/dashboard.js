@@ -1,5 +1,5 @@
 /*
- * BRIDGE SPOT — dashboard page.
+ * BRIDGE SPOT - dashboard page.
  *
  * Renders KPIs, the inspection activity chart, recent missions, open findings
  * and asset health from platform.data.js (demo dataset).

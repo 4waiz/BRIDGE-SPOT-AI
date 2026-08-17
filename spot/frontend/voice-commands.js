@@ -1,5 +1,5 @@
 /*
- * BRIDGE SPOT — voice intent resolution and command registry.
+ * BRIDGE SPOT - voice intent resolution and command registry.
  *
  * Speech is matched against a fixed allowlist of intents, each bound to a
  * function on RobotService. There is no path from a transcript to an arbitrary
@@ -8,7 +8,7 @@
  * is deterministic string matching rather than a model.
  *
  * Every intent maps onto an action the dashboard already had. Voice is another
- * way to press the same buttons — it gets no privileges the Control page
+ * way to press the same buttons, it gets no privileges the Control page
  * does not have, and the backend still enforces lease, E-stop and power.
  *
  * Exposed as window.VoiceCommands.

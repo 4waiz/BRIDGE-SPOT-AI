@@ -1,5 +1,5 @@
 /*
- * BRIDGE SPOT — digital twin hero.
+ * BRIDGE SPOT - digital twin hero.
  *
  * Replaces the still photo on the home page with the rigged Spot model from the
  * spot-digital-twin project, and drives its animation from live robot state:
@@ -8,7 +8,7 @@
  * Degrades on purpose. WebGL may be unavailable, the demo network may be
  * offline (three.js comes from a CDN, as in the twin project's own viewer), and
  * the 21 MB model may simply not be present. In any of those cases the photo
- * that was always there stays put — a hero that silently falls back is better
+ * that was always there stays put, a hero that silently falls back is better
  * than a blank rectangle on the landing page.
  *
  * Loaded as a module so `import` is available; the page works without it.
@@ -27,8 +27,10 @@
 
     var canvas = host.querySelector("[data-role='twin-canvas']");
     var fallback = host.querySelector("[data-role='twin-fallback']");
-    var badge = host.querySelector("[data-role='twin-badge']");
-    var badgeText = host.querySelector("[data-role='twin-badge-text']");
+    // Queried from the document, not the stage: the badge sits beside the
+    // stage in normal flow so it cannot overlap the cards below.
+    var badge = document.querySelector("[data-role='twin-badge']");
+    var badgeText = document.querySelector("[data-role='twin-badge-text']");
 
     // Bail before loading anything heavy if the browser cannot render it.
     function webglAvailable() {
@@ -295,7 +297,7 @@
     // three.js is not vendored locally, so it comes from a CDN exactly as the
     // spot-digital-twin viewer does. Imported through the page's import map:
     // GLTFLoader resolves 'three' as a bare specifier and fails without it.
-    // A failure here is not fatal — the photo stays.
+    // A failure here is not fatal, the photo stays.
     Promise.all([import("three"), import("three/addons/loaders/GLTFLoader.js")])
         .then(function (mods) { boot(mods[0], mods[1].GLTFLoader); })
         .catch(function (err) {
@@ -321,7 +323,7 @@
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (s) {
                 if (!s || !s.connected) {
-                    out.textContent = "Spot is not connected — voice commands will say so.";
+                    out.textContent = "Spot is not connected, voice commands will say so.";
                     out.classList.remove("is-ready");
                     return;
                 }
@@ -329,7 +331,7 @@
                 var ready = estop.registered && estop.clear && s.lease_held && s.powered_on;
                 out.textContent = ready
                     ? "Connected and ready for spoken commands."
-                    : "Connected — finish bring-up to unlock motion commands.";
+                    : "Connected, finish bring-up to unlock motion commands.";
                 out.classList.toggle("is-ready", !!ready);
             })
             .catch(function () {

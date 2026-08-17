@@ -1,5 +1,5 @@
 /*
- * BRIDGE SPOT — voice engine.
+ * BRIDGE SPOT - voice engine.
  *
  * Speech in, speech out, and a microphone level meter for the waveform. All
  * browser-native: Web Speech API for both directions, Web Audio for metering.
@@ -27,7 +27,7 @@
     var SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     /* ==================================================================
-       Speaker — text to speech with a strict one-at-a-time contract
+       Speaker, text to speech with a strict one-at-a-time contract
        ================================================================== */
 
     var preferredVoice = null;
@@ -69,7 +69,7 @@
 
         /**
          * Say something. Cancels anything already speaking, so two responses
-         * can never overlap — the operator always hears the most recent thing.
+         * can never overlap, the operator always hears the most recent thing.
          * Resolves when finished (or immediately if unsupported).
          */
         speak: function (text, handlers) {
@@ -134,7 +134,7 @@
     };
 
     /* ==================================================================
-       Recogniser — speech to text, push to talk
+       Recogniser, speech to text, push to talk
        ================================================================== */
 
     // Stop listening after this much continuous silence, and never hold the
@@ -276,7 +276,7 @@
     }
 
     /* ==================================================================
-       Audio meter — drives the waveform from real microphone input
+       Audio meter, drives the waveform from real microphone input
        ================================================================== */
 
     function createAudioMeter() {

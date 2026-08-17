@@ -1,5 +1,5 @@
 /*
- * BRIDGE SPOT — live robot control.
+ * BRIDGE SPOT - live robot control.
  *
  * Talks to the /api/robot/* endpoints served by spot/app/control_api.py. Unlike
  * the rest of the platform pages, nothing here is demo data: every button moves
@@ -130,8 +130,8 @@
 
         if (!state.connected) {
             setChip("conn-chip", "Disconnected", null);
-            setStat("connection", state.ip || "—", null);
-            ["estop", "lease", "power", "battery", "dock"].forEach(function (f) { setStat(f, "—", null); });
+            setStat("connection", state.ip || "-", null);
+            ["estop", "lease", "power", "battery", "dock"].forEach(function (f) { setStat(f, "-", null); });
             ["connect", "estop", "lease", "power", "stand"].forEach(function (s) { markStep(s, false); });
             robot.ready = false;
             robot.dockStatus = "DOCK_STATUS_UNKNOWN";
@@ -157,7 +157,7 @@
             var tone = bat.percentage > 40 ? "ok" : (bat.percentage > 15 ? "warn" : "bad");
             setStat("battery", bat.percentage + "%", tone);
         } else {
-            setStat("battery", "—", null);
+            setStat("battery", "-", null);
         }
 
         var dock = state.docking || {};
@@ -289,7 +289,7 @@
         if (button) button.disabled = true;
         api("/lease/take")
             .then(function () {
-                toast("Lease taken — the tablet no longer has control.", "warn");
+                toast("Lease taken, the tablet no longer has control.", "warn");
                 return refreshState();
             })
             .catch(function (err) { toast(err.message, "bad"); })
@@ -327,7 +327,7 @@
             estopBtn.addEventListener("click", function () {
                 zeroDrive();
                 api("/estop/engage")
-                    .then(function () { toast("EMERGENCY STOP engaged — motor power cut.", "bad"); return refreshState(); })
+                    .then(function () { toast("EMERGENCY STOP engaged, motor power cut.", "bad"); return refreshState(); })
                     .catch(function (err) { toast(err.message, "bad"); });
             });
         }

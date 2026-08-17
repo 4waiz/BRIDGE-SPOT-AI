@@ -1,5 +1,5 @@
 /*
- * BRIDGE SPOT — shared application shell.
+ * BRIDGE SPOT - shared application shell.
  *
  * Every page in the demo platform renders the same chrome: the dark
  * sidebar (brand, navigation, Spot status) and the top bar (menu button,
@@ -21,13 +21,13 @@
  *
  * DEMO NOTE: the Spot status, notifications and telemetry values below are
  * illustrative. Wire them to the Spot SDK (robot.get_robot_state) and the
- * BRIDGE backend when moving off the demo data — see FUTURE markers.
+ * BRIDGE backend when moving off the demo data, see FUTURE markers.
  */
 (function (window, document) {
     "use strict";
 
     /* ------------------------------------------------------------------
-       Icon set — stroked 24x24 glyphs, inherit currentColor.
+       Icon set, stroked 24x24 glyphs, inherit currentColor.
        ------------------------------------------------------------------ */
     var PATHS = {
         home: '<path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
@@ -131,7 +131,7 @@
             try {
                 window.localStorage.setItem("bridge-spot:" + key, JSON.stringify(value));
             } catch (err) {
-                /* storage unavailable — demo still works, just not persisted */
+                /* storage unavailable, demo still works, just not persisted */
             }
         },
         remove: function (key) {
@@ -144,7 +144,7 @@
     };
 
     /**
-     * Client-side file download — used by the report/export buttons so the
+     * Client-side file download, used by the report/export buttons so the
      * demo produces a real file without needing a backend.
      */
     function download(filename, content, mime) {
@@ -198,13 +198,13 @@
     var SPOT_STATUS = {
         connection: "Offline",
         battery: 0,
-        signal: "—",
+        signal: "-",
         estop: "Unknown",
-        temperature: "—",
+        temperature: "-",
         firmware: "5.1.5",
         payloads: "Spot CAM+IR, Core I/O",
-        uptime: "—",
-        location: "—"
+        uptime: "-",
+        location: "-"
     };
 
     // Robot address, refreshed from /api/robot/state so the admin-console link
@@ -225,7 +225,7 @@
 
                 if (!data.connected) {
                     SPOT_STATUS.connection = "Offline";
-                    SPOT_STATUS.signal = "—";
+                    SPOT_STATUS.signal = "-";
                     SPOT_STATUS.estop = "Unknown";
                     renderSpotStatus();
                     return;
@@ -611,7 +611,7 @@
                 '<span class="bs-brand__mark">BS</span>'
         );
         brand.href = "index.html";
-        brand.setAttribute("aria-label", "Bridge Spot — home");
+        brand.setAttribute("aria-label", "Bridge Spot home");
         aside.appendChild(brand);
 
         var nav = el("nav", "bs-nav");

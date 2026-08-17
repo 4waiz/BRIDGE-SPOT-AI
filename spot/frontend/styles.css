@@ -1,5 +1,5 @@
 /* ======================================================================
-   BRIDGE SPOT — shared design system.
+   BRIDGE SPOT, shared design system.
    One stylesheet for every page in the demo platform: the app shell
    (dark sidebar + top bar), the home launcher, the data pages
    (dashboard / missions / reports / assets / settings) and the live
@@ -220,7 +220,7 @@ button {
     flex-shrink: 0;
 }
 
-/* brand-sidebar.png — trimmed from the supplied sidebar.png lockup. */
+/* brand-sidebar.png, trimmed from the supplied sidebar.png lockup. */
 .bs-brand__img {
     display: block;
     width: 10.5rem;
@@ -1022,7 +1022,7 @@ button {
     line-height: 0;
 }
 
-/* brand-hero.png / brand-hero-dark.png — trimmed from the supplied home.png
+/* brand-hero.png / brand-hero-dark.png, trimmed from the supplied home.png
    lockup, with a light-ink variant for dark mode. */
 .hero__wordmark {
     display: block;
@@ -1100,7 +1100,7 @@ button {
     line-height: 1.55;
 }
 
-/* Quick actions row — full width at the foot of the home screen, above the
+/* Quick actions row, full width at the foot of the home screen, above the
    robot, which reaches down behind the cards. */
 .quick-actions {
     position: relative;
@@ -1168,7 +1168,7 @@ button {
 }
 
 /* ----------------------------------------------------------------------
-   7. Right rail — assistant + mission modules
+   7. Right rail, assistant + mission modules
    ---------------------------------------------------------------------- */
 .rail {
     display: flex;
@@ -1951,7 +1951,7 @@ button {
 }
 
 /* ----------------------------------------------------------------------
-   9. Data display — KPIs, tables, charts, timelines
+   9. Data display, KPIs, tables, charts, timelines
    ---------------------------------------------------------------------- */
 .kpi {
     display: flex;
@@ -3025,7 +3025,7 @@ table.data tbody tr.is-clickable {
 }
 
 /* ==========================================================================
-   Choreography — dance tiles
+   Choreography, dance tiles
    Shared by the Dance panel on control.html and the Choreography page.
    ========================================================================== */
 
@@ -3657,11 +3657,11 @@ table.data tbody tr.is-clickable {
 
 .hero__robot > img { max-height: 100%; width: auto; object-fit: contain; }
 
+/* In normal flow, not absolutely positioned. As an absolute child it escaped
+   the stage whenever the stage failed to establish a height and landed on top
+   of the card below it. */
 .twin-badge {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: 0.25rem;
+    margin-top: 0.4rem;
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;

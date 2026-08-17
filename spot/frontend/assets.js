@@ -1,5 +1,5 @@
 /*
- * BRIDGE SPOT — assets page.
+ * BRIDGE SPOT - assets page.
  *
  * Sortable/filterable asset register backed by the demo dataset. Each row
  * opens a detail dialog with the thermal trend Spot has collected.
@@ -212,7 +212,7 @@
             button.classList.add("is-busy");
             button.disabled = true;
         }
-        ui.toast("Asset scan started — Spot is re-reading the register (demo).");
+        ui.toast("Asset scan started, Spot is re-reading the register (demo).");
 
         // FUTURE: POST /api/missions { type: 'asset-scan' } and poll for results.
         window.setTimeout(function () {
@@ -228,7 +228,7 @@
                 button.classList.remove("is-busy");
                 button.disabled = false;
             }
-            ui.toast("Asset scan complete — health scores updated.", "ok");
+            ui.toast("Asset scan complete, health scores updated.", "ok");
         }, 1600);
     }
 

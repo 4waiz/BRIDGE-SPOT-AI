@@ -1,5 +1,5 @@
 /*
- * BRIDGE SPOT — Voice Control page controller.
+ * BRIDGE SPOT - Voice Control page controller.
  *
  * Pipeline:
  *   listen -> transcript -> intent -> validate robot state -> acknowledge
@@ -83,12 +83,12 @@
 
         var text = STATE_TEXT[next.type] || "";
         if (next.type === "executing" && next.label) text = "Executing: " + next.label;
-        if (next.type === "success" && next.label) text = next.label + " — completed";
+        if (next.type === "success" && next.label) text = next.label + ", completed";
         if (next.type === "error") text = next.message || "Error";
         label.textContent = text;
 
         if (hint) {
-            if (next.type === "listening") hint.textContent = "Speak now — tap again to cancel";
+            if (next.type === "listening") hint.textContent = "Speak now, tap again to cancel";
             else if (next.type === "idle") hint.textContent = "Tap the microphone, or press Space";
             else hint.textContent = "";
         }
@@ -192,7 +192,7 @@
             if (!telemetry.leaseHeld) missing.push("I don't hold the lease");
             if (!telemetry.poweredOn) missing.push("the motors are off");
             if (!missing.length) missing.push("the robot isn't ready");
-            return "I can't do that yet, sir — " + missing.join(", ") + ".";
+            return "I can't do that yet, sir, " + missing.join(", ") + ".";
         }
         return null;
     }
@@ -214,9 +214,9 @@
         // Safety commands preempt; everything else queues behind the lock.
         var isSafety = command.risk === "critical";
         if (executing && !isSafety) {
-            var busy = "One moment, sir — I'm still working on the last command.";
+            var busy = "One moment, sir, I'm still working on the last command.";
             logEntry({ said: saidText, intent: command.intent, reply: busy,
-                       status: "warn", statusLabel: "Rejected — busy" });
+                       status: "warn", statusLabel: "Rejected, busy" });
             setState({ type: "error", message: "Busy with the previous command" });
             return say(busy);
         }
@@ -535,7 +535,7 @@
 
         if (!sttOk) {
             setBanner("This browser has no speech recognition. Use Chrome or Edge for voice, " +
-                      "or use the quick commands below — they run the same pipeline.", "warn");
+                      "or use the quick commands below, they run the same pipeline.", "warn");
             var mic = $("[data-role='vc-mic']");
             if (mic) mic.disabled = true;
         } else {

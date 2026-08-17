@@ -1,5 +1,5 @@
 /*
- * BRIDGE SPOT — missions page.
+ * BRIDGE SPOT - missions page.
  *
  * Two things happen here:
  *   1. The mission table (filter + search + row actions) over the demo
@@ -10,7 +10,7 @@
  *
  * FUTURE REAL API INTEGRATION:
  *   - replace parseInstruction() with a call to the LLM mission planner
- *     (POST /api/missions/plan { instruction }) — the returned steps use the
+ *     (POST /api/missions/plan { instruction }), the returned steps use the
  *     same { action, target, detail, duration } shape;
  *   - replace runMission()'s timer with a subscription to mission progress
  *     events from the Spot SDK (mission service / Autowalk).
@@ -259,7 +259,7 @@
     }
 
     /**
-     * parseInstruction — rule-based stand-in for the mission planner.
+     * parseInstruction, rule-based stand-in for the mission planner.
      * Splits the sentence into clauses, then maps each clause to a waypoint.
      */
     function parseInstruction(text) {
@@ -314,7 +314,7 @@
             var li = el("li", "step" + (step.state ? " is-" + step.state : ""));
             li.appendChild(el("span", "step__index", String(index + 1)));
             var body = el("div");
-            body.appendChild(html("div", null, "<strong>" + step.action + "</strong> — " + step.target));
+            body.appendChild(html("div", null, "<strong>" + step.action + "</strong>, " + step.target));
             body.appendChild(html("div", "cell-muted", step.detail));
             li.appendChild(body);
             li.appendChild(el("span", "step__meta", "~" + step.duration + " min"));
@@ -354,7 +354,7 @@
         if (!input) return;
         var text = input.value.trim();
         if (!text) {
-            ui.toast("Describe the mission first — for example “Inspect Bay 3 and log open panels”.", "warn");
+            ui.toast("Describe the mission first, for example “Inspect Bay 3 and log open panels”.", "warn");
             input.focus();
             return;
         }
@@ -379,12 +379,12 @@
         var runBtn = document.querySelector("[data-role='run']");
         if (runBtn) runBtn.disabled = true;
         setRunState("Running", "info");
-        log("Mission started (demo run — no robot connected).");
+        log("Mission started (demo run, no robot connected).");
 
         var advance = function () {
             if (index > 0) {
                 steps[index - 1].state = "done";
-                log("✓ " + steps[index - 1].action + " — " + steps[index - 1].target + " complete.");
+                log("✓ " + steps[index - 1].action + ", " + steps[index - 1].target + " complete.");
             }
             if (index >= steps.length) {
                 window.clearInterval(runTimer);
@@ -398,7 +398,7 @@
                 return;
             }
             steps[index].state = "active";
-            log("▶ " + steps[index].action + " — " + steps[index].target + "…");
+            log("▶ " + steps[index].action + ", " + steps[index].target + "…");
             setProgress(Math.round((index / steps.length) * 100));
             renderSteps();
             index += 1;
@@ -433,7 +433,7 @@
                         var id = "RPT-" + (2100 + stored.length);
                         stored.unshift({
                             id: id,
-                            title: "NL mission run — " + (steps[1] ? steps[1].target : "Custom route"),
+                            title: "NL mission run, " + (steps[1] ? steps[1].target : "Custom route"),
                             type: "Inspection",
                             module: "digital-twin-mission",
                             created: ui.formatDateTime(new Date()),
@@ -442,7 +442,7 @@
                             status: "ready",
                             custom: true,
                             steps: steps.map(function (step) {
-                                return step.action + " — " + step.target;
+                                return step.action + ", " + step.target;
                             })
                         });
                         ui.store.set("reports", stored);

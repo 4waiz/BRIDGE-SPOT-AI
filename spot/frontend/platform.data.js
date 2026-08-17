@@ -1,5 +1,5 @@
 /*
- * BRIDGE SPOT — platform demo dataset (DEMO DATA ONLY).
+ * BRIDGE SPOT - platform demo dataset (DEMO DATA ONLY).
  *
  * Shared by dashboard.html, missions.html, reports.html and assets.html so the
  * numbers stay consistent across the platform. Nothing here talks to a robot.
@@ -20,7 +20,7 @@
     var MISSIONS = [
         {
             id: "m-1041",
-            name: "Digital Factory — morning sweep",
+            name: "Digital Factory, morning sweep",
             route: "DigitalFactory",
             module: "inspection-copilot",
             status: "running",
@@ -65,7 +65,7 @@
         },
         {
             id: "m-1038",
-            name: "Readiness stations — Team Delta",
+            name: "Readiness stations, Team Delta",
             route: "Training bay",
             module: "readiness-evaluator",
             status: "completed",
@@ -103,18 +103,18 @@
         { id: "RBT-007", name: "Robot cell R-07", area: "Bay 4", type: "Robotics", health: 92, temp: "31 °C", trend: [30, 31, 31, 30, 31, 31, 31], lastSeen: "Today, 09:48", status: "healthy", note: "No anomalies detected." },
         { id: "GEN-001", name: "Backup generator G-01", area: "Yard", type: "Generator", health: 79, temp: "36 °C", trend: [34, 35, 35, 36, 35, 36, 36], lastSeen: "Yesterday, 18:02", status: "healthy", note: "Weekly test run completed successfully." },
         { id: "SRV-A12", name: "Server rack A-12", area: "Server room", type: "IT", health: 74, temp: "41 °C", trend: [37, 38, 39, 39, 40, 41, 41], lastSeen: "Today, 03:12", status: "watch", note: "Inlet temperature above target during night hours." },
-        { id: "DOR-003", name: "Fire door FD-03", area: "Bay 3", type: "Safety", health: 55, temp: "—", trend: [70, 68, 66, 62, 60, 57, 55], lastSeen: "Today, 09:20", status: "watch", note: "Detected obstructed twice this week." }
+        { id: "DOR-003", name: "Fire door FD-03", area: "Bay 3", type: "Safety", health: 55, temp: "-", trend: [70, 68, 66, 62, 60, 57, 55], lastSeen: "Today, 09:20", status: "watch", note: "Detected obstructed twice this week." }
     ];
 
     var REPORTS = [
         { id: "RPT-2041", title: "Digital Factory inspection summary", type: "Inspection", module: "inspection-copilot", created: "Today, 10:04", author: "Spot Admin", findings: 3, status: "ready" },
         { id: "RPT-2040", title: "Weekly asset health digest", type: "Maintenance", module: "predictive-maintenance", created: "Today, 08:05", author: "Automation", findings: 4, status: "ready" },
-        { id: "RPT-2039", title: "HSSE patrol — walkway obstructions", type: "Safety", module: "safety-response", created: "Yesterday, 17:40", author: "Automation", findings: 2, status: "ready" },
+        { id: "RPT-2039", title: "HSSE patrol, walkway obstructions", type: "Safety", module: "safety-response", created: "Yesterday, 17:40", author: "Automation", findings: 2, status: "ready" },
         { id: "RPT-2038", title: "Team Delta readiness assessment", type: "Readiness", module: "readiness-evaluator", created: "Yesterday, 16:58", author: "L. Ortega", findings: 2, status: "ready" },
         { id: "RPT-2037", title: "Night patrol incident log", type: "Safety", module: "safety-response", created: "2 days ago", author: "Automation", findings: 1, status: "archived" }
     ];
 
-    // Inspections per weekday (last 7 days) — drives the dashboard bar chart.
+    // Inspections per weekday (last 7 days), drives the dashboard bar chart.
     var ACTIVITY = [
         { label: "Mon", missions: 6, findings: 2 },
         { label: "Tue", missions: 8, findings: 3 },
@@ -130,7 +130,7 @@
         { id: "F-317", severity: "warning", title: "Open electrical panel in Utility room", asset: "SWG-004", route: "DigitalFactory", time: "Today, 09:47" },
         { id: "F-316", severity: "warning", title: "Walkway obstructed by pallet in Bay 3", asset: "DOR-003", route: "HSSE", time: "Today, 09:20" },
         { id: "F-315", severity: "info", title: "Server room inlet temperature above target", asset: "SRV-A12", route: "HSSE", time: "Today, 03:12" },
-        { id: "F-314", severity: "warning", title: "Missing PPE detected near loading dock", asset: "—", route: "HSSE", time: "Yesterday, 17:32" }
+        { id: "F-314", severity: "warning", title: "Missing PPE detected near loading dock", asset: "-", route: "HSSE", time: "Yesterday, 17:32" }
     ];
 
     var KPIS = [
