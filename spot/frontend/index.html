@@ -29,8 +29,18 @@
                             </h1>
                             <p class="hero__sub">Autonomous operations. Intelligent insights. Safer outcomes.</p>
 
-                            <div class="hero__robot">
-                                <img src="Spot_qturn.png" alt="Boston Dynamics Spot robot">
+                            <!-- Digital twin. The still image stays as the fallback:
+                                 if WebGL, the CDN or the model are unavailable the
+                                 hero degrades to the photo rather than going blank. -->
+                            <div class="hero__robot" data-role="twin-host">
+                                <canvas data-role="twin-canvas" hidden
+                                        aria-label="Live 3D model of Spot, mirroring the robot's state"></canvas>
+                                <img data-role="twin-fallback" src="Spot_qturn.png"
+                                     alt="Boston Dynamics Spot robot">
+                                <span class="twin-badge" data-role="twin-badge" hidden>
+                                    <span class="twin-badge__dot"></span>
+                                    <span data-role="twin-badge-text">Digital twin</span>
+                                </span>
                             </div>
 
                             <!-- Primary entry point: the two live inspection routes. -->
@@ -131,6 +141,19 @@
     <script src="usecases.data.js?v=20260805"></script>
     <script src="usecases.js?v=20260805"></script>
     <script src="home.js?v=20260805"></script>
+    <!-- GLTFLoader imports 'three' as a bare specifier, which only resolves
+         through an import map. Same mapping the spot-digital-twin viewer uses. -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <!-- Falls back to the still image if WebGL, the CDN or the model are
+         unavailable. -->
+    <script type="module" src="digital-twin.js?v=20260817b"></script>
     <script src="smartassistant.js?v=20260805"></script>
 </body>
 </html>
