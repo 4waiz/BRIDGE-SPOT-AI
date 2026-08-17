@@ -33,6 +33,7 @@ import threading
 import time
 from pathlib import Path
 
+import action_library
 from bosdyn.api.autowalk import walks_pb2
 from bosdyn.api.graph_nav import graph_nav_pb2, map_pb2, nav_pb2
 from bosdyn.api.mission import mission_pb2
@@ -131,6 +132,25 @@ def describe(walk_dir: Path) -> dict:
     }
 
 
+def waypoints(mission_id: str) -> list[dict]:
+    """Waypoints an action can be attached to.
+
+    Named waypoints come first: the tablet only names the ones the operator
+    cared about, so those are the realistic inspection stops.
+    """
+    graph = _read_graph(_mission_dir(mission_id))
+    out = []
+    for index, wp in enumerate(graph.waypoints):
+        out.append({
+            "id": wp.id,
+            "name": wp.annotations.name or f"Waypoint {index + 1}",
+            "named": bool(wp.annotations.name),
+            "index": index,
+        })
+    out.sort(key=lambda w: (not w["named"], w["index"]))
+    return out
+
+
 def list_missions() -> list[dict]:
     out = []
     for walk_dir in _walk_dirs():
@@ -193,7 +213,16 @@ class MissionMixin:
         still deciding, and so an upload failure is reported on its own terms.
         """
         with self._lock:
-            self._require_control()
+            # Uploading does not move the robot, so it does not need the E-stop.
+            # It does need the lease: the robot rejects load_autowalk with
+            # 'No lease for resource "body"' without one. Requiring the lease but
+            # not the E-stop lets the slow upload happen before the operator
+            # arms for motion, without displacing the tablet's E-stop endpoint.
+            self._require()
+            if self._lease_keepalive is None:
+                raise MissionError(
+                    "Uploading a mission needs the body lease. Acquire it first."
+                )
             graph_nav = self._graph_nav_client()
             autowalk = self._autowalk_client()
 
@@ -231,14 +260,20 @@ class MissionMixin:
             snapshot.ParseFromString(path.read_bytes())
             graph_nav.upload_edge_snapshot(edge_snapshot=snapshot, timeout=UPLOAD_TIMEOUT)
 
+        # Compose the tablet's walk with any actions attached in the library.
+        # The export on disk is never modified; the merge happens here.
         walk = _read_walk(walk_dir)
+        walk, attached = action_library.compose(walk, mission_id)
         autowalk.load_autowalk(walk, timeout=UPLOAD_TIMEOUT)
 
-        self._set_mission(uploaded=mission_id, status="uploaded", localized=False,
-                          message=f"Uploaded {info['name']}")
-        logging.info("Mission %s uploaded", mission_id)
+        note = f"Uploaded {info['name']}"
+        if attached:
+            note += f" with {attached} attached action(s)"
+        self._set_mission(uploaded=mission_id, status="uploaded", localized=False, message=note)
+        logging.info("Mission %s uploaded (%d attached actions)", mission_id, attached)
         return {"uploaded": mission_id, "waypoints": info["waypoints"],
-                "snapshots_sent": len(response.unknown_waypoint_snapshot_ids)}
+                "snapshots_sent": len(response.unknown_waypoint_snapshot_ids),
+                "attached_actions": attached}
 
     def localize_mission(self):
         """Tell the robot where it is on the map, using the nearest fiducial.

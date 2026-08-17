@@ -16,7 +16,10 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
+import action_library
+import missions as mission_service
 import spot_control
+from action_library import ActionError
 from missions import MissionError
 from spot_choreography import ChoreographyError
 from spot_control import LeaseHeldByOtherError, SpotControlError, controller
@@ -51,7 +54,7 @@ def _guard(fn, *args, **kwargs):
     """Run a controller call, turning expected failures into clean HTTP errors."""
     try:
         return fn(*args, **kwargs)
-    except (ChoreographyError, MissionError) as exc:
+    except (ChoreographyError, MissionError, ActionError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except LeaseHeldByOtherError as exc:
         # 423 Locked, kept distinct from the generic 409 so the UI knows it can
@@ -248,6 +251,46 @@ def mission_pause():
 @router.post("/missions/stop")
 def mission_stop():
     return _guard(controller.stop_mission)
+
+
+# -- inspection action library ----------------------------------------------
+
+
+class AddActionRequest(BaseModel):
+    mission: str
+    waypoint: str
+    template: str
+    name: str = ""
+    params: dict[str, float] | None = None
+
+
+@router.get("/actions/templates")
+def action_templates():
+    """Reusable action definitions. Static, so no robot needed."""
+    return {"templates": action_library.list_templates()}
+
+
+@router.get("/actions")
+def actions(mission: str):
+    """Actions attached to a mission, plus the waypoints available to attach to."""
+    return {
+        "mission": mission,
+        "actions": _guard(action_library.load_actions, mission),
+        "waypoints": _guard(mission_service.waypoints, mission),
+    }
+
+
+@router.post("/actions")
+def add_action(request: AddActionRequest):
+    """Attach an action to a waypoint. Stored in a sidecar; the tablet's export
+    is never modified, and the merge happens at upload time."""
+    return _guard(action_library.add_action, request.mission, request.waypoint,
+                  request.template, request.name, request.params)
+
+
+@router.delete("/actions")
+def remove_action(mission: str, action: str):
+    return _guard(action_library.remove_action, mission, action)
 
 
 # -- choreography -----------------------------------------------------------
