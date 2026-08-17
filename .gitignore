@@ -64,3 +64,7 @@ spot-sdk-5.1.9/
 *.bak
 *.tmp
 spot-sdk-4.1.1/python/examples/network_compute_bridge/fire_extinguisher_server/fire_ext.h5
+
+# Separate project with its own git repo (383 MB). Not a submodule -- keep it
+# out of this index so it is never committed as a broken gitlink.
+spot-digital-twin/
