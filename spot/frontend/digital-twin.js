@@ -17,7 +17,9 @@
     "use strict";
 
     var MODEL_URL = "spot_twin_web.glb";
-    var STATE_POLL_MS = 3000;
+    // 10 Hz: fast enough that the twin tracks a walking robot rather
+    // than teleporting between poses.
+    var STATE_POLL_MS = 100;
     var CDN = "https://cdn.jsdelivr.net/npm/three@0.160.0";
 
     var host = document.querySelector("[data-role='twin-host']");
@@ -56,18 +58,63 @@
     }
 
     /* ------------------------------------------------------------------
-       Animation selection
+       Joint mirroring
 
-       The API reports power, lease and dock state but no posture, so the
-       mapping only uses what is actually known. Nothing here guesses at a
-       gait the robot may or may not be walking.
+       The rig uses SDK joint names with dots stripped (fl.hx -> fl_hx) and
+       every joint rotates on its local X axis, so each one needs a sign and an
+       offset to convert the SDK angle into rig space:
+
+           bone.rotation.x = SIGN * (sdkAngle - OFFSET)
+
+       Offsets come from rig_mapping.json: the thigh and shin bind angles are
+       where the rig's rest pose sits relative to the SDK zero. Getting these
+       wrong bends a leg the wrong way rather than failing, which is why they
+       are named constants and not inlined.
        ------------------------------------------------------------------ */
 
-    function clipForState(state) {
-        if (!state || !state.connected) return "stand";
-        if (!state.powered_on) return "sit";
-        return "stand";
+    var THIGH_BIND = -0.5923;   // rig_mapping.json legs.*.thigh_bind_angle
+    var SHIN_BIND = 0.9669;     // rig_mapping.json legs.*.shin_bind_angle
+
+    var JOINT_MAP = {
+        hx: { sign: 1, offset: 0 },
+        hy: { sign: -1, offset: THIGH_BIND },
+        kn: { sign: 1, offset: SHIN_BIND }
+    };
+
+    var bones = {};
+
+    function indexBones(THREE, root) {
+        root.traverse(function (node) {
+            if (node.isBone || node.type === "Bone") bones[node.name] = node;
+        });
     }
+
+    function applyJoints(data) {
+        if (!data || !data.joints) return false;
+        var applied = 0;
+        Object.keys(data.joints).forEach(function (name) {
+            // fl.hx -> fl_hx, because Three.js strips dots from node names.
+            var boneName = name.replace(".", "_");
+            var bone = bones[boneName];
+            if (!bone) return;
+            var kind = name.split(".")[1];
+            var rule = JOINT_MAP[kind];
+            if (!rule) return;
+            bone.rotation.x = rule.sign * (data.joints[name] - rule.offset);
+            applied++;
+        });
+        return applied > 0;
+    }
+
+    /* ------------------------------------------------------------------
+       Live state
+
+       While the robot is reachable its real joint angles drive the skeleton.
+       When it is not, the baked `stand` clip plays instead, so the hero is
+       never a frozen model.
+       ------------------------------------------------------------------ */
+
+    var mirroring = false;
 
     function play(name, fade) {
         var clip = clips[name];
@@ -79,25 +126,28 @@
         current = next;
     }
 
-    /* ------------------------------------------------------------------
-       Live state
-       ------------------------------------------------------------------ */
+    function stopClips() {
+        // The mixer writes the same bone rotations we are about to set, so it
+        // has to stop or the two fight every frame.
+        if (mixer) mixer.stopAllAction();
+        current = null;
+    }
 
-    function pollState() {
-        fetch("/api/robot/state")
+    function pollJoints() {
+        fetch("/api/robot/joints")
             .then(function (res) { return res.ok ? res.json() : null; })
-            .then(function (state) {
+            .then(function (data) {
                 if (disposed) return;
-                play(clipForState(state));
-                if (state && state.connected) {
-                    var battery = state.battery && typeof state.battery.percentage === "number"
-                        ? " · " + Math.round(state.battery.percentage) + "%" : "";
-                    setBadge("Live twin" + battery, true);
+                if (data && data.connected && applyJoints(data)) {
+                    if (!mirroring) { stopClips(); mirroring = true; }
+                    setBadge("Mirroring robot", true);
                 } else {
+                    mirroring = false;
+                    play("stand");
                     setBadge("Digital twin", false);
                 }
             })
-            .catch(function () { /* keep whatever it was doing */ });
+            .catch(function () { /* hold the last pose */ });
     }
 
     /* ------------------------------------------------------------------
@@ -153,6 +203,7 @@
             model.rotation.y = -0.5;
             scene.add(model);
 
+            indexBones(THREE, model);
             mixer = new THREE.AnimationMixer(model);
             gltf.animations.forEach(function (clip) { clips[clip.name] = clip; });
             play("stand", 0);
@@ -161,8 +212,8 @@
             if (fallback) fallback.style.display = "none";
             setBadge("Digital twin", false);
 
-            pollState();
-            poll = setInterval(pollState, STATE_POLL_MS);
+            pollJoints();
+            poll = setInterval(pollJoints, STATE_POLL_MS);
             loop();
         }, undefined, function () {
             // Model missing or corrupt: leave the photo in place.
@@ -175,9 +226,10 @@
     function loop() {
         if (disposed) return;
         frame = requestAnimationFrame(loop);
-        if (mixer) mixer.update(clock.getDelta());
+        if (mixer && !mirroring) mixer.update(clock.getDelta());
         // Slow turntable so the hero has life without demanding attention.
-        if (model) model.rotation.y += 0.0016;
+        // Turntable only while idle; mirroring should show the real facing.
+        if (model && !mirroring) model.rotation.y += 0.0016;
         renderer.render(scene, camera);
     }
 

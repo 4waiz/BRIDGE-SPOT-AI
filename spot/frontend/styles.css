@@ -3565,6 +3565,45 @@ table.data tbody tr.is-clickable {
 .aw-controls { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
 .aw-message { font-size: 0.8rem; color: var(--muted); }
 
+/* -- home layout: twin centre stage, two cards beneath it -- */
+
+/* The home grid previously left the rail as a tall empty column beside a
+   growing hero. Now the hero is a bounded stage and the two entry points sit
+   under it as equal cards, so the page reads at one glance with no scrolling. */
+.home--focus { display: block; max-width: 62rem; margin: 0 auto; }
+
+.home--focus .hero {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.home--focus .hero__sub { margin-bottom: 0.5rem; }
+
+.home-entry {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+    gap: 1rem;
+    margin-top: 1.25rem;
+}
+
+.home-entry > .card,
+.home-entry > .hero__card {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+/* The inspection card was styled for a narrow rail; in the grid it needs to
+   fill its cell like the voice card beside it. */
+.home-entry .hero__card { width: auto; max-width: none; }
+.home-entry .hero__card h2 { margin: 0; font-size: 1.05rem; }
+.home-entry .hero__card p { margin: 0; font-size: 0.86rem; color: var(--text-soft); line-height: 1.5; }
+.home-entry .bs-menu-host { margin-top: auto; }
+
 /* -- home: voice control entry point (replaced the inline assistant) -- */
 
 .home-voice { display: flex; flex-direction: column; gap: 0.7rem; }
@@ -3583,21 +3622,34 @@ table.data tbody tr.is-clickable {
 
 /* -- digital twin hero -- */
 
-.hero__robot { position: relative; }
+/* The twin sits in a fixed-aspect stage. Without this the canvas grew to fill
+   whatever height was available and pushed the rest of the page below the
+   fold, which is exactly what it did on first build. */
+.hero__robot {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    max-height: 26rem;
+    margin: 0 auto;
+    display: grid;
+    place-items: center;
+}
 
 .hero__robot canvas {
     display: block;
     width: 100%;
     height: 100%;
-    min-height: 20rem;
     /* The model is lit in the scene; a background here would box it in. */
     background: transparent;
 }
 
+.hero__robot > img { max-height: 100%; width: auto; object-fit: contain; }
+
 .twin-badge {
     position: absolute;
-    left: 0.5rem;
-    bottom: 0.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 0.25rem;
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;

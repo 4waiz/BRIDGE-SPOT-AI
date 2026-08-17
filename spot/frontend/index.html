@@ -20,8 +20,8 @@
     <div class="bs-app" data-shell data-nav="home">
         <main class="bs-main">
             <div class="bs-content">
-                <div class="home">
-                    <div class="home__main">
+                <div class="home home--focus">
+                    
                         <section class="hero">
                             <h1 class="hero__title">
                                 <img class="hero__wordmark hero__wordmark--light" src="brand-hero.png" alt="Bridge Spot">
@@ -42,6 +42,11 @@
                                     <span data-role="twin-badge-text">Digital twin</span>
                                 </span>
                             </div>
+                        </section>
+
+                        </section>
+
+                    <div class="home-entry">
 
                             <!-- Primary entry point: the two live inspection routes. -->
                             <div class="hero__card">
@@ -61,10 +66,6 @@
                                     </div>
                                 </div>
                             </div>
-                        </section>
-                    </div>
-
-                    <aside class="rail">
                         <!-- Smart Assistant: the text field and the online/offline
                              switch both drive the existing voice assistant. -->
                         <!-- Voice Control replaces the inline assistant: the same speech stack,
@@ -84,7 +85,7 @@
                             <p class="home-voice__foot" data-role="home-voice-state">Checking robot&hellip;</p>
                         </section>
 
-                    </aside>
+                    </div>
                 </div>
 
             </div>
@@ -119,7 +120,7 @@
     </script>
     <!-- Falls back to the still image if WebGL, the CDN or the model are
          unavailable. -->
-    <script type="module" src="digital-twin.js?v=20260817b"></script>
+    <script type="module" src="digital-twin.js?v=20260817c"></script>
     <script src="smartassistant.js?v=20260805"></script>
 </body>
 </html>

@@ -571,6 +571,42 @@ class SpotController(spot_choreography.ChoreographyMixin, mission_service.Missio
                 if service == "body" or has_spotcam
             ]
 
+    def get_joints(self):
+        """The 12 leg joint angles, for driving the digital twin.
+
+        Deliberately separate from get_state(): the twin polls this several
+        times a second and does not need battery, faults or dock status, while
+        the dashboards poll get_state() once a second and do not need joints.
+        """
+        with self._lock:
+            self._require()
+            state = self._clients["state"].get_robot_state()
+            kinematic = state.kinematic_state
+
+            joints = {
+                j.name: round(j.position.value, 5)
+                for j in kinematic.joint_states
+                if j.HasField("position")
+            }
+
+            # Body pose in the vision frame, so the twin can lean and settle
+            # with the real robot rather than only moving its legs.
+            body = {}
+            try:
+                transforms = kinematic.transforms_snapshot.child_to_parent_edge_map
+                if "body" in transforms:
+                    rotation = transforms["body"].parent_tform_child.rotation
+                    body = {"qw": rotation.w, "qx": rotation.x,
+                            "qy": rotation.y, "qz": rotation.z}
+            except Exception as exc:
+                logging.debug("No body transform available: %s", exc)
+
+            return {
+                "joints": joints,
+                "body": body,
+                "powered_on": self._robot.is_powered_on(),
+            }
+
     def get_image(self, view="frontleft"):
         """Return (jpeg_bytes, rotation_degrees) for one camera view."""
         with self._lock:

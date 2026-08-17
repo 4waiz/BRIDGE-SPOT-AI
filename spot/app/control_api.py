@@ -343,6 +343,17 @@ def choreography_stop():
     return _guard(controller.stop_dance)
 
 
+@router.get("/joints")
+def joints():
+    """Leg joint angles for the digital twin. Polled several times a second, so
+    it is kept separate from the heavier /state payload."""
+    if not controller.is_connected:
+        return {"connected": False, "joints": {}, "body": {}}
+    result = _guard(controller.get_joints)
+    result["connected"] = True
+    return result
+
+
 @router.get("/cameras")
 def cameras():
     """Views this robot can serve, so the UI can hide Spot CAM when absent."""
