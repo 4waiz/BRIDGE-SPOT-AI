@@ -177,6 +177,7 @@
         { key: "home", label: "Home", href: "index.html", icon: "home" },
         { key: "dashboard", label: "Dashboard", href: "dashboard.html", icon: "grid" },
         { key: "control", label: "Control", href: "control.html", icon: "robot" },
+        { key: "choreography", label: "Choreography", href: "choreography.html", icon: "sparkle" },
         { key: "missions", label: "Missions", href: "missions.html", icon: "mission" },
         { key: "reports", label: "Reports", href: "reports.html", icon: "report" },
         { key: "assets", label: "Assets", href: "assets.html", icon: "assets" },

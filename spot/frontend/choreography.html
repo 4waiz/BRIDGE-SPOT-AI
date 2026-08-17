@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Bridge Spot — Choreography</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" type="text/css" href="styles.css?v=20260813b">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
+</head>
+<body>
+    <div class="bs-app" data-shell data-nav="choreography">
+        <main class="bs-main">
+            <div class="bs-content">
+                <div class="page-head">
+                    <div>
+                        <h1 class="page-head__title">Choreography</h1>
+                        <p class="page-head__sub">
+                            Spot's dance repertoire. Every move here runs on the robot's own
+                            choreography service — pick one and it performs for about seven seconds.
+                        </p>
+                    </div>
+                    <div class="page-head__actions">
+                        <span class="chip chip--plain" data-role="choreo-state">Checking robot…</span>
+                        <a class="btn" href="control.html"><span data-icon="robot"></span> Control page</a>
+                        <button type="button" class="btn btn--ghost" data-role="choreo-stop" disabled>
+                            <span data-icon="stop"></span> Stop
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Explains why the tiles may be inert, so the page is never a dead end -->
+                <div class="choreo-banner" data-role="choreo-banner" hidden></div>
+
+                <section class="card">
+                    <div class="ctl-panel-head">
+                        <h2 class="card__title">Dance moves</h2>
+                        <span class="ctl-dance__now" data-role="choreo-now">Idle</span>
+                    </div>
+                    <p class="ctl-note">
+                        Tap a move to perform it. Tapping another mid-routine switches to it
+                        immediately — the new sequence preempts the old one on the robot.
+                    </p>
+                    <div class="ctl-dance__grid" data-role="choreo-grid"></div>
+                </section>
+
+                <section class="card">
+                    <div class="ctl-panel-head">
+                        <h2 class="card__title">Basic moves</h2>
+                    </div>
+                    <p class="ctl-note">
+                        Postures and gaits rather than dances — useful for getting Spot back to a
+                        neutral pose between routines.
+                    </p>
+                    <div class="ctl-dance__grid" data-role="choreo-basics"></div>
+                </section>
+
+                <section class="card choreo-explain">
+                    <h2 class="card__title">How it works</h2>
+                    <div class="choreo-explain__grid">
+                        <div>
+                            <h3>No licence needed</h3>
+                            <p>
+                                Boston Dynamics' own choreography service needs a paid licence this
+                                robot does not have. These moves avoid it entirely — each one is
+                                scripted here from the two commands any Spot accepts: a body pose
+                                and a velocity.
+                            </p>
+                        </div>
+                        <div>
+                            <h3>Motion, not poses</h3>
+                            <p>
+                                Every move is a function of time, evaluated twenty times a second
+                                and streamed to the robot. Driving it continuously rather than
+                                stepping between fixed poses is what makes it read as dancing.
+                            </p>
+                        </div>
+                        <div>
+                            <h3>In place or moving</h3>
+                            <p>
+                                Moves marked <em>stays in place</em> only articulate the body —
+                                the feet stay planted, so the robot cannot walk into anything.
+                                Those marked <em>moves around</em> drive the legs and need room.
+                            </p>
+                        </div>
+                        <div>
+                            <h3>Before you press play</h3>
+                            <p>
+                                Give Spot a couple of metres of clear space and keep the tablet
+                                controller within reach. Pressing another move mid-routine switches
+                                immediately; the routine ends by returning to a neutral stand.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="bridge-shell.js?v=20260813b"></script>
+    <script src="choreography.js?v=20260813b"></script>
+</body>
+</html>

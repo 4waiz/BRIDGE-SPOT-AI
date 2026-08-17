@@ -185,6 +185,37 @@
                         Release to stop — commands expire automatically.
                     </p>
                 </section>
+
+                <!-- Choreography. Tiles are rendered by control.js from
+                     /api/robot/choreography so unsupported moves never appear. -->
+                <section class="card ctl-dance is-locked" data-role="dance">
+                    <div class="ctl-panel-head">
+                        <h2 class="card__title">Dance</h2>
+                        <div class="ctl-dance__status">
+                            <span class="ctl-dance__now" data-role="dance-now">Idle</span>
+                            <button type="button" class="btn btn--sm btn--ghost" data-role="dance-stop" disabled>
+                                <span data-icon="stop"></span> Stop
+                            </button>
+                        </div>
+                    </div>
+
+                    <p class="ctl-note" data-role="dance-hint">
+                        Tap a move and Spot performs it for about 7 seconds, then settles.
+                        Tap another mid-routine to switch to it immediately.
+                    </p>
+
+                    <div class="ctl-dance__grid" data-role="dance-grid"></div>
+
+                    <div class="ctl-dance__section">
+                        <span class="ctl-dance__section-label">Basic moves</span>
+                        <div class="ctl-dance__basics" data-role="dance-basics"></div>
+                    </div>
+
+                    <p class="ctl-note ctl-note--center">
+                        Give Spot a couple of metres of clear space — dancing lifts feet,
+                        rotates the body and hops.
+                    </p>
+                </section>
             </div>
         </main>
     </div>

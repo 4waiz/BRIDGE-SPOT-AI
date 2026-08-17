@@ -3023,3 +3023,249 @@ table.data tbody tr.is-clickable {
     .ctl-stick { width: 10rem; height: 10rem; }
     .ctl-stick__knob { width: 3.4rem; height: 3.4rem; margin: -1.7rem 0 0 -1.7rem; }
 }
+
+/* ==========================================================================
+   Choreography — dance tiles
+   Shared by the Dance panel on control.html and the Choreography page.
+   ========================================================================== */
+
+.ctl-dance__status {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+.ctl-dance__now {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.82rem;
+    color: var(--muted);
+    min-width: 10rem;
+    text-align: right;
+}
+
+.ctl-dance__now.is-live {
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.ctl-note--warn { color: var(--warn); font-weight: 600; }
+
+.ctl-dance.is-locked .ctl-dance__grid,
+.ctl-dance.is-locked .ctl-dance__basics {
+    opacity: 0.4;
+    pointer-events: none;
+    filter: grayscale(1);
+}
+
+.ctl-dance__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+    gap: 0.75rem;
+    transition: opacity 0.2s ease;
+}
+
+.ctl-dance__section { margin-top: 1.25rem; }
+
+.ctl-dance__section-label {
+    display: block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    margin-bottom: 0.55rem;
+}
+
+.ctl-dance__basics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    transition: opacity 0.2s ease;
+}
+
+.ctl-dance__basics .dance-tile {
+    flex: 0 0 auto;
+    width: 7.4rem;
+    padding: 0.7rem 0.6rem;
+}
+
+.ctl-dance__basics .dance-tile__blurb,
+.ctl-dance__basics .dance-tile__energy { display: none; }
+
+.ctl-dance__basics .dance-tile__medal { width: 2.6rem; height: 2.6rem; }
+.ctl-dance__basics .dance-tile__emoji { font-size: 1.25rem; }
+
+/* -- tile -- */
+
+.dance-tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.95rem 0.7rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--field);
+    color: var(--text);
+    font: inherit;
+    text-align: center;
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 0.12s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dance-tile:hover:not(:disabled) {
+    transform: translateY(-2px);
+    border-color: var(--accent);
+    box-shadow: var(--shadow);
+}
+
+.dance-tile:active:not(:disabled) { transform: translateY(0); }
+
+.dance-tile:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.dance-tile.is-unavailable {
+    opacity: 0.42;
+    cursor: not-allowed;
+    filter: grayscale(1);
+}
+
+.dance-tile__medal {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 3.3rem;
+    height: 3.3rem;
+}
+
+.dance-tile__emoji {
+    font-size: 1.6rem;
+    line-height: 1;
+}
+
+/* Countdown ring. Rotated so the sweep starts at twelve o'clock; control.js
+   drives stroke-dashoffset from a rAF loop while a move is playing. */
+.dance-tile__ring {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.dance-tile__ring-bg,
+.dance-tile__ring-fg {
+    fill: none;
+    stroke-width: 2.5;
+}
+
+.dance-tile__ring-bg { stroke: var(--border); }
+
+.dance-tile__ring-fg {
+    stroke: var(--accent);
+    stroke-linecap: round;
+    opacity: 0;
+}
+
+.dance-tile__label {
+    font-size: 0.86rem;
+    font-weight: 650;
+}
+
+.dance-tile__blurb {
+    font-size: 0.72rem;
+    color: var(--muted);
+    line-height: 1.35;
+}
+
+.dance-tile__energy {
+    margin-top: 0.15rem;
+    padding: 0.08rem 0.45rem;
+    border-radius: var(--pill);
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.dance-tile__energy.is-low { background: rgba(47, 109, 246, 0.12); color: var(--info); }
+.dance-tile__energy.is-medium { background: rgba(232, 163, 23, 0.16); color: #9a6a05; }
+.dance-tile__energy.is-high { background: var(--accent-soft-strong); color: var(--accent-strong); }
+
+/* -- playing state -- */
+
+.dance-tile.is-playing {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 1px var(--accent), 0 6px 22px rgba(255, 86, 34, 0.22);
+}
+
+.dance-tile.is-playing .dance-tile__ring-fg { opacity: 1; }
+
+.dance-tile.is-playing .dance-tile__emoji {
+    animation: dance-bounce 0.62s ease-in-out infinite;
+}
+
+.dance-tile.is-playing .dance-tile__label { color: var(--accent-strong); }
+
+@keyframes dance-bounce {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25%      { transform: translateY(-3px) rotate(-7deg); }
+    75%      { transform: translateY(-3px) rotate(7deg); }
+}
+
+[data-theme="dark"] .dance-tile__energy.is-medium { color: var(--warn); }
+
+@media (max-width: 720px) {
+    .ctl-dance__grid { grid-template-columns: repeat(auto-fill, minmax(7.6rem, 1fr)); }
+    .dance-tile__blurb { display: none; }
+    .ctl-dance__now { min-width: 7rem; }
+}
+
+/* -- Choreography page -- */
+
+.choreo-banner {
+    padding: 0.85rem 1.1rem;
+    margin-bottom: 1.25rem;
+    border-radius: var(--r-md);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--info);
+    background: var(--surface);
+    font-size: 0.88rem;
+    color: var(--text-soft);
+}
+
+.choreo-banner.is-warn { border-left-color: var(--warn); }
+.choreo-banner a { color: var(--accent); font-weight: 600; }
+
+/* The Boston Dynamics move name, shown so the page doubles as a reference. */
+.choreo-move-id {
+    margin-top: 0.2rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.62rem;
+    color: var(--muted);
+    opacity: 0.75;
+}
+
+.choreo-explain__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 1.25rem;
+    margin-top: 0.5rem;
+}
+
+.choreo-explain__grid h3 {
+    margin: 0 0 0.35rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.choreo-explain__grid p {
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.55;
+    color: var(--text-soft);
+}

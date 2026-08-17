@@ -46,6 +46,8 @@ from bosdyn.client.power import PowerClient
 from bosdyn.client.robot_command import RobotCommandBuilder, RobotCommandClient
 from bosdyn.client.robot_state import RobotStateClient
 
+import spot_choreography
+
 SPOT_IP = os.getenv("SPOT_IP", "192.168.33.137")
 DOCK_ID = int(os.getenv("SPOT_DOCK_ID", "520"))
 
@@ -132,7 +134,7 @@ def _clamp(value, limit):
     return max(-limit, min(limit, value))
 
 
-class SpotController:
+class SpotController(spot_choreography.ChoreographyMixin):
     """Single owner of the robot connection, lease and E-stop.
 
     One instance per process. Every public method takes `_lock`, because the
@@ -148,6 +150,8 @@ class SpotController:
         self._estop_keepalive = None
         self._lease_keepalive = None
         self._last_error = None
+        # Dance state, so status can be reported before connecting.
+        self._init_choreography()
 
     # -- connection ---------------------------------------------------------
 

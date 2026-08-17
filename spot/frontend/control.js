@@ -215,6 +215,8 @@
                  : (!$(".ctl-step[data-step='power']").classList.contains("is-done") ? 4 : 5)));
         var hintChip = $("[data-role='step-hint']");
         if (hintChip) hintChip.textContent = robot.ready ? "Ready to drive" : "Step " + step + " of 5";
+
+        updateDanceLocks();
     }
 
     /* ------------------------------------------------------------------
@@ -248,8 +250,9 @@
         api(path)
             .then(function () {
                 toast(spec ? spec.label : name + " done.", "ok");
-                // Connecting is what makes the Spot CAM sources resolvable.
-                if (name === "connect") syncCameras();
+                // Connecting is what resolves the Spot CAM sources and the
+                // real choreography catalogue.
+                if (name === "connect") { syncCameras(); initDance(); }
                 return refreshState();
             })
             .catch(function (err) { toast(err.message, "bad"); })
@@ -569,6 +572,175 @@
     }
 
     /* ------------------------------------------------------------------
+       Choreography
+
+       Tiles come from /api/robot/choreography rather than being hardcoded, so
+       moves the robot cannot do (or that need an arm this one lacks) never get
+       rendered as options.
+
+       Switching is deliberately not "stop, wait, start": posting a new move
+       preempts the running sequence on the robot, so the handler just fires and
+       repaints. Waiting for a stop round-trip first would put a visible stutter
+       between moves.
+       ------------------------------------------------------------------ */
+
+    var RING_CIRCUMFERENCE = 2 * Math.PI * 20;   // r=20 in the tile SVG
+    var dance = {
+        playing: null,
+        endsAt: 0,
+        duration: 0,
+        loaded: false,
+        // Moves are scripted server-side from ordinary robot commands, so this
+        // is true as soon as the robot is connected -- no licence involved.
+        engineReady: false
+    };
+    var danceFrame = null;
+
+    function danceTile(item) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "dance-tile";
+        btn.setAttribute("data-move", item.id);
+        btn.disabled = !item.available;
+        if (!item.available) {
+            btn.classList.add("is-unavailable");
+            btn.title = item.reason || "Unavailable on this robot";
+        } else {
+            btn.title = item.blurb;
+        }
+
+        btn.innerHTML =
+            '<span class="dance-tile__medal">' +
+            '  <svg class="dance-tile__ring" viewBox="0 0 44 44" aria-hidden="true">' +
+            '    <circle class="dance-tile__ring-bg" cx="22" cy="22" r="20"></circle>' +
+            '    <circle class="dance-tile__ring-fg" cx="22" cy="22" r="20"></circle>' +
+            "  </svg>" +
+            '  <span class="dance-tile__emoji">' + item.emoji + "</span>" +
+            "</span>" +
+            '<span class="dance-tile__label">' + item.label + "</span>" +
+            '<span class="dance-tile__blurb">' + item.blurb + "</span>" +
+            '<span class="dance-tile__energy is-' + item.energy + '">' + item.energy + "</span>";
+
+        var ring = btn.querySelector(".dance-tile__ring-fg");
+        ring.style.strokeDasharray = RING_CIRCUMFERENCE;
+        ring.style.strokeDashoffset = RING_CIRCUMFERENCE;
+
+        btn.addEventListener("click", function () { playDance(item.id); });
+        return btn;
+    }
+
+    function renderDance(data) {
+        dance.engineReady = !!data.ready;
+        var grid = $("[data-role='dance-grid']");
+        var basics = $("[data-role='dance-basics']");
+        if (!grid || !basics) return;
+
+        grid.innerHTML = "";
+        basics.innerHTML = "";
+        (data.dances || []).forEach(function (d) { grid.appendChild(danceTile(d)); });
+        (data.basics || []).forEach(function (b) { basics.appendChild(danceTile(b)); });
+        dance.loaded = true;
+
+        updateDanceLocks();
+    }
+
+    function playDance(moveId) {
+        if (!robot.ready || !dance.engineReady) return;
+
+        // Optimistic highlight: the robot begins within ~350ms and waiting for
+        // the response before repainting makes the tap feel unresponsive.
+        setActiveTile(moveId);
+
+        api("/choreography/play", { body: { move: moveId } })
+            .then(function (res) {
+                dance.playing = res.playing;
+                // Trust the server's duration: a fixed-length move only fits
+                // whole repetitions, so it is rarely exactly 7 seconds.
+                dance.duration = res.duration;
+                dance.endsAt = Date.now() + (res.started_in * 1000) + (res.duration * 1000);
+                startDanceClock();
+            })
+            .catch(function (err) {
+                toast(err.message, "bad");
+                clearActiveTile();
+            });
+    }
+
+    function stopDance() {
+        api("/choreography/stop")
+            .then(function () { toast("Routine stopped.", "ok"); })
+            .catch(function (err) { toast(err.message, "bad"); })
+            .then(clearActiveTile);
+    }
+
+    function setActiveTile(moveId) {
+        $$(".dance-tile").forEach(function (t) {
+            t.classList.toggle("is-playing", t.getAttribute("data-move") === moveId);
+        });
+        var stop = $("[data-role='dance-stop']");
+        if (stop) stop.disabled = false;
+    }
+
+    function clearActiveTile() {
+        dance.playing = null;
+        dance.endsAt = 0;
+        if (danceFrame) { cancelAnimationFrame(danceFrame); danceFrame = null; }
+        $$(".dance-tile").forEach(function (t) {
+            t.classList.remove("is-playing");
+            var ring = t.querySelector(".dance-tile__ring-fg");
+            if (ring) ring.style.strokeDashoffset = RING_CIRCUMFERENCE;
+        });
+        var now = $("[data-role='dance-now']");
+        if (now) { now.textContent = "Idle"; now.classList.remove("is-live"); }
+        var stop = $("[data-role='dance-stop']");
+        if (stop) stop.disabled = true;
+    }
+
+    function startDanceClock() {
+        if (danceFrame) cancelAnimationFrame(danceFrame);
+
+        function tick() {
+            var left = dance.endsAt - Date.now();
+            if (!dance.playing || left <= 0) { clearActiveTile(); return; }
+
+            var progress = 1 - (left / (dance.duration * 1000));
+            progress = Math.max(0, Math.min(1, progress));
+
+            var tile = $(".dance-tile.is-playing .dance-tile__ring-fg");
+            if (tile) tile.style.strokeDashoffset = RING_CIRCUMFERENCE * progress;
+
+            var now = $("[data-role='dance-now']");
+            if (now) {
+                var label = $(".dance-tile.is-playing .dance-tile__label");
+                now.textContent = (label ? label.textContent : "Dancing") +
+                    " · " + (left / 1000).toFixed(1) + "s";
+                now.classList.add("is-live");
+            }
+            danceFrame = requestAnimationFrame(tick);
+        }
+        danceFrame = requestAnimationFrame(tick);
+    }
+
+    function updateDanceLocks() {
+        var panel = $("[data-role='dance']");
+        if (!panel) return;
+        var usable = robot.ready && dance.engineReady;
+        panel.classList.toggle("is-locked", !usable);
+        if (!usable && dance.playing) clearActiveTile();
+    }
+
+    // Re-fetched after connecting, because availability flips once the robot
+    // is reachable.
+    function initDance() {
+        api("/choreography", { method: "GET" })
+            .then(renderDance)
+            .catch(function () { /* leave the panel empty and locked */ });
+
+        var stop = $("[data-role='dance-stop']");
+        if (stop) stop.addEventListener("click", stopDance);
+    }
+
+    /* ------------------------------------------------------------------
        Boot
        ------------------------------------------------------------------ */
 
@@ -576,6 +748,7 @@
         bindActions();
         setupSticks();
         bindKeyboard();
+        initDance();
 
         refreshState().then(syncCameras);
         setInterval(refreshState, POLL_MS);

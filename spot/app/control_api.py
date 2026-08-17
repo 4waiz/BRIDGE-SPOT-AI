@@ -17,6 +17,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 import spot_control
+from spot_choreography import ChoreographyError
 from spot_control import LeaseHeldByOtherError, SpotControlError, controller
 
 router = APIRouter(prefix="/api/robot", tags=["robot"])
@@ -38,10 +39,19 @@ class DockRequest(BaseModel):
     dock_id: int | None = Field(None, description="Defaults to SPOT_DOCK_ID from config.env")
 
 
+class DanceRequest(BaseModel):
+    move: str = Field(..., description="Move id from the choreography catalogue")
+    duration: float | None = Field(
+        None, ge=1.0, le=30.0, description="Seconds; defaults to the standard 7"
+    )
+
+
 def _guard(fn, *args, **kwargs):
     """Run a controller call, turning expected failures into clean HTTP errors."""
     try:
         return fn(*args, **kwargs)
+    except ChoreographyError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except LeaseHeldByOtherError as exc:
         # 423 Locked, kept distinct from the generic 409 so the UI knows it can
         # offer a forced take instead of just showing a dead end.
@@ -191,6 +201,37 @@ def undock():
 
 
 # -- cameras ----------------------------------------------------------------
+
+
+# -- choreography -----------------------------------------------------------
+
+
+@router.get("/choreography")
+def choreography():
+    """Move catalogue with live availability, plus what is playing right now.
+
+    Safe to poll before connecting: everything reports unavailable rather than
+    erroring, so the page can render its tiles immediately.
+    """
+    controller.expire_dance_if_done()
+    return _guard(controller.choreography_status)
+
+
+@router.post("/choreography/play")
+def choreography_play(request: DanceRequest):
+    """Start a move, preempting whatever is already running.
+
+    The response carries the real duration, which can differ from the request:
+    fixed-length moves only fit whole repetitions and the robot may cap an
+    extendable one. The UI counts down against this figure, not the request.
+    """
+    return _guard(controller.dance, request.move, request.duration)
+
+
+@router.post("/choreography/stop")
+def choreography_stop():
+    """End the routine and settle into a stand."""
+    return _guard(controller.stop_dance)
 
 
 @router.get("/cameras")
