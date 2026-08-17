@@ -73,5 +73,5 @@ The PowerShell scripts create virtual environments and install Python dependenci
 - `spot/app/main.py` and `spot/app/spot_file_copy.py` load `../config.env`. The file is gitignored; copy `spot/config.env.example` to `spot/config.env` to create it.
 - `smart_assistant/backend/app/main_ssl.py` references `../deployment/ssl/server.cert` and `../deployment/ssl/server.key`, but `smart_assistant/backend/deployment/ssl` is missing. TODO: add SSL assets or update paths.
 - No CI/CD config found (no `.github/workflows` or similar). TODO: define pipeline if needed.
-- No automated test runner config found (no `pytest.ini`, `pyproject.toml`, `tox.ini`). TODO: add tests and tooling.
+- Tests live in `spot/tests/` and run with `pytest` from the repository root (config in `pytest.ini`). They need no robot — the bosdyn service clients are mocked — and cover the control gating, speed clamping, docking behaviour, dance envelopes and a set of source-level safety invariants. Install the extras first: `spot/deployment/requirements/requirements-dev.txt`.
 - Spot robot IP is still hard-coded in `spot_legacy/app/*/config.py` and `spot/training/spot_cam_4.1.1/trainingdata.py`. The live inspection path (`spot/app/spot_file_copy.py`) now reads `SPOT_IP` from `spot/config.env`.

@@ -1,0 +1,11 @@
+# Development extras for the Spot service. Install on top of requirements.txt:
+#     spot\venv\Scripts\python.exe -m pip install -r spot\deployment\requirements\requirements-dev.txt
+#
+# Then run the suite from the repository root:
+#     spot\venv\Scripts\python.exe -m pytest
+#
+# The tests need no robot: spot_control talks to Spot through a handful of
+# bosdyn service clients, and the suite swaps those for mocks.
+
+pytest>=7.4
+ruff>=0.6
