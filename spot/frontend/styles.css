@@ -3520,6 +3520,206 @@ table.data tbody tr.is-clickable {
     .vc-orb__progress-bar { animation: none !important; }
 }
 
+/* ==========================================================================
+   Dataset labelling (labeling.html)
+   Throughput tool: the image is the page, everything else stays out of the way.
+   ========================================================================== */
+
+.lb-banner {
+    padding: 0.85rem 1.1rem;
+    margin-bottom: 1.25rem;
+    border-radius: var(--r-md);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--info);
+    background: var(--surface);
+    font-size: 0.88rem;
+    color: var(--text-soft);
+}
+
+.lb-banner.is-warn { border-left-color: var(--warn); }
+
+/* -- picker -- */
+
+.lb-datasets {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+    gap: 1rem;
+}
+
+.lb-dataset {
+    text-align: left;
+    padding: 1.1rem 1.2rem;
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.14s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.lb-dataset:hover:not(:disabled) {
+    transform: translateY(-2px);
+    border-color: var(--accent);
+    box-shadow: var(--shadow);
+}
+
+.lb-dataset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lb-dataset:disabled { opacity: 0.5; cursor: not-allowed; }
+.lb-dataset.is-complete { border-color: rgba(22, 163, 74, 0.4); }
+
+.lb-dataset__mode {
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.lb-dataset__title { margin: 0.3rem 0 0.15rem; font-size: 1.05rem; }
+.lb-dataset__model { margin: 0 0 0.7rem; font-size: 0.76rem; color: var(--muted); }
+.lb-dataset__model code { font-size: 0.72rem; }
+.lb-dataset__count { margin: 0.5rem 0 0; font-size: 0.78rem; color: var(--muted); }
+
+/* -- progress bar -- */
+
+.lb-bar {
+    height: 6px;
+    border-radius: var(--pill);
+    background: var(--border);
+    overflow: hidden;
+}
+
+.lb-bar > span {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: var(--pill);
+    background: var(--accent);
+    transition: width 0.25s ease;
+}
+
+.lb-bar__text { margin: 0.5rem 0 0.9rem; font-size: 0.8rem; color: var(--muted); }
+
+/* -- stage -- */
+
+.lb-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 19rem;
+    gap: 1.25rem;
+}
+
+.lb-side { display: flex; flex-direction: column; gap: 1.25rem; }
+
+.lb-counter {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+}
+
+.lb-frame {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 24rem;
+    background: #0c0d0f;
+    border-radius: var(--r-md);
+    overflow: hidden;
+}
+
+.lb-frame img { max-width: 100%; max-height: 60vh; display: block; }
+
+/* Sits exactly over the image so box coordinates map 1:1. */
+.lb-boxes {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    cursor: crosshair;
+    touch-action: none;
+}
+
+.lb-frame__done { color: var(--sidebar-muted); text-align: center; padding: 2rem; }
+.lb-frame__done p { margin: 0.2rem 0; }
+
+/* -- class buttons -- */
+
+.lb-actions {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 0.6rem;
+    margin-top: 0.9rem;
+}
+
+.lb-class {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-md);
+    background: var(--field);
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.14s ease, background 0.14s ease, transform 0.1s ease;
+}
+
+.lb-class:hover { border-color: var(--accent); background: var(--accent-soft); transform: translateY(-1px); }
+.lb-class:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lb-class.is-active { border-color: var(--accent); background: var(--accent-soft); }
+
+.lb-class kbd {
+    padding: 0.05rem 0.4rem;
+    border: 1px solid var(--border-strong);
+    border-bottom-width: 2px;
+    border-radius: 0.3rem;
+    background: var(--surface);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.7rem;
+}
+
+.lb-class__label { font-weight: 700; font-size: 0.95rem; }
+.lb-class__hint { font-size: 0.72rem; color: var(--muted); }
+
+.lb-toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.9rem; }
+
+.lb-toolbar kbd {
+    padding: 0 0.3rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 0.25rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.68rem;
+}
+
+.lb-keys { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.lb-keys li { font-size: 0.8rem; color: var(--text-soft); }
+
+.lb-keys kbd {
+    display: inline-block;
+    min-width: 1.4rem;
+    text-align: center;
+    padding: 0.05rem 0.35rem;
+    margin-right: 0.4rem;
+    border: 1px solid var(--border-strong);
+    border-bottom-width: 2px;
+    border-radius: 0.3rem;
+    background: var(--surface);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.7rem;
+}
+
+.lb-export-result { margin: 0.6rem 0 0; font-size: 0.76rem; color: var(--muted); word-break: break-all; }
+
+@media (max-width: 1100px) {
+    .lb-layout { grid-template-columns: minmax(0, 1fr); }
+    .lb-actions { grid-auto-flow: row; }
+}
+
 /* -- Choreography page -- */
 
 .choreo-banner {

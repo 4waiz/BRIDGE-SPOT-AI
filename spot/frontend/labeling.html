@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Bridge Spot — Dataset Labelling</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" type="text/css" href="styles.css?v=20260817b">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
+</head>
+<body>
+    <div class="bs-app" data-shell data-nav="labeling">
+        <main class="bs-main">
+            <div class="bs-content">
+                <div class="page-head">
+                    <div>
+                        <h1 class="page-head__title">Dataset Labelling</h1>
+                        <p class="page-head__sub">
+                            Label the HSSE capture sets that train the emergency-detection models.
+                            Nothing here moves or deletes a source image — decisions are stored
+                            alongside and can be undone.
+                        </p>
+                    </div>
+                    <div class="page-head__actions">
+                        <span class="chip chip--plain" data-role="lb-progress">—</span>
+                        <button type="button" class="btn" data-role="lb-back" hidden>
+                            <span data-icon="chevronRight"></span> All datasets
+                        </button>
+                    </div>
+                </div>
+
+                <div class="lb-banner" data-role="lb-banner" hidden></div>
+
+                <!-- ============ dataset picker ============ -->
+                <section data-role="lb-picker">
+                    <div class="lb-datasets" data-role="lb-datasets"></div>
+                </section>
+
+                <!-- ============ labelling stage ============ -->
+                <section data-role="lb-stage" hidden>
+                    <div class="lb-layout">
+                        <div class="card lb-canvas-card">
+                            <div class="ctl-panel-head">
+                                <h2 class="card__title" data-role="lb-question">—</h2>
+                                <span class="lb-counter" data-role="lb-counter"></span>
+                            </div>
+
+                            <div class="lb-frame" data-role="lb-frame">
+                                <img data-role="lb-image" alt="Capture awaiting a label">
+                                <!-- Only used in detect mode; sits exactly over the image -->
+                                <canvas class="lb-boxes" data-role="lb-boxes" hidden></canvas>
+                                <div class="lb-frame__done" data-role="lb-done" hidden>
+                                    <p><strong>All done.</strong></p>
+                                    <p>Every image in this set has a label.</p>
+                                </div>
+                            </div>
+
+                            <div class="lb-actions" data-role="lb-classes"></div>
+
+                            <div class="lb-toolbar">
+                                <button type="button" class="btn btn--sm" data-role="lb-undo">
+                                    <span data-icon="refresh"></span> Undo <kbd>Z</kbd>
+                                </button>
+                                <button type="button" class="btn btn--sm" data-role="lb-skip">
+                                    Skip <kbd>S</kbd>
+                                </button>
+                                <button type="button" class="btn btn--sm btn--accent" data-role="lb-save" hidden>
+                                    Save boxes <kbd>Enter</kbd>
+                                </button>
+                                <button type="button" class="btn btn--sm btn--ghost" data-role="lb-clear-boxes" hidden>
+                                    Clear boxes
+                                </button>
+                            </div>
+                        </div>
+
+                        <aside class="lb-side">
+                            <section class="card">
+                                <h2 class="card__title">Progress</h2>
+                                <div class="lb-bar"><span data-role="lb-bar-fill"></span></div>
+                                <p class="lb-bar__text" data-role="lb-bar-text">—</p>
+                                <dl class="vc-facts vc-facts--compact" data-role="lb-stats"></dl>
+                            </section>
+
+                            <section class="card">
+                                <h2 class="card__title">Shortcuts</h2>
+                                <ul class="lb-keys" data-role="lb-keys"></ul>
+                            </section>
+
+                            <section class="card">
+                                <h2 class="card__title">Export</h2>
+                                <p class="ctl-note">
+                                    Copies the labelled images into a training layout under
+                                    <code>spot/data/datasets/</code>. Sources are left untouched.
+                                </p>
+                                <button type="button" class="btn btn--block" data-role="lb-export">
+                                    <span data-icon="download"></span> Export for training
+                                </button>
+                                <p class="lb-export-result" data-role="lb-export-result"></p>
+                            </section>
+                        </aside>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="bridge-shell.js?v=20260817b"></script>
+    <script src="labeling.js?v=20260817b"></script>
+</body>
+</html>

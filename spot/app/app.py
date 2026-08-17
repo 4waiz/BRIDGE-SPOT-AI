@@ -2,6 +2,7 @@ from fastapi import FastAPI, Query
 import control_api
 import digital_factory
 import hsse
+import labeling_api
 import spot_file_copy
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import RedirectResponse
@@ -37,6 +38,9 @@ app.mount("/latest", StaticFiles(directory=LATEST_FOLDER_PATH), name="latest")
 
 # Live robot control endpoints under /api/robot
 app.include_router(control_api.router)
+
+# HSSE dataset labelling endpoints under /api/labeling
+app.include_router(labeling_api.router)
 
 
 # Frontend

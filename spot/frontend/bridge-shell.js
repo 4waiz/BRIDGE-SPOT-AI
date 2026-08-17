@@ -180,6 +180,7 @@
         { key: "control", label: "Control", href: "control.html", icon: "robot" },
         { key: "voice", label: "Voice Control", href: "voice-control.html", icon: "mic" },
         { key: "choreography", label: "Choreography", href: "choreography.html", icon: "sparkle" },
+        { key: "labeling", label: "Labelling", href: "labeling.html", icon: "clipboard" },
         { key: "missions", label: "Missions", href: "missions.html", icon: "mission" },
         { key: "reports", label: "Reports", href: "reports.html", icon: "report" },
         { key: "assets", label: "Assets", href: "assets.html", icon: "assets" },

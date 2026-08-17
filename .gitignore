@@ -42,6 +42,11 @@ dist/
 build/
 coverage/
 
+# Exported training sets. Derived from spot/data/labels/ by the labelling tool
+# and large (a full export copies the source images), so they are rebuilt rather
+# than tracked. The labels themselves ARE tracked -- they are the actual work.
+spot/data/datasets/
+
 # Vendored Spot SDK (580 MB). Reproduce with:
 #   git clone --depth 1 --branch v5.1.9 https://github.com/boston-dynamics/spot-sdk.git spot-sdk-5.1.9
 # Left untracked deliberately -- .git is already 1.7 GB with spot-sdk-4.1.1 in
