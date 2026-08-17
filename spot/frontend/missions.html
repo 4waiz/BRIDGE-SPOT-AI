@@ -26,6 +26,48 @@
                     </div>
                 </div>
 
+                <!-- Real Autowalk missions read from spot/data/missions/.
+                     Everything below this section is the demo mission builder. -->
+                <section class="card aw-panel" data-role="aw-panel">
+                    <div class="ctl-panel-head">
+                        <h2 class="card__title">Autowalk</h2>
+                        <span class="chip chip--plain" data-role="aw-state">Loading…</span>
+                    </div>
+                    <p class="ctl-note">
+                        Recorded routes exported from the tablet. Playback drives Spot along the
+                        route autonomously — never start one unattended.
+                    </p>
+
+                    <div class="aw-list" data-role="aw-list"></div>
+
+                    <div class="aw-run" data-role="aw-run" hidden>
+                        <ol class="ctl-steps aw-steps">
+                            <li class="ctl-step" data-step="upload">
+                                <span class="ctl-step__n">1</span>
+                                <span class="ctl-step__label">Upload map &amp; mission to Spot</span>
+                                <button type="button" class="btn btn--sm" data-action="aw-upload">Upload</button>
+                            </li>
+                            <li class="ctl-step" data-step="localize">
+                                <span class="ctl-step__n">2</span>
+                                <span class="ctl-step__label">Localise (needs a fiducial in view)</span>
+                                <button type="button" class="btn btn--sm" data-action="aw-localize">Localise</button>
+                            </li>
+                            <li class="ctl-step" data-step="play">
+                                <span class="ctl-step__n">3</span>
+                                <span class="ctl-step__label">Play the route</span>
+                                <button type="button" class="btn btn--sm btn--accent" data-action="aw-play">Play</button>
+                            </li>
+                        </ol>
+                        <div class="aw-controls">
+                            <button type="button" class="btn btn--sm" data-action="aw-pause">
+                                <span data-icon="stop"></span> Pause
+                            </button>
+                            <button type="button" class="btn btn--sm btn--ghost" data-action="aw-stop">Stop</button>
+                            <span class="aw-message" data-role="aw-message"></span>
+                        </div>
+                    </div>
+                </section>
+
                 <div class="stack">
                     <section>
                         <div class="toolbar">
@@ -117,7 +159,9 @@
         </main>
     </div>
 
-    <script src="bridge-shell.js?v=20260805"></script>
+    <script src="bridge-shell.js?v=20260817c"></script>
+    <script src="robot-service.js?v=20260817c"></script>
+    <script src="autowalk.js?v=20260817c"></script>
     <script src="usecases.data.js?v=20260805"></script>
     <script src="usecases.js?v=20260805"></script>
     <script src="platform.data.js?v=20260805"></script>

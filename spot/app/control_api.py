@@ -17,6 +17,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 import spot_control
+from missions import MissionError
 from spot_choreography import ChoreographyError
 from spot_control import LeaseHeldByOtherError, SpotControlError, controller
 
@@ -50,7 +51,7 @@ def _guard(fn, *args, **kwargs):
     """Run a controller call, turning expected failures into clean HTTP errors."""
     try:
         return fn(*args, **kwargs)
-    except ChoreographyError as exc:
+    except (ChoreographyError, MissionError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except LeaseHeldByOtherError as exc:
         # 423 Locked, kept distinct from the generic 409 so the UI knows it can
@@ -201,6 +202,52 @@ def undock():
 
 
 # -- cameras ----------------------------------------------------------------
+
+
+# -- autowalk missions -------------------------------------------------------
+
+
+class MissionRequest(BaseModel):
+    mission: str = Field(..., description="Mission id from the library")
+
+
+@router.get("/missions")
+def missions():
+    """The mission library plus current playback state.
+
+    Safe to poll before connecting: the library is read from disk, so the page
+    can show what is available without a robot.
+    """
+    return _guard(controller.mission_status)
+
+
+@router.post("/missions/upload")
+def mission_upload(request: MissionRequest):
+    """Push the graph, snapshots and walk to the robot. Slow on first upload."""
+    return _guard(controller.upload_mission, request.mission)
+
+
+@router.post("/missions/localize")
+def mission_localize():
+    """Localise against the nearest fiducial. Required before playing."""
+    return _guard(controller.localize_mission)
+
+
+@router.post("/missions/play")
+def mission_play(request: MissionRequest | None = None):
+    """Start autonomous playback. The robot walks the recorded route unattended
+    until it finishes, is paused, or is stopped."""
+    return _guard(controller.play_mission, request.mission if request else None)
+
+
+@router.post("/missions/pause")
+def mission_pause():
+    return _guard(controller.pause_mission)
+
+
+@router.post("/missions/stop")
+def mission_stop():
+    return _guard(controller.stop_mission)
 
 
 # -- choreography -----------------------------------------------------------

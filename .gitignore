@@ -42,6 +42,13 @@ dist/
 build/
 coverage/
 
+# Autowalk exports (57 MB for the HSSE route: 37 MB of waypoint snapshots plus
+# a 20 MB point cloud). Robot-generated binary data, re-exportable from the
+# tablet, so it is unzipped in rather than tracked:
+#   unzip HSSE.walk.zip -d spot/data/missions/
+# The Missions page says so plainly when the directory is empty.
+spot/data/missions/
+
 # Exported training sets. Derived from spot/data/labels/ by the labelling tool
 # and large (a full export copies the source images), so they are rebuilt rather
 # than tracked. The labels themselves ARE tracked -- they are the actual work.

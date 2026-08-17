@@ -46,7 +46,11 @@ from bosdyn.client.power import PowerClient
 from bosdyn.client.robot_command import RobotCommandBuilder, RobotCommandClient
 from bosdyn.client.robot_state import RobotStateClient
 
+import missions as mission_service
 import spot_choreography
+from bosdyn.client.autowalk import AutowalkClient
+from bosdyn.client.graph_nav import GraphNavClient
+from bosdyn.mission.client import MissionClient
 
 SPOT_IP = os.getenv("SPOT_IP", "192.168.33.137")
 DOCK_ID = int(os.getenv("SPOT_DOCK_ID", "520"))
@@ -134,7 +138,7 @@ def _clamp(value, limit):
     return max(-limit, min(limit, value))
 
 
-class SpotController(spot_choreography.ChoreographyMixin):
+class SpotController(spot_choreography.ChoreographyMixin, mission_service.MissionMixin):
     """Single owner of the robot connection, lease and E-stop.
 
     One instance per process. Every public method takes `_lock`, because the
@@ -150,8 +154,9 @@ class SpotController(spot_choreography.ChoreographyMixin):
         self._estop_keepalive = None
         self._lease_keepalive = None
         self._last_error = None
-        # Dance state, so status can be reported before connecting.
+        # Dance and mission state, so status can be reported before connecting.
         self._init_choreography()
+        self._init_missions()
 
     # -- connection ---------------------------------------------------------
 
@@ -173,7 +178,9 @@ class SpotController(spot_choreography.ChoreographyMixin):
                     "and BOSDYN_CLIENT_PASSWORD in spot/config.env."
                 )
 
-            sdk = bosdyn.client.create_standard_sdk(CLIENT_NAME)
+            # MissionClient is not part of the standard client set, so it has to
+            # be declared when the SDK is created rather than registered later.
+            sdk = bosdyn.client.create_standard_sdk(CLIENT_NAME, [MissionClient])
             # Bind a second ImageClient to the Spot CAM payload's own image
             # service. Without this only the five body fisheyes are reachable.
             sdk.register_service_client(ImageClient, service_name=SPOT_CAM_IMAGE_SERVICE)
@@ -231,6 +238,30 @@ class SpotController(spot_choreography.ChoreographyMixin):
         if self._robot is None:
             raise SpotControlError("Not connected to the robot. Connect first.")
         return self._robot
+
+    # Mission services are created on first use rather than at connect: they are
+    # only needed for Autowalk, and a robot without them should still connect.
+    def _lazy_client(self, key, service_name):
+        self._require()
+        client = self._clients.get(key)
+        if client is None:
+            try:
+                client = self._robot.ensure_client(service_name)
+            except Exception as exc:
+                raise SpotControlError(
+                    f"The {service_name} service is unavailable on this robot: {exc}"
+                ) from exc
+            self._clients[key] = client
+        return client
+
+    def _graph_nav_client(self):
+        return self._lazy_client("graph_nav", GraphNavClient.default_service_name)
+
+    def _autowalk_client(self):
+        return self._lazy_client("autowalk", AutowalkClient.default_service_name)
+
+    def _mission_client(self):
+        return self._lazy_client("mission", MissionClient.default_service_name)
 
     # -- E-stop -------------------------------------------------------------
 

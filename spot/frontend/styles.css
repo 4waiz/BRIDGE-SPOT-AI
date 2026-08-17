@@ -3521,6 +3521,51 @@ table.data tbody tr.is-clickable {
 }
 
 /* ==========================================================================
+   Autowalk playback (real section at the top of missions.html)
+   ========================================================================== */
+
+.aw-panel { margin-bottom: 1.25rem; }
+
+.aw-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.aw-card {
+    text-align: left;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--field);
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.aw-card:hover:not(:disabled) { border-color: var(--accent); box-shadow: var(--shadow-sm); }
+.aw-card.is-selected { border-color: var(--accent); background: var(--accent-soft); }
+.aw-card:disabled { opacity: 0.55; cursor: not-allowed; }
+.aw-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.aw-card__name { margin: 0 0 0.5rem; font-size: 1rem; }
+
+.aw-card__facts { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem 0.8rem; }
+.aw-card__facts > div { display: flex; justify-content: space-between; gap: 0.5rem; }
+.aw-card__facts dt { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.aw-card__facts dd { margin: 0; font-size: 0.8rem; font-weight: 650; }
+
+.aw-card__warn { margin: 0.55rem 0 0; font-size: 0.72rem; color: var(--bad); font-weight: 600; }
+.aw-card__warn--info { color: var(--warn); }
+
+.aw-steps { margin-bottom: 0.9rem; }
+
+.aw-controls { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.aw-message { font-size: 0.8rem; color: var(--muted); }
+
+/* ==========================================================================
    Dataset labelling (labeling.html)
    Throughput tool: the image is the page, everything else stays out of the way.
    ========================================================================== */
