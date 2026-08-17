@@ -154,13 +154,51 @@
        Scene
        ------------------------------------------------------------------ */
 
+    /*
+     * Camera framing.
+     *
+     * A fixed camera position clips the model as soon as the container is a
+     * different shape than it was designed against -- which is what a
+     * responsive dashboard guarantees. So the distance is derived from the
+     * model instead.
+     *
+     * Fitting to the bounding SPHERE rather than the box matters: the model
+     * turns on its turntable and changes pose between sitting and standing,
+     * and a sphere is the same size from every angle, so nothing can swing out
+     * of frame.
+     */
+    var VIEW_DIR = null;      // unit direction the camera sits along
+    var fitCentre = null;
+    var fitRadius = 0;
+
+    function frameCamera() {
+        if (!camera || !fitRadius || !VIEW_DIR) return;
+
+        var vFov = camera.fov * Math.PI / 180;
+        // The horizontal field is the binding constraint on a wide, short
+        // container; the vertical one on a tall, narrow container. Fit to
+        // whichever is tighter.
+        var hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+        var fov = Math.min(vFov, hFov);
+
+        // Padding covers the pose change between sitting and standing, which
+        // grows the model after the initial fit was taken.
+        var distance = (fitRadius * 1.25) / Math.sin(fov / 2);
+
+        camera.position.copy(VIEW_DIR).multiplyScalar(distance).add(fitCentre);
+        camera.near = Math.max(0.01, distance - fitRadius * 4);
+        camera.far = distance + fitRadius * 4;
+        camera.lookAt(fitCentre);
+        camera.updateProjectionMatrix();
+    }
+
     function size() {
         var width = host.clientWidth || 480;
         var height = host.clientHeight || 360;
         if (renderer) renderer.setSize(width, height, false);
         if (camera) {
             camera.aspect = width / height;
-            camera.updateProjectionMatrix();
+            frameCamera();
         }
     }
 
@@ -170,9 +208,9 @@
         renderer.outputColorSpace = THREE.SRGBColorSpace;
 
         scene = new THREE.Scene();
+        // Position and clipping planes are set by frameCamera() once the
+        // model is measured; the values here are only placeholders.
         camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
-        camera.position.set(2.6, 1.15, 3.0);
-        camera.lookAt(0, 0.45, 0);
 
         // Soft key/fill so the yellow reads correctly against both themes
         // without the model looking like a lit studio render.
@@ -193,15 +231,26 @@
 
             // Centre on the origin and scale to a consistent hero size,
             // whatever units the export used.
+            // Normalise to a known size, then sit the model exactly on the
+            // origin so the camera has a stable point to orbit and aim at.
             var box = new THREE.Box3().setFromObject(model);
             var centre = box.getCenter(new THREE.Vector3());
             var span = box.getSize(new THREE.Vector3());
             var scale = 1.6 / Math.max(span.x, span.y, span.z);
             model.scale.setScalar(scale);
             model.position.sub(centre.multiplyScalar(scale));
-            model.position.y += 0.15;
             model.rotation.y = -0.5;
             scene.add(model);
+
+            // Measure after scaling and centring, so the fit reflects what is
+            // actually in the scene.
+            var fitted = new THREE.Box3().setFromObject(model);
+            var sphere = fitted.getBoundingSphere(new THREE.Sphere());
+            fitCentre = sphere.center.clone();
+            fitRadius = sphere.radius;
+            // Three-quarter view, slightly above the robot.
+            VIEW_DIR = new THREE.Vector3(0.62, 0.30, 0.72).normalize();
+            frameCamera();
 
             indexBones(THREE, model);
             mixer = new THREE.AnimationMixer(model);

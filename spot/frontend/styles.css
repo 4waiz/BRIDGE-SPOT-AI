@@ -3580,6 +3580,9 @@ table.data tbody tr.is-clickable {
     gap: 0.4rem;
 }
 
+/* The wordmark centres; the twin stage must span the full width. */
+.home--focus .hero > .hero__robot { align-self: stretch; }
+
 .home--focus .hero__sub { margin-bottom: 0.5rem; }
 
 .home-entry {
@@ -3625,11 +3628,20 @@ table.data tbody tr.is-clickable {
 /* The twin sits in a fixed-aspect stage. Without this the canvas grew to fill
    whatever height was available and pushed the rest of the page below the
    fold, which is exactly what it did on first build. */
+/* Explicit height rather than aspect-ratio: this sits in a centred flex
+   column, where a width:100% child collapses to content width and leaves
+   aspect-ratio nothing to resolve against -- which measured 0x0 and let the
+   canvas fall back to its intrinsic 480x360, overflowing the model. */
 .hero__robot {
     position: relative;
+    align-self: stretch;
     width: 100%;
-    aspect-ratio: 4 / 3;
-    max-height: 26rem;
+    /* min-height is the floor: a viewport-relative height alone collapses to
+       nothing wherever vh resolves to 0 (embedded frames, some headless
+       contexts), which silently kills the stage. */
+    min-height: 19rem;
+    height: 42vh;
+    max-height: 24rem;
     margin: 0 auto;
     display: grid;
     place-items: center;
