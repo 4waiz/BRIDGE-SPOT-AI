@@ -94,6 +94,24 @@
                         </aside>
                     </div>
                 </div>
+
+                <!-- Moved off the home page: the landing screen is now just the
+                     digital twin, inspection entry and voice control. -->
+                <section>
+                    <div class="section-head">
+                        <h2 class="section-title">Mission Modules</h2>
+                        <a class="link-more" href="missions.html">View all <span data-icon="arrowRight"></span></a>
+                    </div>
+                    <div class="module-list module-list--wide" data-role="module-list"
+                         data-modules="safety-response,predictive-maintenance,readiness-evaluator"></div>
+                </section>
+
+                <section class="quick-actions">
+                    <div class="section-head">
+                        <h2 class="section-title">Quick Actions</h2>
+                    </div>
+                    <div class="quick-grid" data-role="quick-actions"></div>
+                </section>
             </div>
         </main>
     </div>
@@ -103,5 +121,7 @@
     <script src="usecases.js?v=20260805"></script>
     <script src="platform.data.js?v=20260805"></script>
     <script src="dashboard.js?v=20260805"></script>
+    <!-- Renders the module list and quick actions that used to live on home. -->
+    <script src="home.js?v=20260817"></script>
 </body>
 </html>

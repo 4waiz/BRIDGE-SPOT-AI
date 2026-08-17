@@ -67,60 +67,26 @@
                     <aside class="rail">
                         <!-- Smart Assistant: the text field and the online/offline
                              switch both drive the existing voice assistant. -->
-                        <section class="assistant-card" data-role="assistant-card">
-                            <div class="assistant-card__head">
-                                <span class="icon-tile icon-tile--plain" data-icon="sparkle"></span>
-                                <h2 class="assistant-card__title">Smart Assistant</h2>
-                                <button type="button" class="bs-iconbtn" data-role="assistant-collapse" aria-label="Collapse assistant" aria-expanded="true">
-                                    <span data-icon="chevronDown"></span>
-                                </button>
+                        <!-- Voice Control replaces the inline assistant: the same speech stack,
+                             but it opens the operator page where commands actually reach the robot. -->
+                        <section class="card home-voice">
+                            <div class="home-voice__head">
+                                <span class="icon-tile" data-icon="mic"></span>
+                                <h2 class="home-voice__title">Voice Control</h2>
                             </div>
-                            <p class="assistant-card__prompt">How can I assist your mission today?</p>
-                            <form class="assistant-form" data-role="assistant-form">
-                                <input type="text" data-role="assistant-input" placeholder="Ask anything..." autocomplete="off" aria-label="Ask the smart assistant">
-                                <button type="submit" class="assistant-send" aria-label="Send question">
-                                    <span data-icon="send"></span>
-                                </button>
-                            </form>
-                            <div class="assistant-card__foot">
-                                <span class="assistant-hint">Or say “Hey Spot” to talk.</span>
-                                <div id="assistant-mode-dropdown" class="mode-dropdown" data-start-on-select="true">
-                                    <button type="button" class="mode-button" data-role="mode-trigger" aria-haspopup="listbox" aria-expanded="false">
-                                        <span class="mode-indicator online" data-role="mode-indicator" aria-hidden="true"></span>
-                                        <span class="mode-label" data-role="mode-label">Online Mode</span>
-                                        <span class="mode-caret" aria-hidden="true"></span>
-                                    </button>
-                                    <div class="mode-menu" role="listbox" aria-label="Assistant mode options">
-                                        <button type="button" class="mode-option is-active" data-mode="online" role="option" aria-selected="true">
-                                            <span class="mode-indicator online" aria-hidden="true"></span>
-                                            Online Mode
-                                        </button>
-                                        <button type="button" class="mode-option" data-mode="offline" role="option" aria-selected="false">
-                                            <span class="mode-indicator offline" aria-hidden="true"></span>
-                                            Offline Mode
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                            <p class="home-voice__blurb">
+                                Speak to Spot and the command runs through the same control path as the
+                                manual dashboard. Say &ldquo;connect to robot&rdquo;, &ldquo;stand up&rdquo; or &ldquo;dock&rdquo;.
+                            </p>
+                            <a class="btn btn--accent btn--block" href="voice-control.html">
+                                <span data-icon="mic"></span> Open Voice Control
+                            </a>
+                            <p class="home-voice__foot" data-role="home-voice-state">Checking robot&hellip;</p>
                         </section>
 
-                        <section>
-                            <div class="section-head">
-                                <h2 class="section-title">Mission Modules</h2>
-                                <a class="link-more" href="missions.html">View all <span data-icon="arrowRight"></span></a>
-                            </div>
-                            <div class="module-list" data-role="module-list" data-modules="safety-response,predictive-maintenance,readiness-evaluator"></div>
-                        </section>
                     </aside>
                 </div>
 
-                <!-- Quick actions close the page, spanning its full width. -->
-                <section class="quick-actions">
-                    <div class="section-head">
-                        <h2 class="section-title">Quick Actions</h2>
-                    </div>
-                    <div class="quick-grid" data-role="quick-actions"></div>
-                </section>
             </div>
         </main>
     </div>

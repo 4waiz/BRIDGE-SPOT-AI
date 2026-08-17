@@ -3565,6 +3565,22 @@ table.data tbody tr.is-clickable {
 .aw-controls { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
 .aw-message { font-size: 0.8rem; color: var(--muted); }
 
+/* -- home: voice control entry point (replaced the inline assistant) -- */
+
+.home-voice { display: flex; flex-direction: column; gap: 0.7rem; }
+.home-voice__head { display: flex; align-items: center; gap: 0.6rem; }
+.home-voice__title { margin: 0; font-size: 1.05rem; font-weight: 700; }
+.home-voice__blurb { margin: 0; font-size: 0.86rem; color: var(--text-soft); line-height: 1.5; }
+.home-voice__foot { margin: 0; font-size: 0.76rem; color: var(--muted); }
+.home-voice__foot.is-ready { color: var(--ok); font-weight: 600; }
+
+/* The module list spans the dashboard width now it is no longer in a rail. */
+.module-list--wide {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+    gap: 0.75rem;
+}
+
 /* -- digital twin hero -- */
 
 .hero__robot { position: relative; }

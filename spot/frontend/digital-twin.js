@@ -205,3 +205,37 @@
 
     window.addEventListener("pagehide", teardown);
 })(window, document);
+
+/*
+ * Home page voice-control status line. Lives here rather than in a file of its
+ * own because it needs the same /api/robot/state poll the twin already runs.
+ */
+(function () {
+    "use strict";
+    var out = document.querySelector("[data-role='home-voice-state']");
+    if (!out) return;
+
+    function refresh() {
+        fetch("/api/robot/state")
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (s) {
+                if (!s || !s.connected) {
+                    out.textContent = "Spot is not connected — voice commands will say so.";
+                    out.classList.remove("is-ready");
+                    return;
+                }
+                var estop = s.estop || {};
+                var ready = estop.registered && estop.clear && s.lease_held && s.powered_on;
+                out.textContent = ready
+                    ? "Connected and ready for spoken commands."
+                    : "Connected — finish bring-up to unlock motion commands.";
+                out.classList.toggle("is-ready", !!ready);
+            })
+            .catch(function () {
+                out.textContent = "Spot service unreachable.";
+                out.classList.remove("is-ready");
+            });
+    }
+    refresh();
+    setInterval(refresh, 5000);
+})();
