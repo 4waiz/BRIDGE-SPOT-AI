@@ -65,6 +65,75 @@
                             <button type="button" class="btn btn--sm btn--ghost" data-action="aw-stop">Stop</button>
                             <span class="aw-message" data-role="aw-message"></span>
                         </div>
+
+                        <div class="ctl-divider"></div>
+
+                        <!-- Inspection actions attached to this route. Stored in a
+                             sidecar and merged into the walk at upload time. -->
+                        <div class="al-head">
+                            <h3 class="al-title">Inspection actions</h3>
+                            <button type="button" class="btn btn--sm btn--accent" data-role="al-add">
+                                <span data-icon="plus"></span> Add action
+                            </button>
+                        </div>
+                        <p class="ctl-note">
+                            Attached actions are merged into the mission when it is uploaded.
+                            The tablet export on disk is never modified.
+                        </p>
+                        <div class="al-list" data-role="al-list"></div>
+
+                        <!-- Editor -->
+                        <div class="al-editor" data-role="al-editor" hidden>
+                            <div class="al-editor__grid">
+                                <div class="al-editor__form">
+                                    <label class="al-field">
+                                        <span>Action type</span>
+                                        <select class="ctl-select" data-role="al-template"></select>
+                                    </label>
+                                    <p class="al-blurb" data-role="al-blurb"></p>
+
+                                    <label class="al-field">
+                                        <span>Name</span>
+                                        <input class="al-input" type="text" data-role="al-name"
+                                               placeholder="e.g. Extinguisher — Bay 3">
+                                    </label>
+
+                                    <label class="al-field">
+                                        <span>Waypoint</span>
+                                        <select class="ctl-select" data-role="al-waypoint"></select>
+                                    </label>
+
+                                    <div class="al-params" data-role="al-params"></div>
+
+                                    <div class="al-editor__actions">
+                                        <button type="button" class="btn btn--sm btn--accent" data-role="al-save">
+                                            Save action
+                                        </button>
+                                        <button type="button" class="btn btn--sm btn--ghost" data-role="al-cancel">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="al-editor__preview">
+                                    <div class="al-preview-head">
+                                        <span>Camera preview</span>
+                                        <button type="button" class="btn btn--sm" data-role="al-aim">
+                                            <span data-icon="target"></span> Aim &amp; refresh
+                                        </button>
+                                    </div>
+                                    <div class="al-preview">
+                                        <img data-role="al-preview-img" alt="Spot CAM preview">
+                                        <div class="al-preview__empty" data-role="al-preview-empty">
+                                            Connect to Spot and press Aim to frame this action.
+                                        </div>
+                                    </div>
+                                    <p class="ctl-note" data-role="al-preview-note">
+                                        Aiming moves the Spot CAM only — the robot stays put.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -161,7 +230,8 @@
 
     <script src="bridge-shell.js?v=20260817c"></script>
     <script src="robot-service.js?v=20260817c"></script>
-    <script src="autowalk.js?v=20260817c"></script>
+    <script src="autowalk.js?v=20260817d"></script>
+    <script src="action-library.js?v=20260817d"></script>
     <script src="usecases.data.js?v=20260805"></script>
     <script src="usecases.js?v=20260805"></script>
     <script src="platform.data.js?v=20260805"></script>

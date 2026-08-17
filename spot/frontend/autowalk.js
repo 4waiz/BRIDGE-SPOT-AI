@@ -83,6 +83,9 @@
                 renderLibrary();
                 $("[data-role='aw-run']").hidden = false;
                 render();
+                // The action library panel follows this selection.
+                document.dispatchEvent(new CustomEvent("autowalk:selected",
+                    { detail: { mission: selected } }));
             });
             host.appendChild(card);
         });
@@ -126,12 +129,21 @@
             if (!result.ok) return;
             library = result.data.library || [];
             state = result.data;
+            var first = !selected;
             if (!selected && library.length && library[0].playable) selected = library[0].id;
             renderLibrary();
             if (selected) $("[data-role='aw-run']").hidden = false;
             render();
+            if (first && selected) {
+                document.dispatchEvent(new CustomEvent("autowalk:selected",
+                    { detail: { mission: selected } }));
+            }
         });
     }
+
+    // Read by action-library.js so the two panels never disagree about which
+    // mission is being edited.
+    window.AutowalkSelection = function () { return selected; };
 
     /* ------------------------------------------------------------------
        Actions

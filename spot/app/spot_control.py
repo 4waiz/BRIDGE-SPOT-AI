@@ -35,6 +35,7 @@ import dotenv
 dotenv.load_dotenv("../config.env")
 
 import bosdyn.client
+import bosdyn.client.spot_cam as spot_cam_clients
 import bosdyn.client.util
 from bosdyn.api import image_pb2
 from bosdyn.api.docking import docking_pb2
@@ -184,6 +185,12 @@ class SpotController(spot_choreography.ChoreographyMixin, mission_service.Missio
             # Bind a second ImageClient to the Spot CAM payload's own image
             # service. Without this only the five body fisheyes are reachable.
             sdk.register_service_client(ImageClient, service_name=SPOT_CAM_IMAGE_SERVICE)
+            # Spot CAM services (PTZ, lighting, audio) are not in the standard
+            # client set and must be registered before they can be reached.
+            try:
+                spot_cam_clients.register_all_service_clients(sdk)
+            except Exception as exc:
+                logging.warning("Could not register Spot CAM services: %s", exc)
             robot = sdk.create_robot(SPOT_IP)
             try:
                 robot.authenticate(username, password)

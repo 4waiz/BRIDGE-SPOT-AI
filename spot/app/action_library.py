@@ -152,6 +152,28 @@ def list_templates() -> list[dict]:
 # -- sidecar -----------------------------------------------------------------
 
 
+def aim_ptz(robot, pan: float, tilt: float, zoom: float) -> dict:
+    """Point the Spot CAM PTZ, so an action can be framed before it is saved.
+
+    Moves the camera only -- the body does not move and no lease is involved,
+    which is why this is safe to drive from a preview slider. Clamped to the
+    same ranges the templates expose.
+    """
+    from bosdyn.client.spot_cam.ptz import PtzClient
+
+    pan = min(max(float(pan), 0.0), 360.0)
+    tilt = min(max(float(tilt), -30.0), 90.0)
+    zoom = min(max(float(zoom), 1.0), 30.0)
+
+    try:
+        client = robot.ensure_client(PtzClient.default_service_name)
+        client.set_ptz_position(ptz_pb2.PtzDescription(name="mech"), pan, tilt, zoom)
+    except Exception as exc:
+        raise ActionError(f"Could not aim the camera: {exc}") from exc
+
+    return {"pan": pan, "tilt": tilt, "zoom": zoom}
+
+
 def _sidecar(mission_id: str) -> Path:
     return ACTION_DIR / f"{mission_id}.json"
 

@@ -293,6 +293,25 @@ def remove_action(mission: str, action: str):
     return _guard(action_library.remove_action, mission, action)
 
 
+class AimRequest(BaseModel):
+    pan: float = 0.0
+    tilt: float = 0.0
+    zoom: float = 1.0
+
+
+@router.post("/actions/aim")
+def aim(request: AimRequest):
+    """Point the Spot CAM PTZ so an action can be framed before saving.
+
+    Camera only: the body does not move, so this needs a connection but not the
+    lease or E-stop.
+    """
+    if not controller.is_connected:
+        raise HTTPException(status_code=409, detail="Connect to the robot first.")
+    return _guard(action_library.aim_ptz, controller._robot,
+                  request.pan, request.tilt, request.zoom)
+
+
 # -- choreography -----------------------------------------------------------
 
 
