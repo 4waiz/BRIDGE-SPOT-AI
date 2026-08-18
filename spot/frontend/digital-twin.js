@@ -74,13 +74,27 @@
        are named constants and not inlined.
        ------------------------------------------------------------------ */
 
-    var THIGH_BIND = -0.5923;   // rig_mapping.json legs.*.thigh_bind_angle
-    var SHIN_BIND = 0.9669;     // rig_mapping.json legs.*.shin_bind_angle
-
+    /*
+     * Calibrated against the robot rather than derived from the docs.
+     *
+     * With Spot sitting on the dock, the SDK reported kn = -2.64 while the
+     * model's own `sit` clip holds that bone at -2.57: the same value, so the
+     * knee maps straight through. The earlier attempt subtracted the shin bind
+     * angle and flipped the sign, which put the bone 5.2 rad (~300 degrees)
+     * away from the clip and folded the leg backwards.
+     *
+     * The rig's `stand` clip agrees: kn = -1.555, which is Spot's nominal
+     * standing knee.
+     *
+     * hx and hy are pass-through on the same convention. They are NOT verified:
+     * every baked clip in the asset leaves those bones at exactly 0, including
+     * `walk`, so the file offers no reference pose to calibrate against. They
+     * need checking with the robot standing.
+     */
     var JOINT_MAP = {
         hx: { sign: 1, offset: 0 },
-        hy: { sign: -1, offset: THIGH_BIND },
-        kn: { sign: 1, offset: SHIN_BIND }
+        hy: { sign: 1, offset: 0 },
+        kn: { sign: 1, offset: 0 }
     };
 
     var bones = {};
@@ -255,6 +269,34 @@
             frameCamera();
 
             indexBones(THREE, model);
+
+            /*
+             * Diagnostic handle. The joint sign/offset table has to be
+             * calibrated against the real robot (see NOTES.md in the twin
+             * project), and that is impossible without being able to read the
+             * live bone rotations and the baked clip poses side by side.
+             * Read-only; nothing in the render path depends on it.
+             */
+            window.SpotTwin = {
+                bones: bones,
+                clips: clips,
+                jointMap: JOINT_MAP,
+                isMirroring: function () { return mirroring; },
+                /** Bone rotations at a given time in a named clip. */
+                sampleClip: function (name, time) {
+                    var clip = clips[name];
+                    if (!clip || !model) return null;
+                    var probe = new THREE.AnimationMixer(model);
+                    var action = probe.clipAction(clip);
+                    action.play();
+                    probe.setTime(time || 0);
+                    var out = {};
+                    Object.keys(bones).forEach(function (k) { out[k] = bones[k].rotation.x; });
+                    probe.stopAllAction();
+                    probe.uncacheRoot(model);
+                    return out;
+                }
+            };
             mixer = new THREE.AnimationMixer(model);
             gltf.animations.forEach(function (clip) { clips[clip.name] = clip; });
             play("stand", 0);

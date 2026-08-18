@@ -1,36 +1,8 @@
 {
-    "result_values": [
-        "Fire Extinguisher",
-        "First Aid",
-        "Fire Extinguisher"
-    ],
-    "box_vectors": [
-        [
-            [
-                970.5375366210938,
-                428.9897766113281,
-                1043.767822265625,
-                641.3792114257812
-            ]
-        ],
-        [
-            [
-                1207.4984130859375,
-                368.71490478515625,
-                1342.6485595703125,
-                552.6784057617188
-            ]
-        ],
-        [
-            [
-                894.4002685546875,
-                442.01385498046875,
-                947.914306640625,
-                630.4951171875
-            ]
-        ]
-    ],
-    "confidences": 0.8962743282318115,
-    "output_text": "All required objects are present",
-    "output_boolean": "OK"
+  "result_values": [],
+  "box_vectors": [],
+  "confidences": [],
+  "output_text": "2 Fire Extinguisher(s), 1 First Aid(s) not detected",
+  "output_boolean": "NOK",
+  "source": "ex2.jpeg"
 }

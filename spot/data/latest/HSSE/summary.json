@@ -1,0 +1,33 @@
+{
+  "ex1.jpeg": {
+    "counts": {
+      "Fire Extinguisher": 1,
+      "First Aid": 0
+    },
+    "verdict": "NOK",
+    "text": "1 Fire Extinguisher(s), 1 First Aid(s) not detected",
+    "confidences": [
+      0.658
+    ]
+  },
+  "ex2.jpeg": {
+    "counts": {
+      "Fire Extinguisher": 0,
+      "First Aid": 0
+    },
+    "verdict": "NOK",
+    "text": "2 Fire Extinguisher(s), 1 First Aid(s) not detected",
+    "confidences": []
+  },
+  "ex3.jpeg": {
+    "counts": {
+      "Fire Extinguisher": 1,
+      "First Aid": 0
+    },
+    "verdict": "NOK",
+    "text": "1 Fire Extinguisher(s), 1 First Aid(s) not detected",
+    "confidences": [
+      0.35
+    ]
+  }
+}

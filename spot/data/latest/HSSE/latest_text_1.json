@@ -1,12 +1,19 @@
 {
-    "result_values": "0",
-    "box_vectors": [
-        0,
-        0,
-        220,
-        220
-    ],
-    "confidences": 0.8962743282318115,
-    "output_text": "Emergency exit path blocked",
-    "output_boolean": "NOK"
+  "result_values": [
+    "Fire Extinguisher"
+  ],
+  "box_vectors": [
+    [
+      197.84158325195312,
+      348.11798095703125,
+      316.3515930175781,
+      810.7848510742188
+    ]
+  ],
+  "confidences": [
+    0.6584993004798889
+  ],
+  "output_text": "1 Fire Extinguisher(s), 1 First Aid(s) not detected",
+  "output_boolean": "NOK",
+  "source": "ex1.jpeg"
 }
