@@ -186,7 +186,8 @@ def list_datasets() -> list[dict]:
     for spec in DATASETS.values():
         images = _scan_images(spec)
         store = _load_labels(spec["id"])
-        labelled = sum(1 for i in images if i["name"] in store["items"])
+        labelled = sum(1 for i in images
+                       if (store["items"].get(i["name"]) or {}).get("source", "") not in ("", "proposed"))
         out.append({
             "id": spec["id"],
             "title": spec["title"],
@@ -208,10 +209,22 @@ def queue(dataset_id: str, limit: int = 40, include_done: bool = False) -> dict:
     store = _load_labels(dataset_id)
     images = _scan_images(spec)
 
+    def reviewed(name):
+        entry = store["items"].get(name)
+        # A model proposal is not a decision. It seeds the boxes so the
+        # operator confirms or corrects rather than drawing from scratch, but
+        # the image still needs a human before it counts as labelled.
+        return entry is not None and entry.get("source") != "proposed"
+
     pending = [
-        {"name": i["name"], "label": store["items"].get(i["name"], {}).get("label")}
+        {
+            "name": i["name"],
+            "label": store["items"].get(i["name"], {}).get("label"),
+            "boxes": store["items"].get(i["name"], {}).get("boxes", []),
+            "proposed": (store["items"].get(i["name"], {}) or {}).get("source") == "proposed",
+        }
         for i in images
-        if include_done or i["name"] not in store["items"]
+        if include_done or not reviewed(i["name"])
     ]
     return {
         "dataset": dataset_id,
@@ -219,7 +232,7 @@ def queue(dataset_id: str, limit: int = 40, include_done: bool = False) -> dict:
         "items": pending[:limit],
         "remaining": len(pending),
         "total": len(images),
-        "labelled": len(images) - sum(1 for i in images if i["name"] not in store["items"]),
+        "labelled": sum(1 for i in images if reviewed(i["name"])),
     }
 
 
@@ -307,7 +320,11 @@ def stats(dataset_id: str) -> dict:
     boxes_total = 0
     empty_frames = 0
 
+    proposed = 0
     for entry in store["items"].values():
+        if entry.get("source") == "proposed":
+            proposed += 1
+            continue
         if spec["mode"] == "classify":
             if entry.get("label") in counts:
                 counts[entry["label"]] += 1
@@ -320,7 +337,9 @@ def stats(dataset_id: str) -> dict:
                     counts[box["cls"]] += 1
                     boxes_total += 1
 
-    result = {"counts": counts, "labelled": len(store["items"])}
+    result = {"counts": counts,
+              "labelled": sum(1 for e in store["items"].values() if e.get("source") != "proposed"),
+              "proposed": proposed}
     if spec["mode"] == "detect":
         result["boxes"] = boxes_total
         result["empty_frames"] = empty_frames
@@ -346,6 +365,8 @@ def export(dataset_id: str) -> dict:
     written = 0
     if spec["mode"] == "classify":
         for name, entry in store["items"].items():
+            if entry.get("source") == "proposed":
+                continue
             label = entry.get("label")
             if not label:
                 continue
@@ -364,6 +385,10 @@ def export(dataset_id: str) -> dict:
         order = [c["id"] for c in spec["classes"]]
 
         for name, entry in store["items"].items():
+            # Unreviewed model proposals are not training data; exporting them
+            # would train the next model on this one's mistakes.
+            if entry.get("source") == "proposed":
+                continue
             source = _source_dir(spec) / name
             if not source.is_file():
                 continue
@@ -384,3 +409,40 @@ def export(dataset_id: str) -> dict:
         )
 
     return {"exported": written, "path": str(out), "mode": spec["mode"]}
+
+
+def seed_proposals(dataset_id: str, proposals: dict) -> dict:
+    """Pre-populate boxes from a model, for the operator to confirm or correct.
+
+    Stored with source="proposed" so they are excluded from progress counts and
+    from export. They only become labels once a human saves them.
+    Never overwrites an existing human decision.
+    """
+    spec = _dataset(dataset_id)
+    known = {c["id"] for c in spec["classes"]}
+
+    with _lock:
+        store = _load_labels(dataset_id)
+        seeded = skipped = 0
+        for name, boxes in proposals.items():
+            existing = store["items"].get(name)
+            if existing is not None and existing.get("source") != "proposed":
+                skipped += 1
+                continue
+            cleaned = [
+                {
+                    "cls": b["cls"],
+                    "x": min(max(float(b["x"]), 0.0), 1.0),
+                    "y": min(max(float(b["y"]), 0.0), 1.0),
+                    "w": min(max(float(b["w"]), 0.0), 1.0),
+                    "h": min(max(float(b["h"]), 0.0), 1.0),
+                    "conf": round(float(b.get("conf", 0)), 3),
+                }
+                for b in boxes if b.get("cls") in known
+            ]
+            store["items"][name] = {"boxes": cleaned, "source": "proposed", "at": time.time()}
+            seeded += 1
+        _save_labels(dataset_id)
+
+    logging.info("Seeded %d proposals for %s (%d already reviewed)", seeded, dataset_id, skipped)
+    return {"seeded": seeded, "skipped_reviewed": skipped}
