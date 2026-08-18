@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>Bridge Spot - Home</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" type="text/css" href="styles.css?v=20260817f">
+    <link rel="stylesheet" type="text/css" href="styles.css?v=20260818a">
     <link rel="stylesheet" href="voice_assistant_simple.css?v=20260805">
     <link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
@@ -20,66 +20,106 @@
     <div class="bs-app" data-shell data-nav="home">
         <main class="bs-main">
             <div class="bs-content">
-                <div class="home home--focus">
-                    
-                        <section class="hero">
-                            <h1 class="hero__title">
-                                <img class="hero__wordmark hero__wordmark--light" src="brand-hero.png" alt="Bridge Spot">
-                                <img class="hero__wordmark hero__wordmark--dark" src="brand-hero-dark.png" alt="">
-                            </h1>
-                            <p class="hero__sub">Autonomous operations. Intelligent insights. Safer outcomes.</p>
+                <div class="home-hero">
+                    <!-- Hero band: identity and live status on the left, the twin
+                         on the right. Everything shown here is read from the robot;
+                         nothing is placeholder telemetry. -->
+                    <section class="hb">
+                        <div class="hb__left">
+                            <img class="hb__wordmark hero__wordmark--light" src="brand-hero.png" alt="Bridge Spot">
+                            <img class="hb__wordmark hero__wordmark--dark" src="brand-hero-dark.png" alt="">
+                            <p class="hb__sub">Autonomous operations. Intelligent insights. Safer outcomes.</p>
 
-                            <!-- Digital twin. The still image stays as the fallback:
-                                 if WebGL, the CDN or the model are unavailable the
-                                 hero degrades to the photo rather than going blank. -->
-                            <div class="hero__robot" data-role="twin-host">
-                                <canvas data-role="twin-canvas" hidden
-                                        aria-label="Live 3D model of Spot, mirroring the robot's state"></canvas>
-                                <img data-role="twin-fallback" src="Spot_qturn.png"
-                                     alt="Boston Dynamics Spot robot">
-                            </div>
                             <span class="twin-badge" data-role="twin-badge" hidden>
                                 <span class="twin-badge__dot"></span>
                                 <span data-role="twin-badge-text">Digital twin</span>
                             </span>
-                        </section>
 
-                    <div class="home-entry">
-                            <!-- Primary entry point: the two live inspection routes. -->
-                            <div class="hero__card">
-                                <span class="icon-tile" data-icon="scan"></span>
-                                <h2>Autonomous Inspection</h2>
-                                <p>Plan, execute, and analyze autonomous inspections with advanced AI.</p>
-                                <div class="bs-menu-host" id="inspection-menu">
-                                    <button type="button" class="btn btn--dark btn--block" data-role="menu-trigger" aria-haspopup="true" aria-expanded="false">
-                                        <span>Start Inspection</span>
-                                        <span data-icon="arrowRight"></span>
-                                    </button>
-                                    <div class="bs-pop bs-pop--left">
-                                        <a class="bs-pop__item" href="digital_factory.html"><span data-icon="camera"></span><span>Digital Factory route</span></a>
-                                        <a class="bs-pop__item" href="hsse.html"><span data-icon="shield"></span><span>HSSE route</span></a>
-                                        <div class="bs-pop__sep"></div>
-                                        <a class="bs-pop__item" href="missions.html"><span data-icon="mission"></span><span>Plan a new mission</span></a>
-                                    </div>
+                            <dl class="hb__stats">
+                                <div>
+                                    <span data-icon="wifi"></span>
+                                    <div><dt>Connection</dt><dd data-hb="conn">-</dd></div>
+                                </div>
+                                <div>
+                                    <span data-icon="battery"></span>
+                                    <div><dt>Battery</dt><dd data-hb="battery">-</dd></div>
+                                </div>
+                                <div>
+                                    <span data-icon="pin"></span>
+                                    <div><dt>Position</dt><dd data-hb="dock">-</dd></div>
+                                </div>
+                            </dl>
+                        </div>
+
+                        <div class="hb__robot" data-role="twin-host">
+                            <canvas data-role="twin-canvas" hidden
+                                    aria-label="Live 3D model of Spot, mirroring the robot's joints"></canvas>
+                            <img data-role="twin-fallback" src="Spot_qturn.png"
+                                 alt="Boston Dynamics Spot robot">
+                        </div>
+                    </section>
+
+                    <!-- Live counters. Values the API does not report say so. -->
+                    <div class="hb__kpis">
+                        <div class="kpi-tile"><span class="icon-tile" data-icon="clipboard"></span>
+                            <div><span class="kpi-tile__label">Motors</span>
+                            <strong data-hb="power">-</strong><span class="kpi-tile__foot">Power state</span></div></div>
+                        <div class="kpi-tile"><span class="icon-tile" data-icon="shield"></span>
+                            <div><span class="kpi-tile__label">E-stop</span>
+                            <strong data-hb="estop">-</strong><span class="kpi-tile__foot">Safety chain</span></div></div>
+                        <div class="kpi-tile"><span class="icon-tile" data-icon="userGear"></span>
+                            <div><span class="kpi-tile__label">Lease</span>
+                            <strong data-hb="lease">-</strong><span class="kpi-tile__foot">Body control</span></div></div>
+                        <div class="kpi-tile"><span class="icon-tile" data-icon="check"></span>
+                            <div><span class="kpi-tile__label">Faults</span>
+                            <strong data-hb="faults">-</strong><span class="kpi-tile__foot">System health</span></div></div>
+                    </div>
+
+                    <div class="hb__cards">
+                        <div class="card hb__card">
+                            <span class="icon-tile" data-icon="scan"></span>
+                            <h2>Autonomous Inspection</h2>
+                            <p>Plan, execute and analyse autonomous inspections with advanced AI.</p>
+                            <ul class="hb__points">
+                                <li><span data-icon="check"></span> Intelligent path planning</li>
+                                <li><span data-icon="check"></span> Anomaly detection</li>
+                                <li><span data-icon="check"></span> Automated reporting</li>
+                            </ul>
+                            <div class="bs-menu-host" id="inspection-menu">
+                                <button type="button" class="btn btn--accent btn--block" data-role="menu-trigger" aria-haspopup="true" aria-expanded="false">
+                                    <span>Start Inspection</span><span data-icon="arrowRight"></span>
+                                </button>
+                                <div class="bs-pop bs-pop--left">
+                                    <a class="bs-pop__item" href="digital_factory.html"><span data-icon="camera"></span><span>Digital Factory route</span></a>
+                                    <a class="bs-pop__item" href="hsse.html"><span data-icon="shield"></span><span>HSSE route</span></a>
+                                    <div class="bs-pop__sep"></div>
+                                    <a class="bs-pop__item" href="missions.html"><span data-icon="mission"></span><span>Plan a new mission</span></a>
                                 </div>
                             </div>
-                        <!-- Voice Control replaces the inline assistant: the same speech stack,
-                             but it opens the operator page where commands actually reach the robot. -->
-                        <section class="card home-voice">
-                            <div class="home-voice__head">
-                                <span class="icon-tile" data-icon="mic"></span>
-                                <h2 class="home-voice__title">Voice Control</h2>
+                        </div>
+
+                        <div class="card hb__card">
+                            <span class="icon-tile" data-icon="mic"></span>
+                            <h2>Voice Control</h2>
+                            <p>Speak to Spot and run commands through the same control path as the manual dashboard.</p>
+                            <div class="hb__chips">
+                                <span class="hb__chip">&ldquo;Connect to robot&rdquo;</span>
+                                <span class="hb__chip">&ldquo;Stand up&rdquo;</span>
+                                <span class="hb__chip">&ldquo;Dock&rdquo;</span>
                             </div>
-                            <p class="home-voice__blurb">
-                                Speak to Spot and the command runs through the same control path as the
-                                manual dashboard. Say &ldquo;connect to robot&rdquo;, &ldquo;stand up&rdquo; or &ldquo;dock&rdquo;.
-                            </p>
                             <a class="btn btn--accent btn--block" href="voice-control.html">
                                 <span data-icon="mic"></span> Open Voice Control
                             </a>
-                            <p class="home-voice__foot" data-role="home-voice-state">Checking robot&hellip;</p>
-                        </section>
+                            <p class="hb__foot" data-role="home-voice-state">Checking robot&hellip;</p>
+                        </div>
 
+                        <div class="card hb__card hb__sessions">
+                            <div class="section-head">
+                                <h2 class="section-title">Recent missions</h2>
+                                <a class="link-more" href="missions.html">View all <span data-icon="arrowRight"></span></a>
+                            </div>
+                            <ul class="hb__list" data-role="hb-missions"></ul>
+                        </div>
                     </div>
                 </div>
 
@@ -115,7 +155,7 @@
     </script>
     <!-- Falls back to the still image if WebGL, the CDN or the model are
          unavailable. -->
-    <script type="module" src="digital-twin.js?v=20260817g"></script>
+    <script type="module" src="digital-twin.js?v=20260818a"></script>
     <script src="smartassistant.js?v=20260805"></script>
 </body>
 </html>

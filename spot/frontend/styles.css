@@ -4026,3 +4026,135 @@ table.data tbody tr.is-clickable {
     line-height: 1.55;
     color: var(--text-soft);
 }
+
+/* ==========================================================================
+   Home hero band (index.html)
+   Identity and live status on the left, the digital twin on the right, then
+   status tiles and the entry cards. Every value shown is read from the robot.
+   ========================================================================== */
+
+.home-hero { display: flex; flex-direction: column; gap: 1.1rem; }
+
+.hb {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.75rem 2rem;
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.hb__wordmark { display: block; width: min(24rem, 100%); height: auto; }
+.hb__sub { margin: 0.5rem 0 0.9rem; font-size: 1rem; color: var(--text-soft); }
+
+/* The twin sits in a bounded stage; a fixed height stops the canvas growing
+   to fill the page as it did before. */
+.hb__robot {
+    position: relative;
+    min-height: 17rem;
+    height: 30vh;
+    max-height: 22rem;
+    display: grid;
+    place-items: center;
+}
+
+.hb__robot canvas { display: block; width: 100%; height: 100%; background: transparent; }
+.hb__robot > img { max-height: 100%; width: auto; object-fit: contain; }
+
+.hb__stats {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--border);
+}
+
+.hb__stats > div { display: flex; align-items: center; gap: 0.6rem; }
+.hb__stats svg { width: 1.3rem; height: 1.3rem; color: var(--muted); }
+.hb__stats dt { font-size: 0.72rem; color: var(--muted); }
+.hb__stats dd { margin: 0; font-size: 0.92rem; font-weight: 700; }
+.hb__stats dd.is-ok { color: var(--ok); }
+.hb__stats dd.is-warn { color: var(--warn); }
+.hb__stats dd.is-bad { color: var(--bad); }
+
+/* -- status tiles -- */
+
+.hb__kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: 0.85rem;
+}
+
+.kpi-tile {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 1rem 1.15rem;
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.kpi-tile__label { display: block; font-size: 0.74rem; color: var(--muted); }
+.kpi-tile strong { display: block; font-size: 1.25rem; line-height: 1.25; }
+.kpi-tile__foot { display: block; font-size: 0.7rem; color: var(--muted); }
+.kpi-tile strong.is-ok { color: var(--ok); }
+.kpi-tile strong.is-warn { color: var(--warn); }
+.kpi-tile strong.is-bad { color: var(--bad); }
+
+/* -- entry cards -- */
+
+.hb__cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.hb__card { display: flex; flex-direction: column; gap: 0.6rem; }
+.hb__card h2 { margin: 0; font-size: 1.05rem; }
+.hb__card > p { margin: 0; font-size: 0.86rem; color: var(--text-soft); line-height: 1.5; }
+.hb__card .bs-menu-host { margin-top: auto; }
+
+.hb__points { list-style: none; margin: 0.2rem 0 0.4rem; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.hb__points li { display: flex; align-items: center; gap: 0.45rem; font-size: 0.8rem; color: var(--text-soft); }
+.hb__points svg { width: 0.95rem; height: 0.95rem; color: var(--accent); }
+
+.hb__chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.2rem 0 0.4rem; }
+
+.hb__chip {
+    padding: 0.3rem 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: var(--pill);
+    background: var(--field);
+    font-size: 0.76rem;
+    color: var(--text-soft);
+}
+
+.hb__foot { margin: 0.3rem 0 0; font-size: 0.76rem; color: var(--muted); }
+.hb__foot.is-ready { color: var(--ok); font-weight: 600; }
+
+.hb__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+
+.hb__list li {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.82rem;
+}
+
+.hb__list li:last-child { border-bottom: 0; }
+.hb__list .hb__dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--ok); flex: 0 0 auto; }
+.hb__list small { display: block; color: var(--muted); font-size: 0.72rem; }
+
+@media (max-width: 900px) {
+    .hb { grid-template-columns: minmax(0, 1fr); }
+    .hb__robot { order: -1; }
+}

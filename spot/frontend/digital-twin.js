@@ -352,35 +352,82 @@
 })(window, document);
 
 /*
- * Home page voice-control status line. Lives here rather than in a file of its
- * own because it needs the same /api/robot/state poll the twin already runs.
+ * Home hero live values.
+ *
+ * Fills the status strip and tiles from /api/robot/state. Anything the API
+ * does not report reads "Unavailable" rather than a plausible-looking number:
+ * this is a robot dashboard, and an invented figure is worse than a blank.
  */
 (function () {
     "use strict";
-    var out = document.querySelector("[data-role='home-voice-state']");
-    if (!out) return;
+    var voice = document.querySelector("[data-role='home-voice-state']");
+    if (!document.querySelector("[data-hb]") && !voice) return;
+
+    function set(key, text, tone) {
+        var el = document.querySelector("[data-hb='" + key + "']");
+        if (!el) return;
+        el.textContent = text;
+        el.className = tone ? "is-" + tone : "";
+    }
 
     function refresh() {
         fetch("/api/robot/state")
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (s) {
                 if (!s || !s.connected) {
-                    out.textContent = "Spot is not connected, voice commands will say so.";
-                    out.classList.remove("is-ready");
+                    ["conn", "battery", "dock", "power", "estop", "lease", "faults"]
+                        .forEach(function (k) { set(k, "Unavailable"); });
+                    set("conn", "Offline", "bad");
+                    if (voice) {
+                        voice.textContent = "Spot is not connected, voice commands will say so.";
+                        voice.classList.remove("is-ready");
+                    }
                     return;
                 }
+
                 var estop = s.estop || {};
-                var ready = estop.registered && estop.clear && s.lease_held && s.powered_on;
-                out.textContent = ready
-                    ? "Connected and ready for spoken commands."
-                    : "Connected, finish bring-up to unlock motion commands.";
-                out.classList.toggle("is-ready", !!ready);
+                var battery = s.battery || {};
+                var comms = (s.comms && s.comms[0]) || {};
+
+                set("conn", comms.essid || (comms.mode === "MODE_CLIENT" ? "Client" : "Online"), "ok");
+                set("battery", typeof battery.percentage === "number"
+                    ? Math.round(battery.percentage) + "%" : "Unavailable",
+                    typeof battery.percentage === "number" && battery.percentage > 30 ? "ok" : "warn");
+                set("dock", s.docking && s.docking.status
+                    ? s.docking.status.replace("DOCK_STATUS_", "").toLowerCase() : "Unknown");
+                set("power", s.powered_on ? "On" : "Off", s.powered_on ? "ok" : null);
+                set("estop", !estop.registered ? "Not armed" : (estop.clear ? "Clear" : "ENGAGED"),
+                    estop.registered && estop.clear ? "ok" : (estop.registered ? "bad" : null));
+                set("lease", s.lease_held ? "Held" : "Not held", s.lease_held ? "ok" : null);
+                var faults = (s.faults || []).length;
+                set("faults", faults ? faults + " active" : "None", faults ? "bad" : "ok");
+
+                if (voice) {
+                    var ready = estop.registered && estop.clear && s.lease_held && s.powered_on;
+                    voice.textContent = ready
+                        ? "Connected and ready for spoken commands."
+                        : "Connected, finish bring-up to unlock motion commands.";
+                    voice.classList.toggle("is-ready", !!ready);
+                }
             })
-            .catch(function () {
-                out.textContent = "Spot service unreachable.";
-                out.classList.remove("is-ready");
-            });
+            .catch(function () { set("conn", "Service down", "bad"); });
     }
+
+    // Recent missions come from the mission library on disk, not demo data.
+    fetch("/api/robot/missions").then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+            var host = document.querySelector("[data-role='hb-missions']");
+            if (!host) return;
+            var lib = (d && d.library) || [];
+            host.innerHTML = lib.length
+                ? lib.map(function (m) {
+                    return "<li><span class='hb__dot'></span><div><strong>" + m.name +
+                        "</strong><small>" + m.waypoints + " waypoints, " + m.route_ft +
+                        " ft, " + m.actions + " actions</small></div></li>";
+                  }).join("")
+                : "<li><div><small>No Autowalk routes loaded.</small></div></li>";
+        }).catch(function () {});
+
     refresh();
     setInterval(refresh, 5000);
 })();

@@ -1,8 +1,27 @@
 {
-  "result_values": [],
-  "box_vectors": [],
-  "confidences": [],
-  "output_text": "2 Fire Extinguisher(s), 1 First Aid(s) not detected",
+  "result_values": [
+    "Fire Extinguisher",
+    "Fire Extinguisher"
+  ],
+  "box_vectors": [
+    [
+      445.72137451171875,
+      201.91531372070312,
+      565.6538696289062,
+      514.7864990234375
+    ],
+    [
+      563.0723876953125,
+      199.37252807617188,
+      698.017333984375,
+      507.0979919433594
+    ]
+  ],
+  "confidences": [
+    0.6180265545845032,
+    0.5480959415435791
+  ],
+  "output_text": "1 First Aid(s) not detected",
   "output_boolean": "NOK",
   "source": "ex2.jpeg"
 }
