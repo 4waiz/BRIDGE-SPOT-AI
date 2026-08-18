@@ -177,7 +177,7 @@
     function loadQueue() {
         return api("/queue?dataset=" + encodeURIComponent(dataset.id) + "&limit=" + QUEUE_SIZE)
             .then(function (data) {
-                items = data.items.map(function (i) { return i.name; });
+                items = data.items;   // {name, label, boxes, proposed}
                 cursor = 0;
                 totals = { total: data.total, labelled: data.labelled };
                 updateProgress(data.remaining);
@@ -185,7 +185,8 @@
             .catch(function (err) { setBanner(err.message, "warn"); });
     }
 
-    function currentName() { return items[cursor] || null; }
+    function currentItem() { return items[cursor] || null; }
+    function currentName() { var i = currentItem(); return i ? i.name : null; }
 
     function imageUrl(name) {
         return API + "/image?dataset=" + encodeURIComponent(dataset.id) +
@@ -220,9 +221,17 @@
         done.hidden = true;
         img.style.display = "";
         img.src = imageUrl(name);
-        boxes = [];
+        // Start from the model's proposals so the operator confirms or corrects
+        // rather than drawing from scratch. Saving turns them into real labels.
+        var item = currentItem();
+        boxes = (item && item.boxes ? item.boxes : []).map(function (b) {
+            return { cls: b.cls, x: b.x, y: b.y, w: b.w, h: b.h };
+        });
         redrawBoxes();
-        $("[data-role='lb-counter']").textContent = name;
+        var item2 = currentItem();
+        $("[data-role='lb-counter']").textContent =
+            name + (item2 && item2.proposed && boxes.length
+                ? "  · " + boxes.length + " proposed, confirm or correct" : "");
         preloadAhead();
     }
 
