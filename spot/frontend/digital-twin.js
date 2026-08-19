@@ -436,64 +436,164 @@
         placeCamera();
     }
 
-    /* Centre of the posed model, in the model own local space.
+    /* Bounds of the posed model, in the model own local space.
 
-       Taken from the bone positions rather than the mesh vertices. Box3 on a
-       skinned mesh reports bind-pose bounds, which is not where the clip has
-       put the limbs, but walking a couple of hundred thousand vertices through
-       getVertexPosition to find out costs seconds and stalls the render loop.
-       The skeleton sits inside the body, so its centre is close enough to the
-       visual one to spin the turntable around, and it is two dozen points. */
-    function posedCentre(THREE, root) {
-        var box = new THREE.Box3().makeEmpty();
+       Box3.setFromObject reads geometry bounding boxes, and for a skinned mesh
+       those describe the bind pose, not where the clip has actually put the
+       limbs. Framing against them put the robot's feet on the floor of the
+       frame and its body out through the top, because the posed model is
+       taller than the box that was being measured.
+
+       getVertexPosition applies the bone transforms, so it reports the truth,
+       but running it over every vertex of a 21 MB model costs seconds and
+       stalls the loop. Vertices are sampled instead: a bounding box only needs
+       the extremes, and the margin added by the caller covers a missed one.  */
+    var VERTEX_BUDGET = 24000;
+
+    function eachPosedVertex(THREE, root, visit, modelLocal) {
         var v = new THREE.Vector3();
-        var found = 0;
         root.updateMatrixWorld(true);
-        var toLocal = new THREE.Matrix4().copy(root.matrixWorld).invert();
+        // The model carries a uniform scale, so local and world units differ by
+        // that factor. Mixing them silently mis-sizes the fit, which is what
+        // made the camera zoom past the model and crop it.
+        var toLocal = modelLocal
+            ? new THREE.Matrix4().copy(root.matrixWorld).invert()
+            : null;
 
         root.traverse(function (node) {
-            if (!node.isBone) return;
-            box.expandByPoint(v.setFromMatrixPosition(node.matrixWorld).applyMatrix4(toLocal));
-            found++;
+            var geom = node.geometry;
+            var pos = geom && geom.getAttribute && geom.getAttribute("position");
+            if (!pos) return;
+
+            var emit = function (index) {
+                node.getVertexPosition(index, v);
+                v.applyMatrix4(node.matrixWorld);
+                if (toLocal) v.applyMatrix4(toLocal);
+                visit(v);
+            };
+
+            if (node.isSkinnedMesh && node.getVertexPosition) {
+                var step = Math.max(1, Math.ceil(pos.count / VERTEX_BUDGET));
+                for (var i = 0; i < pos.count; i += step) emit(i);
+                // The last vertex is often an extreme; a stride can step past it.
+                emit(pos.count - 1);
+            } else if (node.isMesh) {
+                if (!geom.boundingBox) geom.computeBoundingBox();
+                var b = geom.boundingBox.clone().applyMatrix4(node.matrixWorld);
+                if (toLocal) b.applyMatrix4(toLocal);
+                [b.min, b.max].forEach(function (corner) { visit(corner); });
+            }
         });
-        return found ? box.getCenter(new THREE.Vector3()) : null;
     }
 
-    /* Put the posed model on its own rotation axis.
+    function posedBox(THREE, root, modelLocal) {
+        var box = new THREE.Box3().makeEmpty();
+        eachPosedVertex(THREE, root, function (point) { box.expandByPoint(point); }, modelLocal);
+        return box.isEmpty() ? null : box;
+    }
+
+    /* How far the posed model reaches from the turntable axis, at each height.
+
+       Returns bands from the model's base to its top, each carrying the largest
+       radius found within it. Rotating about Y sweeps each band into a ring, so
+       a fit to the whole stack cannot crop at any angle while still following
+       the model's actual shape. */
+    function radialProfile(THREE, root, bands) {
+        var v = new THREE.Vector3();
+        var axis = root.position;
+        var low = Infinity, high = -Infinity;
+        var samples = [];
+
+        eachPosedVertex(THREE, root, function (point) {
+            var y = point.y;
+            if (y < low) low = y;
+            if (y > high) high = y;
+            samples.push(y, Math.hypot(point.x - axis.x, point.z - axis.z));
+        });
+
+        if (!samples.length || !(high > low)) return null;
+
+        var radii = new Array(bands).fill(0);
+        var span = high - low;
+        for (var i = 0; i < samples.length; i += 2) {
+            var index = Math.min(bands - 1, Math.floor(((samples[i] - low) / span) * bands));
+            if (samples[i + 1] > radii[index]) radii[index] = samples[i + 1];
+        }
+
+        // Each band is widened to its neighbours' radius as well. A band edge
+        // that falls mid-limb would otherwise clip the part of the limb that
+        // reaches past it.
+        var out = [], maxRadius = 0;
+        for (var b = 0; b < bands; b++) {
+            var r = Math.max(radii[b],
+                             b > 0 ? radii[b - 1] : 0,
+                             b < bands - 1 ? radii[b + 1] : 0);
+            if (r > maxRadius) maxRadius = r;
+            out.push({ low: low + (b / bands) * span,
+                       high: low + ((b + 1) / bands) * span,
+                       radius: r });
+        }
+        return { bands: out, top: high, bottom: low, maxRadius: maxRadius };
+    }
+
+    /* Put the posed model on its own rotation axis and measure what it sweeps.
 
        The turntable spins the model about its local origin. That origin came
-       from the bind-pose centre, so the posed robot sat off-axis and swung round
-       a circle as it turned; because the camera looks down on it, that swing
-       showed as the model bobbing vertically, and the framing had to reserve
-       room for the whole orbit. Shifting the children rather than the model
-       keeps the origin where the camera aims. */
+       from the bind-pose centre, so the posed robot sat off-axis and swung
+       round a circle as it turned; with the camera looking down on it, that
+       showed as the model bobbing vertically. Shifting the children rather than
+       the model keeps the origin where the camera aims.  */
     function recentreOnPose(THREE) {
         if (!model) return;
-        var centre = posedCentre(THREE, model);
-        if (!centre) return;
+
+        // Step one, in the model's own space: move the content onto the origin
+        // the turntable spins about, by shifting the children rather than the
+        // model, so the origin stays where the camera aims.
+        var local = posedBox(THREE, model, true);
+        if (!local) return;
+        var centre = local.getCenter(new THREE.Vector3());
         model.children.forEach(function (child) { child.position.sub(centre); });
         model.updateMatrixWorld(true);
 
-        // Rings on the cylinder the model sweeps out as it turns. Measured
-        // about the rotation axis, not the box centre, because that is the line
-        // the camera aims at and the one the model actually turns around.
-        var box = new THREE.Box3().setFromObject(model);
-        var axisX = model.position.x, axisZ = model.position.z;
-        var radius = Math.hypot(
-            Math.max(Math.abs(box.max.x - axisX), Math.abs(box.min.x - axisX)),
-            Math.max(Math.abs(box.max.z - axisZ), Math.abs(box.min.z - axisZ))
-        );
+        // Step two, in world space: the swept points are projected through the
+        // camera, so they have to be world coordinates.
+        //
+        // The bound is a stack of rings, not one cylinder. A single cylinder has
+        // to take the model's widest radius, which is the body, and apply it at
+        // every height including the feet. With the camera looking down, the
+        // front rim of that oversized bottom ring projects well below where the
+        // feet actually are, so the frame reserved room under the robot that
+        // nothing ever occupied. Measuring the radius at each height instead
+        // narrows the bound where the model is narrow.
+        var BANDS = 16, SPOKES = 16, POSE_MARGIN = 1.06;
+        var profile = radialProfile(THREE, model, BANDS);
+        if (!profile) return;
 
+        var axis = model.position;
         sweptPoints = [];
-        for (var i = 0; i < 24; i++) {
-            var a = (i / 24) * Math.PI * 2;
-            var x = axisX + Math.cos(a) * radius, z = axisZ + Math.sin(a) * radius;
-            sweptPoints.push(new THREE.Vector3(x, box.min.y, z));
-            sweptPoints.push(new THREE.Vector3(x, box.max.y, z));
+        for (var b = 0; b < profile.bands.length; b++) {
+            var band = profile.bands[b];
+            if (!(band.radius > 0)) continue;
+            // Margin covers the poses this fit was not taken against: the clips
+            // move the legs, and a walk cycle reaches further than the pose
+            // measured at load. Cheaper than refitting on every pose change,
+            // which would make the model visibly rescale as it walked.
+            var r = band.radius * POSE_MARGIN;
+            var lo = axis.y + (band.low - axis.y) * POSE_MARGIN;
+            var hi = axis.y + (band.high - axis.y) * POSE_MARGIN;
+            for (var k = 0; k < SPOKES; k++) {
+                var a = (k / SPOKES) * Math.PI * 2;
+                var x = axis.x + Math.cos(a) * r, z = axis.z + Math.sin(a) * r;
+                sweptPoints.push(new THREE.Vector3(x, lo, z));
+                sweptPoints.push(new THREE.Vector3(x, hi, z));
+            }
         }
+        if (!sweptPoints.length) return;
 
-        fitCentre = new THREE.Vector3(axisX, (box.min.y + box.max.y) / 2, axisZ);
-        fitRadius = Math.hypot(radius, (box.max.y - box.min.y) / 2);
+        var top = axis.y + (profile.top - axis.y) * POSE_MARGIN;
+        var bottom = axis.y + (profile.bottom - axis.y) * POSE_MARGIN;
+        fitCentre = new THREE.Vector3(axis.x, (top + bottom) / 2, axis.z);
+        fitRadius = Math.hypot(profile.maxRadius * POSE_MARGIN, (top - bottom) / 2);
         fitDistance = 0;
         aimLift = 0;
     }
