@@ -63,26 +63,6 @@
         }
     }
 
-    function bindTheme() {
-        var seg = document.querySelector("[data-role='theme']");
-        if (!seg) return;
-
-        var sync = function () {
-            var pref = ui.theme.preference();
-            Array.prototype.forEach.call(seg.querySelectorAll("button"), function (btn) {
-                btn.classList.toggle("is-active", btn.getAttribute("data-theme-pref") === pref);
-            });
-        };
-
-        seg.addEventListener("click", function (event) {
-            var btn = event.target.closest("[data-theme-pref]");
-            if (!btn) return;
-            ui.theme.apply(btn.getAttribute("data-theme-pref"), true);
-            sync();
-            ui.toast("Theme updated.", "ok");
-        });
-        sync();
-    }
 
     /* ---------------- Connection test ---------------- */
     function testConnection() {
@@ -216,8 +196,7 @@
                 Object.keys(DEFAULTS).forEach(function (key) {
                     payload[key] = value(key);
                 });
-                payload.theme = ui.theme.preference();
-                ui.download("bridge-spot-settings.json", JSON.stringify(payload, null, 2), "application/json");
+                        ui.download("bridge-spot-settings.json", JSON.stringify(payload, null, 2), "application/json");
                 ui.toast("Settings exported.", "ok");
             });
         }
@@ -228,7 +207,6 @@
                 Object.keys(DEFAULTS).forEach(function (key) {
                     ui.store.set(key, DEFAULTS[key]);
                 });
-                ui.theme.apply("system", true);
                 ui.toast("Settings restored to defaults.", "ok");
                 window.setTimeout(function () {
                     window.location.reload();
@@ -239,7 +217,6 @@
 
     function start() {
         bindInputs();
-        bindTheme();
         bindActions();
         storageStats();
         ui.hydrateIcons(document);

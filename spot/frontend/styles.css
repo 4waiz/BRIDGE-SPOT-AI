@@ -81,31 +81,6 @@
     color-scheme: light;
 }
 
-[data-theme="dark"] {
-    --bg: #0f1113;
-    --bg-alt: #16181b;
-    --surface: #17191d;
-    --surface-alt: #1c1f24;
-    /* Inverted for dark mode: fields recess below the surface rather than
-       rising above it. */
-    --field: #101216;
-    --text: #eef1f5;
-    --text-soft: #c4cad3;
-    --muted: #9aa1ac;
-    --border: #262a30;
-    --border-strong: #333941;
-
-    --sidebar-bg: #08090a;
-    --sidebar-surface: #141518;
-    --sidebar-border: #212327;
-
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
-    --shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
-    --shadow-lg: 0 22px 50px rgba(0, 0, 0, 0.6);
-
-    color-scheme: dark;
-}
-
 /* ----------------------------------------------------------------------
    2. Base
    ---------------------------------------------------------------------- */
@@ -535,10 +510,6 @@ button {
     flex-shrink: 0;
 }
 
-[data-theme="dark"] .bs-avatar {
-    background: #2b2f36;
-}
-
 .bs-user__name {
     display: block;
     font-weight: 700;
@@ -696,12 +667,6 @@ button {
     box-shadow: 0 10px 22px rgba(15, 18, 22, 0.24);
 }
 
-[data-theme="dark"] .btn--dark {
-    background: #f4f5f7;
-    border-color: #f4f5f7;
-    color: #0f1216;
-}
-
 .btn--accent {
     background: var(--accent);
     border-color: var(--accent);
@@ -798,10 +763,6 @@ button {
 
 .chip--plain::before {
     display: none;
-}
-
-[data-theme="dark"] .chip--warn {
-    color: #f0bd52;
 }
 
 .field {
@@ -1022,24 +983,12 @@ button {
     line-height: 0;
 }
 
-/* brand-hero.png / brand-hero-dark.png, trimmed from the supplied home.png
+/* brand-hero.png, trimmed from the supplied home.png
    lockup, with a light-ink variant for dark mode. */
 .hero__wordmark {
     display: block;
     width: min(28rem, 92%);
     height: auto;
-}
-
-.hero__wordmark--dark {
-    display: none;
-}
-
-[data-theme="dark"] .hero__wordmark--light {
-    display: none;
-}
-
-[data-theme="dark"] .hero__wordmark--dark {
-    display: block;
 }
 
 .hero__sub {
@@ -1064,10 +1013,6 @@ button {
     width: 100%;
     height: auto;
     filter: drop-shadow(0 28px 34px rgba(15, 18, 22, 0.16));
-}
-
-[data-theme="dark"] .hero__robot img {
-    filter: drop-shadow(0 28px 34px rgba(0, 0, 0, 0.6));
 }
 
 /* Floating "Autonomous Inspection" card over the hero. */
@@ -1275,11 +1220,6 @@ button {
 .assistant-send:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
-}
-
-[data-theme="dark"] .assistant-send {
-    background: #f4f5f7;
-    color: #0f1216;
 }
 
 .assistant-card__foot {
@@ -3217,8 +3157,6 @@ table.data tbody tr.is-clickable {
     75%      { transform: translateY(-3px) rotate(7deg); }
 }
 
-[data-theme="dark"] .dance-tile__energy.is-medium { color: var(--warn); }
-
 @media (max-width: 720px) {
     .ctl-dance__grid { grid-template-columns: repeat(auto-fill, minmax(7.6rem, 1fr)); }
     .dance-tile__blurb { display: none; }
@@ -4038,31 +3976,60 @@ table.data tbody tr.is-clickable {
 .hb {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    align-items: center;
+    align-items: stretch;
     gap: 1.5rem;
-    padding: 1.75rem 2rem;
+    /* No bottom padding on purpose: the twin stands on the floor of the band
+       rather than floating in the middle of it. The left column puts its own
+       padding back so the text keeps its breathing room. */
+    padding: 2rem 2rem 0;
     border: 1px solid var(--border);
     border-radius: var(--r-xl);
     background: var(--surface);
     box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+/* Text block stays optically centred against the taller robot column. */
+.hb__left {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-bottom: 2rem;
+    min-width: 0;
 }
 
 .hb__wordmark { display: block; width: min(24rem, 100%); height: auto; }
 .hb__sub { margin: 0.5rem 0 0.9rem; font-size: 1rem; color: var(--text-soft); }
 
-/* The twin sits in a bounded stage; a fixed height stops the canvas growing
-   to fill the page as it did before. */
+/* The twin fills the full height of the band and is anchored to its bottom
+   edge, so the robot reads as standing on the card instead of hovering in the
+   upper half of it. Capped so it cannot grow without limit on tall screens. */
 .hb__robot {
     position: relative;
-    min-height: 17rem;
-    height: 30vh;
-    max-height: 22rem;
+    align-self: stretch;
+    /* Height comes from stretching to the band, not from a viewport unit: an
+       explicit height would beat align-self and leave the gap this is fixing.
+       The floor only matters on wide screens where the text column is short. */
+    min-height: 19rem;
     display: grid;
-    place-items: center;
+    place-items: end center;
 }
 
-.hb__robot canvas { display: block; width: 100%; height: 100%; background: transparent; }
-.hb__robot > img { max-height: 100%; width: auto; object-fit: contain; }
+/* Both visuals are taken out of flow. The canvas is sized from the host's
+   client box every frame, so if it also contributed to that box it would grow
+   itself without limit; the old fixed height hid that rather than fixing it.
+   Out of flow, the band's height comes from the text column alone. */
+.hb__robot canvas,
+.hb__robot > img {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    object-fit: contain;
+    object-position: center bottom;
+}
 
 .hb__stats {
     margin: 0;

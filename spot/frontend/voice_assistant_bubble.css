@@ -41,13 +41,6 @@
     border: 3px solid rgba(255, 87, 34, 0.3);
 }
 
-/* Dark theme support */
-[data-theme="dark"] .speech-bubble {
-    background: linear-gradient(135deg, #2d2d44 0%, #1e1e2e 100%);
-    border-color: rgba(255, 87, 34, 0.5);
-    color: white;
-}
-
 /* Bubble tail pointing to Spot */
 .speech-bubble::after {
     content: '';
@@ -63,10 +56,6 @@
     filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
 }
 
-[data-theme="dark"] .speech-bubble::after {
-    border-top-color: #1e1e2e;
-}
-
 /* Message display area */
 .bubble-message {
     font-size: 18px;
@@ -80,19 +69,11 @@
     text-align: center;
 }
 
-[data-theme="dark"] .bubble-message {
-    color: #ffffff;
-}
-
 /* User input area */
 .bubble-input-container {
     margin-top: 16px;
     padding-top: 16px;
     border-top: 2px solid rgba(0, 0, 0, 0.1);
-}
-
-[data-theme="dark"] .bubble-input-container {
-    border-top-color: rgba(255, 255, 255, 0.1);
 }
 
 .bubble-user-input {
@@ -104,11 +85,6 @@
     text-align: center;
     font-style: italic;
     margin-bottom: 12px;
-}
-
-[data-theme="dark"] .bubble-user-input {
-    background: #16213e;
-    color: #aaa;
 }
 
 /* Status indicator */
@@ -278,10 +254,6 @@
     padding: 12px;
     background: rgba(0, 0, 0, 0.02);
     border-radius: 12px;
-}
-
-[data-theme="dark"] .conversation-mini {
-    background: rgba(255, 255, 255, 0.02);
 }
 
 .conversation-mini::-webkit-scrollbar {

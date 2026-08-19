@@ -199,12 +199,19 @@
 
         // Padding covers the pose change between sitting and standing, which
         // grows the model after the initial fit was taken.
-        var distance = (fitRadius * 1.25) / Math.sin(fov / 2);
+        var distance = (fitRadius * 1.16) / Math.sin(fov / 2);
 
-        camera.position.copy(VIEW_DIR).multiplyScalar(distance).add(fitCentre);
+        // Aim above the model's centre so it renders in the lower part of the
+        // frame, standing on the band rather than floating mid-card. Shifting
+        // the camera and the aim point together is a pure vertical pan, so the
+        // fit computed above still holds.
+        var aim = fitCentre.clone();
+        aim.y += fitRadius * 0.16;
+
+        camera.position.copy(VIEW_DIR).multiplyScalar(distance).add(aim);
         camera.near = Math.max(0.01, distance - fitRadius * 4);
         camera.far = distance + fitRadius * 4;
-        camera.lookAt(fitCentre);
+        camera.lookAt(aim);
         camera.updateProjectionMatrix();
     }
 
@@ -282,6 +289,25 @@
                 clips: clips,
                 jointMap: JOINT_MAP,
                 isMirroring: function () { return mirroring; },
+                /** Where the model lands in the frame, 0 = top, 1 = bottom.
+                    Used to confirm the robot is standing on the band rather
+                    than floating in it. */
+                frameBounds: function () {
+                    if (!model || !camera) return null;
+                    var box = new THREE.Box3().setFromObject(model);
+                    var top = Infinity, bottom = -Infinity, left = Infinity, right = -Infinity;
+                    for (var i = 0; i < 8; i++) {
+                        var corner = new THREE.Vector3(
+                            i & 1 ? box.max.x : box.min.x,
+                            i & 2 ? box.max.y : box.min.y,
+                            i & 4 ? box.max.z : box.min.z
+                        ).project(camera);
+                        var y = (1 - corner.y) / 2, x = (corner.x + 1) / 2;
+                        top = Math.min(top, y); bottom = Math.max(bottom, y);
+                        left = Math.min(left, x); right = Math.max(right, x);
+                    }
+                    return { top: top, bottom: bottom, left: left, right: right };
+                },
                 /** Bone rotations at a given time in a named clip. */
                 sampleClip: function (name, time) {
                     var clip = clips[name];

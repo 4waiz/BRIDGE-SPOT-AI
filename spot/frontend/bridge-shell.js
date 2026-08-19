@@ -3,7 +3,7 @@
  *
  * Every page in the demo platform renders the same chrome: the dark
  * sidebar (brand, navigation, Spot status) and the top bar (menu button,
- * notifications, theme switch, user menu). Instead of copy-pasting that
+ * notifications, user menu). Instead of copy-pasting that
  * markup into six HTML files, each page ships:
  *
  *   <div class="bs-app" data-shell data-nav="dashboard">
@@ -282,76 +282,6 @@
         }
     ];
 
-    /* ------------------------------------------------------------------
-       Theme
-       ------------------------------------------------------------------ */
-    var theme = {
-        preference: function () {
-            // "theme" (light|dark) is the key the original launcher used, so an
-            // existing preference carries over. "system" is new.
-            var stored = store.get("theme", null);
-            if (stored === "light" || stored === "dark" || stored === "system") return stored;
-            try {
-                var legacy = window.localStorage.getItem("theme");
-                if (legacy === "light" || legacy === "dark") return legacy;
-            } catch (err) {
-                /* ignore */
-            }
-            // Light is the platform's designed default; dark is opt-in.
-            return "light";
-        },
-        resolve: function (pref) {
-            if (pref === "light" || pref === "dark") return pref;
-            return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
-                ? "dark"
-                : "light";
-        },
-        apply: function (pref, persist) {
-            var resolved = theme.resolve(pref);
-            document.documentElement.setAttribute("data-theme", resolved);
-            if (persist) {
-                store.set("theme", pref);
-                try {
-                    window.localStorage.setItem("theme", resolved);
-                } catch (err) {
-                    /* ignore */
-                }
-            }
-            document.dispatchEvent(
-                new CustomEvent("bridge:themechange", { detail: { preference: pref, resolved: resolved } })
-            );
-            syncThemeButton(resolved);
-            return resolved;
-        },
-        toggle: function () {
-            var next = theme.resolve(theme.preference()) === "dark" ? "light" : "dark";
-            theme.apply(next, true);
-            return next;
-        }
-    };
-
-    // Keeps the user-menu theme entry in step with the active theme.
-    function syncThemeButton(resolved) {
-        var btn = document.getElementById("theme-toggle");
-        if (!btn) return;
-        var isDark = resolved === "dark";
-        var label = isDark ? "Switch to light mode" : "Switch to dark mode";
-        btn.innerHTML = icon(isDark ? "sun" : "moon") + "<span>" + label + "</span>";
-        btn.setAttribute("title", label);
-        btn.setAttribute("aria-label", label);
-        btn.setAttribute("aria-pressed", String(isDark));
-    }
-
-    // Apply as early as possible so the page never flashes the wrong theme.
-    theme.apply(theme.preference(), false);
-    if (window.matchMedia) {
-        var mq = window.matchMedia("(prefers-color-scheme: dark)");
-        var onSchemeChange = function () {
-            if (theme.preference() === "system") theme.apply("system", false);
-        };
-        if (mq.addEventListener) mq.addEventListener("change", onSchemeChange);
-        else if (mq.addListener) mq.addListener(onSchemeChange);
-    }
 
     /* ------------------------------------------------------------------
        Shared modal
@@ -741,16 +671,6 @@
                 });
             } },
             { label: "Settings", icon: "settings", href: "settings.html" },
-            {
-                // Theme switch lives here so the top bar stays as designed.
-                id: "theme-toggle",
-                label: theme.resolve(theme.preference()) === "dark" ? "Switch to light mode" : "Switch to dark mode",
-                icon: theme.resolve(theme.preference()) === "dark" ? "sun" : "moon",
-                action: function () {
-                    var next = theme.toggle();
-                    toast(next === "dark" ? "Dark mode on." : "Light mode on.");
-                }
-            },
             { label: "Spot admin console", icon: "external", href: "https://" + ROBOT_HOST, external: true },
             { sep: true },
             { label: "Sign out", icon: "logout", action: function () {
@@ -829,7 +749,6 @@
         }
 
         renderSpotStatus();
-        syncThemeButton(theme.resolve(theme.preference()));
         hydrateIcons(document);
 
         // Live telemetry for the sidebar. The Control page polls faster on its
@@ -855,7 +774,6 @@
         el: el,
         html: html,
         store: store,
-        theme: theme,
         nav: NAV,
         spot: SPOT_STATUS,
         notifications: NOTIFICATIONS,
