@@ -186,33 +186,120 @@
     var VIEW_DIR = null;      // unit direction the camera sits along
     var fitCentre = null;
     var fitRadius = 0;
+    // Fit constants. The model is framed by its bounding sphere, which is the
+    // one shape a turntable cannot rotate out of, so these two numbers alone
+    // decide the framing at every rotation and every aspect ratio.
+    //
+    // PAD leaves the sphere occupying 1/PAD of the tighter axis; DROP then
+    // shifts it down by that fraction of the frame. Keeping DROP + 0.5/PAD
+    // under 0.5 is what guarantees the sphere, and so the robot inside it,
+    // never touches an edge: 0.03 + 0.5/1.08 = 0.493.
+    var PAD = 1.08;
+    var DROP = 0.03;
 
     function frameCamera() {
         if (!camera || !fitRadius || !VIEW_DIR) return;
 
         var vFov = camera.fov * Math.PI / 180;
-        // The horizontal field is the binding constraint on a wide, short
-        // container; the vertical one on a tall, narrow container. Fit to
-        // whichever is tighter.
         var hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+
+        // The horizontal field binds on a wide, short container and the
+        // vertical one on a tall, narrow container; fit to whichever is tighter
+        // so neither can crop the model.
         var fov = Math.min(vFov, hFov);
+        var distance = (fitRadius / Math.sin(fov / 2)) * PAD;
 
-        // Padding covers the pose change between sitting and standing, which
-        // grows the model after the initial fit was taken.
-        var distance = (fitRadius * 1.16) / Math.sin(fov / 2);
-
-        // Aim above the model's centre so it renders in the lower part of the
-        // frame, standing on the band rather than floating mid-card. Shifting
-        // the camera and the aim point together is a pure vertical pan, so the
-        // fit computed above still holds.
+        // Camera and aim point move together, which is a pure pan, so the fit
+        // above still holds. Raising both drops the model in the frame, which
+        // is what makes it read as standing on the band rather than floating.
         var aim = fitCentre.clone();
-        aim.y += fitRadius * 0.16;
+        aim.y += DROP * 2 * distance * Math.tan(vFov / 2);
 
         camera.position.copy(VIEW_DIR).multiplyScalar(distance).add(aim);
         camera.near = Math.max(0.01, distance - fitRadius * 4);
         camera.far = distance + fitRadius * 4;
         camera.lookAt(aim);
         camera.updateProjectionMatrix();
+    }
+
+    /* Centre of the posed model, in the model own local space.
+
+       Taken from the bone positions rather than the mesh vertices. Box3 on a
+       skinned mesh reports bind-pose bounds, which is not where the clip has
+       put the limbs, but walking a couple of hundred thousand vertices through
+       getVertexPosition to find out costs seconds and stalls the render loop.
+       The skeleton sits inside the body, so its centre is close enough to the
+       visual one to spin the turntable around, and it is two dozen points. */
+    function posedCentre(THREE, root) {
+        var box = new THREE.Box3().makeEmpty();
+        var v = new THREE.Vector3();
+        var found = 0;
+        root.updateMatrixWorld(true);
+        var toLocal = new THREE.Matrix4().copy(root.matrixWorld).invert();
+
+        root.traverse(function (node) {
+            if (!node.isBone) return;
+            box.expandByPoint(v.setFromMatrixPosition(node.matrixWorld).applyMatrix4(toLocal));
+            found++;
+        });
+        return found ? box.getCenter(new THREE.Vector3()) : null;
+    }
+
+    /* Put the posed model on its own rotation axis.
+
+       The turntable spins the model about its local origin. That origin came
+       from the bind-pose centre, so the posed robot sat off-axis and swung round
+       a circle as it turned; because the camera looks down on it, that swing
+       showed as the model bobbing vertically, and the framing had to reserve
+       room for the whole orbit. Shifting the children rather than the model
+       keeps the origin where the camera aims. */
+    function recentreOnPose(THREE) {
+        if (!model) return;
+        var centre = posedCentre(THREE, model);
+        if (!centre) return;
+        model.children.forEach(function (child) { child.position.sub(centre); });
+        model.updateMatrixWorld(true);
+
+        // Measure the sphere about the rotation axis, not about the model's
+        // own bounding-box centre: the camera aims at the axis, so that is the
+        // point the radius has to be taken from for the fit to hold as it turns.
+        var box = new THREE.Box3().setFromObject(model);
+        fitCentre = model.position.clone();
+        fitRadius = Math.max(
+            box.max.distanceTo(fitCentre),
+            box.min.distanceTo(fitCentre),
+            new THREE.Vector3(box.max.x, box.max.y, box.min.z).distanceTo(fitCentre),
+            new THREE.Vector3(box.min.x, box.max.y, box.max.z).distanceTo(fitCentre)
+        );
+    }
+
+    /* Bounds of what is actually drawn, 0 = top/left, 1 = bottom/right.
+       Subsampled: this runs only during calibration, but reading every pixel at
+       every trial angle is a needless stall. */
+    function measureRendered(step) {
+        if (!renderer || !scene || !camera) return null;
+        renderer.render(scene, camera);
+        var gl = renderer.getContext();
+        var w = gl.drawingBufferWidth, h = gl.drawingBufferHeight;
+        if (!w || !h) return null;
+        var px = new Uint8Array(w * h * 4);
+        gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+
+        var stride = step || 2;
+        var top = h, bottom = -1, left = w, right = -1;
+        for (var row = 0; row < h; row += stride) {
+            for (var col = 0; col < w; col += stride) {
+                if (px[(row * w + col) * 4 + 3] > 8) {
+                    var y = h - 1 - row;      // readPixels starts bottom-left
+                    if (y < top) top = y;
+                    if (y > bottom) bottom = y;
+                    if (col < left) left = col;
+                    if (col > right) right = col;
+                }
+            }
+        }
+        if (bottom < 0) return null;
+        return { top: top / h, bottom: bottom / h, left: left / w, right: right / w };
     }
 
     function size() {
@@ -289,25 +376,11 @@
                 clips: clips,
                 jointMap: JOINT_MAP,
                 isMirroring: function () { return mirroring; },
-                /** Where the model lands in the frame, 0 = top, 1 = bottom.
-                    Used to confirm the robot is standing on the band rather
-                    than floating in it. */
-                frameBounds: function () {
-                    if (!model || !camera) return null;
-                    var box = new THREE.Box3().setFromObject(model);
-                    var top = Infinity, bottom = -Infinity, left = Infinity, right = -Infinity;
-                    for (var i = 0; i < 8; i++) {
-                        var corner = new THREE.Vector3(
-                            i & 1 ? box.max.x : box.min.x,
-                            i & 2 ? box.max.y : box.min.y,
-                            i & 4 ? box.max.z : box.min.z
-                        ).project(camera);
-                        var y = (1 - corner.y) / 2, x = (corner.x + 1) / 2;
-                        top = Math.min(top, y); bottom = Math.max(bottom, y);
-                        left = Math.min(left, x); right = Math.max(right, x);
-                    }
-                    return { top: top, bottom: bottom, left: left, right: right };
-                },
+                /** Where the model actually lands in the frame, 0 = top, 1 = bottom.
+                    Reads the rendered alpha rather than projecting a bounding
+                    box: Box3 on a skinned mesh returns bind-pose bounds, which
+                    is not where the posed robot draws. */
+                visibleBounds: function (step) { return measureRendered(step || 1); },
                 /** Bone rotations at a given time in a named clip. */
                 sampleClip: function (name, time) {
                     var clip = clips[name];
@@ -326,6 +399,13 @@
             mixer = new THREE.AnimationMixer(model);
             gltf.animations.forEach(function (clip) { clips[clip.name] = clip; });
             play("stand", 0);
+            // Apply the first pose now rather than waiting for a frame: the fit
+            // has to describe the posed robot, and requestAnimationFrame does
+            // not run at all while the tab is hidden, so anything deferred to
+            // the render loop may never happen before the user looks at it.
+            mixer.update(0);
+            recentreOnPose(THREE);
+            frameCamera();
 
             canvas.hidden = false;
             if (fallback) fallback.style.display = "none";
@@ -339,6 +419,8 @@
             teardown();
         });
 
+        // size() re-runs frameCamera, and the fit is analytic, so a new aspect
+        // ratio is handled without re-measuring anything.
         window.addEventListener("resize", size);
     }
 

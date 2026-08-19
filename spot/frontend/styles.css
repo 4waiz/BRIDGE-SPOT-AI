@@ -3975,7 +3975,11 @@ table.data tbody tr.is-clickable {
 
 .hb {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    /* The robot column is deliberately wider than the text column. Spot is
+       about a third longer than it is tall, and the turntable shows it side-on
+       twice per revolution, so a square frame would force the model small to
+       keep the nose and tail inside it. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr);
     align-items: stretch;
     gap: 1.5rem;
     /* No bottom padding on purpose: the twin stands on the floor of the band
