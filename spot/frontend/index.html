@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>Bridge Spot - Home</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" type="text/css" href="styles.css?v=20260819f">
+    <link rel="stylesheet" type="text/css" href="styles.css?v=20260819o">
     <link rel="stylesheet" href="voice_assistant_simple.css?v=20260819c">
     <link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
@@ -55,6 +55,11 @@
                                     aria-label="Live 3D model of Spot, mirroring the robot's joints"></canvas>
                             <img data-role="twin-fallback" src="Spot_qturn.png"
                                  alt="Boston Dynamics Spot robot">
+                            <!-- Revealed only once the model is on screen, so a
+                                 failed load never leaves a dead click target. -->
+                            <button type="button" class="hb__robot-open" data-role="twin-open" hidden>
+                                <span class="hb__robot-open__hint">Open twin viewer</span>
+                            </button>
                         </div>
                     </section>
 
@@ -126,6 +131,45 @@
         </main>
     </div>
 
+    <!-- ============ digital twin viewer ============
+         Borrows the hero's canvas rather than building a second renderer; the
+         model is 21 MB and one copy is enough to show the same robot twice. -->
+    <div class="twin-modal" data-role="twin-modal" hidden>
+        <div class="twin-modal__backdrop" data-role="twin-dismiss"></div>
+        <div class="twin-modal__panel" role="dialog" aria-modal="true"
+             aria-labelledby="twin-modal-title">
+            <div class="twin-modal__head">
+                <div>
+                    <h2 id="twin-modal-title">Digital twin</h2>
+                    <p data-role="twin-modal-sub">Drag the model to turn it.</p>
+                </div>
+                <button type="button" class="twin-modal__close" data-role="twin-dismiss"
+                        aria-label="Close the twin viewer">&times;</button>
+            </div>
+
+            <div class="twin-modal__stage" data-role="twin-modal-stage"></div>
+
+            <aside class="twin-modal__side">
+                <h3>Poses</h3>
+                <p class="twin-modal__note">
+                    These animate the model only. Nothing here moves the real
+                    robot; use the Control page for that.
+                </p>
+                <div class="twin-modal__poses" data-role="twin-poses"></div>
+
+                <h3>View</h3>
+                <div class="twin-modal__view">
+                    <button type="button" class="btn btn--sm" data-role="twin-spin"
+                            aria-pressed="true">Pause turntable</button>
+                    <button type="button" class="btn btn--sm btn--accent" data-role="twin-live">
+                        Back to live
+                    </button>
+                </div>
+                <p class="twin-modal__state" data-role="twin-modal-state"></p>
+            </aside>
+        </div>
+    </div>
+
     <!-- Assistant message bubble (online) / compact toast (offline) -->
     <div id="simple-chat-bubble" class="simple-chat-bubble">
         <div class="bubble-content">
@@ -154,7 +198,7 @@
     </script>
     <!-- Falls back to the still image if WebGL, the CDN or the model are
          unavailable. -->
-    <script type="module" src="digital-twin.js?v=20260819i"></script>
+    <script type="module" src="digital-twin.js?v=20260819j"></script>
     <script src="smartassistant.js?v=20260805"></script>
 </body>
 </html>

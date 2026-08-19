@@ -46,11 +46,16 @@
     if (!webglAvailable()) return;
 
     var renderer, scene, camera, mixer, clock, model;
+    // Which element the canvas is currently rendering into. The overlay borrows
+    // it rather than building a second renderer: the model is 21 MB, and two
+    // copies of it in memory to show the same robot twice would be wasteful.
+    var stageEl = host;
     var clips = {};
     var current = null;
     var frame = null;
     var poll = null;
     var disposed = false;
+    var spinning = true;      // turntable; paused while the model is dragged
 
     function setBadge(text, live) {
         if (!badge) return;
@@ -131,6 +136,10 @@
        ------------------------------------------------------------------ */
 
     var mirroring = false;
+    // While a pose is being previewed from the overlay, the poll below leaves
+    // the model alone: otherwise the next tick would snap it back and the
+    // buttons would look broken.
+    var previewing = false;
 
     function play(name, fade) {
         var clip = clips[name];
@@ -154,6 +163,10 @@
             .then(function (res) { return res.ok ? res.json() : null; })
             .then(function (data) {
                 if (disposed) return;
+                if (previewing) {
+                    setBadge("Previewing pose", false);
+                    return;
+                }
                 if (data && data.connected && applyJoints(data)) {
                     if (!mirroring) { stopClips(); mirroring = true; }
                     setBadge("Mirroring robot", true);
@@ -164,6 +177,171 @@
                 }
             })
             .catch(function () { /* hold the last pose */ });
+    }
+
+
+    /* ------------------------------------------------------------------
+       Twin viewer overlay
+
+       Clicking the hero opens a larger stage with the baked clips as buttons.
+       The canvas is moved into the overlay rather than a second renderer being
+       built beside it: the model is 21 MB, and holding two copies to show the
+       same robot twice would be wasteful.
+
+       The poses animate the model only. Driving the real robot from here would
+       be a second control path for motion commands, and there is already one on
+       the Control page.
+       ------------------------------------------------------------------ */
+
+    // Ordered for the operator, not alphabetically: the two resting poses come
+    // first because they are what the twin is normally showing.
+    var POSE_ORDER = ["stand", "sit", "stand_up", "walk", "walk_fast", "run", "scan_360"];
+    var POSE_LABELS = {
+        stand: "Stand", sit: "Sit", stand_up: "Stand up", walk: "Walk",
+        walk_fast: "Walk fast", run: "Run", scan_360: "Scan 360"
+    };
+
+    function setupViewer() {
+        var openBtn = document.querySelector("[data-role='twin-open']");
+        var modal = document.querySelector("[data-role='twin-modal']");
+        if (!openBtn || !modal) return;
+
+        var stage = modal.querySelector("[data-role='twin-modal-stage']");
+        var poseHost = modal.querySelector("[data-role='twin-poses']");
+        var spinBtn = modal.querySelector("[data-role='twin-spin']");
+        var liveBtn = modal.querySelector("[data-role='twin-live']");
+        var stateEl = modal.querySelector("[data-role='twin-modal-state']");
+        var closeEl = modal.querySelector(".twin-modal__close");
+        var lastFocus = null;
+        var built = false;
+
+        function setState() {
+            if (!stateEl) return;
+            stateEl.textContent = previewing
+                ? "Previewing a pose. The model is not following the robot."
+                : (mirroring ? "Following the live robot." : "Robot offline, showing the idle pose.");
+        }
+
+        function markActive(name) {
+            Array.prototype.forEach.call(poseHost.children, function (btn) {
+                btn.classList.toggle("is-active", btn.getAttribute("data-pose") === name);
+            });
+        }
+
+        function buildPoses() {
+            if (built) return;
+            built = true;
+            poseHost.innerHTML = "";
+            // Anything in the file but not in POSE_ORDER still gets a button, so
+            // a re-exported model with new clips does not silently lose them.
+            var names = POSE_ORDER.filter(function (n) { return clips[n]; })
+                .concat(Object.keys(clips).filter(function (n) { return POSE_ORDER.indexOf(n) < 0; }));
+
+            names.forEach(function (name) {
+                var btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "twin-modal__pose";
+                btn.setAttribute("data-pose", name);
+                btn.textContent = POSE_LABELS[name] || name.replace(/_/g, " ");
+                btn.addEventListener("click", function () {
+                    previewing = true;
+                    mirroring = false;
+                    play(name, 0.25);
+                    setBadge("Previewing pose", false);
+                    markActive(name);
+                    setState();
+                });
+                poseHost.appendChild(btn);
+            });
+        }
+
+        function open() {
+            buildPoses();
+            lastFocus = document.activeElement;
+            modal.hidden = false;
+            document.body.style.overflow = "hidden";
+
+            stage.appendChild(canvas);
+            stageEl = stage;
+            size();
+
+            // The hero would otherwise be an empty box while the canvas is away.
+            if (fallback) fallback.style.display = "block";
+            setState();
+            if (closeEl) closeEl.focus();
+        }
+
+        function close() {
+            modal.hidden = true;
+            document.body.style.overflow = "";
+
+            host.appendChild(canvas);
+            stageEl = host;
+            size();
+
+            if (fallback) fallback.style.display = "none";
+            if (lastFocus && lastFocus.focus) lastFocus.focus();
+        }
+
+        openBtn.addEventListener("click", open);
+
+        Array.prototype.forEach.call(modal.querySelectorAll("[data-role='twin-dismiss']"),
+            function (el) { el.addEventListener("click", close); });
+
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape" && !modal.hidden) close();
+        });
+
+        if (spinBtn) {
+            spinBtn.addEventListener("click", function () {
+                spinning = !spinning;
+                spinBtn.textContent = spinning ? "Pause turntable" : "Resume turntable";
+                spinBtn.setAttribute("aria-pressed", String(spinning));
+            });
+        }
+
+        if (liveBtn) {
+            liveBtn.addEventListener("click", function () {
+                previewing = false;
+                markActive(null);
+                pollJoints();
+                setState();
+            });
+        }
+
+        /* Drag to turn. Pointer events cover mouse and touch alike, and the
+           stage sets touch-action: none so a drag turns the model rather than
+           scrolling the page behind it. */
+        var dragging = false, lastX = 0, spinBeforeDrag = true;
+
+        stage.addEventListener("pointerdown", function (event) {
+            dragging = true;
+            lastX = event.clientX;
+            spinBeforeDrag = spinning;
+            spinning = false;
+            stage.setPointerCapture(event.pointerId);
+        });
+
+        stage.addEventListener("pointermove", function (event) {
+            if (!dragging || !model) return;
+            model.rotation.y += (event.clientX - lastX) * 0.01;
+            lastX = event.clientX;
+        });
+
+        function endDrag(event) {
+            if (!dragging) return;
+            dragging = false;
+            spinning = spinBeforeDrag;
+            if (event.pointerId !== undefined && stage.hasPointerCapture &&
+                stage.hasPointerCapture(event.pointerId)) {
+                stage.releasePointerCapture(event.pointerId);
+            }
+        }
+
+        stage.addEventListener("pointerup", endDrag);
+        stage.addEventListener("pointercancel", endDrag);
+
+        openBtn.hidden = false;
     }
 
     /* ------------------------------------------------------------------
@@ -186,40 +364,76 @@
     var VIEW_DIR = null;      // unit direction the camera sits along
     var fitCentre = null;
     var fitRadius = 0;
-    // Fit constants. The model is framed by its bounding sphere, which is the
-    // one shape a turntable cannot rotate out of, so these two numbers alone
-    // decide the framing at every rotation and every aspect ratio.
-    //
-    // PAD leaves the sphere occupying 1/PAD of the tighter axis; DROP then
-    // shifts it down by that fraction of the frame. Keeping DROP + 0.5/PAD
-    // under 0.5 is what guarantees the sphere, and so the robot inside it,
-    // never touches an edge: 0.03 + 0.5/1.08 = 0.493.
-    var PAD = 1.08;
-    var DROP = 0.03;
+    // Points on the volume the model sweeps as the turntable turns. Rotating
+    // about Y turns the bounding box into a cylinder, so rings of points at the
+    // top and bottom of that cylinder bound every rotation it can reach. That
+    // is a far tighter bound than the bounding sphere this used to fit: Spot is
+    // roughly twice as long as it is tall, so a sphere sized by its length left
+    // the robot filling barely a third of the frame height.
+    var sweptPoints = [];
+    var fitDistance = 0;
+    var aimLift = 0;          // world units the camera rises, dropping the model
+    var scratch = null;       // reused projection target
 
-    function frameCamera() {
-        if (!camera || !fitRadius || !VIEW_DIR) return;
+    var FILL = 0.94;          // fraction of the frame the swept volume fills
+    var FLOOR = 0.02;         // gap left beneath the model, fraction of frame
 
-        var vFov = camera.fov * Math.PI / 180;
-        var hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
-
-        // The horizontal field binds on a wide, short container and the
-        // vertical one on a tall, narrow container; fit to whichever is tighter
-        // so neither can crop the model.
-        var fov = Math.min(vFov, hFov);
-        var distance = (fitRadius / Math.sin(fov / 2)) * PAD;
-
-        // Camera and aim point move together, which is a pure pan, so the fit
-        // above still holds. Raising both drops the model in the frame, which
-        // is what makes it read as standing on the band rather than floating.
+    function placeCamera() {
         var aim = fitCentre.clone();
-        aim.y += DROP * 2 * distance * Math.tan(vFov / 2);
-
-        camera.position.copy(VIEW_DIR).multiplyScalar(distance).add(aim);
-        camera.near = Math.max(0.01, distance - fitRadius * 4);
-        camera.far = distance + fitRadius * 4;
+        aim.y += aimLift;
+        camera.position.copy(VIEW_DIR).multiplyScalar(fitDistance).add(aim);
+        camera.near = Math.max(0.01, fitDistance - fitRadius * 4);
+        camera.far = fitDistance + fitRadius * 4;
         camera.lookAt(aim);
         camera.updateProjectionMatrix();
+        camera.updateMatrixWorld();
+    }
+
+    /* Clip-space bounds of the swept volume at the current camera. */
+    function projectSweep() {
+        var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (var i = 0; i < sweptPoints.length; i++) {
+            scratch.copy(sweptPoints[i]).project(camera);
+            if (scratch.x < minX) minX = scratch.x;
+            if (scratch.x > maxX) maxX = scratch.x;
+            if (scratch.y < minY) minY = scratch.y;
+            if (scratch.y > maxY) maxY = scratch.y;
+        }
+        return { minX: minX, maxX: maxX, minY: minY, maxY: maxY };
+    }
+
+    /*
+     * Solve distance and vertical placement by projecting the swept volume and
+     * measuring it in clip space, which needs no frame to have been rendered.
+     * That matters: requestAnimationFrame does not run while a tab is hidden,
+     * so a fit deferred to the render loop can be skipped entirely and leave
+     * the model framed against a container that has no size yet.
+     *
+     * Clip space spans two units on both axes whatever the aspect ratio, so the
+     * two directions are directly comparable and neither can crop the model.
+     */
+    function frameCamera() {
+        if (!camera || !sweptPoints.length || !VIEW_DIR || !scratch) return;
+        if (!fitDistance) fitDistance = fitRadius * 4;
+
+        for (var pass = 0; pass < 6; pass++) {
+            placeCamera();
+            var box = projectSweep();
+            var wide = box.maxX - box.minX, tall = box.maxY - box.minY;
+            if (!(wide > 0) || !(tall > 0)) return;
+            fitDistance *= Math.max(wide, tall) / (2 * FILL);
+
+            placeCamera();
+            box = projectSweep();
+            // Clip-space -1 is the bottom edge; stand the model just above it.
+            var want = -1 + 2 * FLOOR + (box.maxY - box.minY) / 2;
+            var have = (box.minY + box.maxY) / 2;
+            // Raising the camera lowers the model, and one clip unit is
+            // fitDistance * tan(vFov/2) of world at the aim point.
+            aimLift += (have - want) * fitDistance *
+                       Math.tan((camera.fov * Math.PI / 180) / 2);
+        }
+        placeCamera();
     }
 
     /* Centre of the posed model, in the model own local space.
@@ -260,17 +474,28 @@
         model.children.forEach(function (child) { child.position.sub(centre); });
         model.updateMatrixWorld(true);
 
-        // Measure the sphere about the rotation axis, not about the model's
-        // own bounding-box centre: the camera aims at the axis, so that is the
-        // point the radius has to be taken from for the fit to hold as it turns.
+        // Rings on the cylinder the model sweeps out as it turns. Measured
+        // about the rotation axis, not the box centre, because that is the line
+        // the camera aims at and the one the model actually turns around.
         var box = new THREE.Box3().setFromObject(model);
-        fitCentre = model.position.clone();
-        fitRadius = Math.max(
-            box.max.distanceTo(fitCentre),
-            box.min.distanceTo(fitCentre),
-            new THREE.Vector3(box.max.x, box.max.y, box.min.z).distanceTo(fitCentre),
-            new THREE.Vector3(box.min.x, box.max.y, box.max.z).distanceTo(fitCentre)
+        var axisX = model.position.x, axisZ = model.position.z;
+        var radius = Math.hypot(
+            Math.max(Math.abs(box.max.x - axisX), Math.abs(box.min.x - axisX)),
+            Math.max(Math.abs(box.max.z - axisZ), Math.abs(box.min.z - axisZ))
         );
+
+        sweptPoints = [];
+        for (var i = 0; i < 24; i++) {
+            var a = (i / 24) * Math.PI * 2;
+            var x = axisX + Math.cos(a) * radius, z = axisZ + Math.sin(a) * radius;
+            sweptPoints.push(new THREE.Vector3(x, box.min.y, z));
+            sweptPoints.push(new THREE.Vector3(x, box.max.y, z));
+        }
+
+        fitCentre = new THREE.Vector3(axisX, (box.min.y + box.max.y) / 2, axisZ);
+        fitRadius = Math.hypot(radius, (box.max.y - box.min.y) / 2);
+        fitDistance = 0;
+        aimLift = 0;
     }
 
     /* Bounds of what is actually drawn, 0 = top/left, 1 = bottom/right.
@@ -303,8 +528,8 @@
     }
 
     function size() {
-        var width = host.clientWidth || 480;
-        var height = host.clientHeight || 360;
+        var width = stageEl.clientWidth || 480;
+        var height = stageEl.clientHeight || 360;
         if (renderer) renderer.setSize(width, height, false);
         if (camera) {
             camera.aspect = width / height;
@@ -381,6 +606,43 @@
                     box: Box3 on a skinned mesh returns bind-pose bounds, which
                     is not where the posed robot draws. */
                 visibleBounds: function (step) { return measureRendered(step || 1); },
+                /** Clip-space box of the swept volume; -1 to 1 is the frame. */
+                fitReport: function (aspect) {
+                    if (aspect) { camera.aspect = aspect; frameCamera(); }
+                    return projectSweep();
+                },
+                /** Preview one of the baked clips. Pauses live mirroring. */
+                preview: function (name) {
+                    if (!clips[name]) return false;
+                    previewing = true;
+                    mirroring = false;
+                    play(name, 0.25);
+                    setBadge("Previewing pose", false);
+                    return true;
+                },
+                /** Hand the model back to live robot state. */
+                live: function () {
+                    previewing = false;
+                    pollJoints();
+                },
+                isPreviewing: function () { return previewing; },
+                /** Move the canvas into another element, e.g. the overlay. */
+                mount: function (el) {
+                    if (!el || el === stageEl) return;
+                    el.appendChild(canvas);
+                    stageEl = el;
+                    size();
+                },
+                /** Put the canvas back in the hero band. */
+                unmount: function () {
+                    if (stageEl === host) return;
+                    host.appendChild(canvas);
+                    stageEl = host;
+                    size();
+                },
+                /** Turn the model by hand; used by drag-to-rotate. */
+                turn: function (delta) { if (model) model.rotation.y += delta; },
+                setSpin: function (on) { spinning = !!on; },
                 /** Bone rotations at a given time in a named clip. */
                 sampleClip: function (name, time) {
                     var clip = clips[name];
@@ -396,6 +658,7 @@
                     return out;
                 }
             };
+            scratch = new THREE.Vector3();
             mixer = new THREE.AnimationMixer(model);
             gltf.animations.forEach(function (clip) { clips[clip.name] = clip; });
             play("stand", 0);
@@ -410,6 +673,7 @@
             canvas.hidden = false;
             if (fallback) fallback.style.display = "none";
             setBadge("Digital twin", false);
+            setupViewer();
 
             pollJoints();
             poll = setInterval(pollJoints, STATE_POLL_MS);
@@ -430,7 +694,7 @@
         if (mixer && !mirroring) mixer.update(clock.getDelta());
         // Slow turntable so the hero has life without demanding attention.
         // Turntable only while idle; mirroring should show the real facing.
-        if (model && !mirroring) model.rotation.y += 0.0016;
+        if (model && !mirroring && spinning) model.rotation.y += 0.0016;
         renderer.render(scene, camera);
     }
 
