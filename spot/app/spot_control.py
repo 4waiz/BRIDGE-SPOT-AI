@@ -155,6 +155,16 @@ class SpotController(spot_choreography.ChoreographyMixin, mission_service.Missio
         self._estop_keepalive = None
         self._lease_keepalive = None
         self._last_error = None
+        # Lease recovery bookkeeping. Its own lock: the callback runs on the
+        # keepalive thread, and taking the main lock there would deadlock
+        # against any API call already holding it.
+        self._lease_recovery_lock = threading.Lock()
+        self._lease_recovery = {
+            "check_in_failures": 0,
+            "recoveries": 0,
+            "last_attempt": 0.0,
+            "surrendered_to": None,
+        }
         # Dance and mission state, so status can be reported before connecting.
         self._init_choreography()
         self._init_missions()
@@ -344,12 +354,17 @@ class SpotController(spot_choreography.ChoreographyMixin, mission_service.Missio
                     # Take() displaces the current holder, then the keepalive
                     # adopts the lease already sitting in the wallet.
                     client.take()
-                    self._lease_keepalive = LeaseKeepAlive(client, return_at_exit=True)
+                    self._lease_keepalive = LeaseKeepAlive(
+                        client, return_at_exit=True,
+                        on_failure_callback=self._on_lease_check_in_failed,
+                    )
+                    self._reset_lease_recovery()
                     logging.warning("Body lease FORCIBLY taken from the previous holder")
                     return {"lease": "held", "forced": True}
 
                 self._lease_keepalive = LeaseKeepAlive(
-                    client, must_acquire=True, return_at_exit=True
+                    client, must_acquire=True, return_at_exit=True,
+                    on_failure_callback=self._on_lease_check_in_failed,
                 )
             except ResourceAlreadyClaimedError as exc:
                 raise LeaseHeldByOtherError(
@@ -360,8 +375,78 @@ class SpotController(spot_choreography.ChoreographyMixin, mission_service.Missio
             except Exception as exc:
                 raise SpotControlError(f"Could not take the body lease: {exc}") from exc
 
+            self._reset_lease_recovery()
             logging.info("Body lease acquired")
             return {"lease": "held", "forced": False}
+
+    # How long to leave between re-acquire attempts. The keepalive checks in
+    # every 2s; through a 30s dropout that would be fifteen attempts, which
+    # floods the log and the network for no gain.
+    LEASE_RETRY_INTERVAL_S = 6.0
+
+    def _reset_lease_recovery(self):
+        with self._lease_recovery_lock:
+            self._lease_recovery.update(
+                check_in_failures=0, recoveries=0, last_attempt=0.0, surrendered_to=None
+            )
+
+    def _on_lease_check_in_failed(self, exc):
+        """Recover the lease after a failed check-in.
+
+        The SDK keepalive survives a failed retain and carries on, but it
+        carries on retaining the same lease, and a lease the robot has rejected
+        does not become valid again by being asked twice. Every command after
+        that fails with LeaseUseError until something replaces it. That is what
+        stopped the HSSE mission: WiFi dropped for a moment on a 400 ft route,
+        and the run was finished from then on even though comms came back.
+
+        Re-acquiring rather than retaining is the fix, and it uses acquire()
+        and never take(). If the lease went stale because of a dropped packet,
+        nobody else holds it and acquire() simply hands it back. If the tablet
+        has genuinely taken over, acquire() refuses, and refusing is right:
+        stealing the lease back would wrest the robot off whoever is now
+        driving it, which is a far worse failure than the one being recovered.
+        """
+        now = time.time()
+        with self._lease_recovery_lock:
+            self._lease_recovery["check_in_failures"] += 1
+            if self._lease_recovery["surrendered_to"] is not None:
+                return
+            if now - self._lease_recovery["last_attempt"] < self.LEASE_RETRY_INTERVAL_S:
+                return
+            self._lease_recovery["last_attempt"] = now
+
+        client = self._clients.get("lease")
+        if client is None:
+            return
+
+        try:
+            client.acquire()
+        except ResourceAlreadyClaimedError:
+            with self._lease_recovery_lock:
+                self._lease_recovery["surrendered_to"] = "another operator"
+            logging.warning(
+                "Lease check-in failed and the lease is now held by someone else, "
+                "most likely the tablet. Leaving it with them."
+            )
+        except Exception as retry_exc:
+            # Still unreachable. The keepalive keeps checking in, so the next
+            # failure comes back here once the retry interval has passed.
+            logging.info("Lease re-acquire attempt failed: %s", retry_exc)
+        else:
+            with self._lease_recovery_lock:
+                self._lease_recovery["recoveries"] += 1
+                count = self._lease_recovery["recoveries"]
+            logging.warning(
+                "Lease check-in failed (%s) and was re-acquired; recovery #%d", exc, count
+            )
+
+    def lease_health(self):
+        """What the lease has been through, for the dashboard and for triage."""
+        with self._lease_recovery_lock:
+            state = dict(self._lease_recovery)
+        state["held"] = self._lease_keepalive is not None
+        return state
 
     def return_lease(self):
         with self._lock:
