@@ -72,3 +72,6 @@ spot-digital-twin/
 # Digital twin model (21 MB), copied from the spot-digital-twin project.
 # Reproduce with: cp spot-digital-twin/spot_twin_web.glb spot/frontend/
 spot/frontend/spot_twin_web.glb
+
+# Retrained model backups: large, and the promoted model is what ships.
+spot/data/models/*_previous.h5
