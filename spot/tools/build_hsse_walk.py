@@ -34,6 +34,11 @@ import missions  # noqa: E402
 PAN_RANGE = (0.0, 360.0)
 TILT_RANGE = (-30.0, 90.0)
 
+# Confirmed on site by the operator. The rest of the tags are waypoints on
+# planters and walls with nothing to inspect, so their frames are captured but
+# a miss there says nothing about the detector.
+EXTINGUISHER_TAGS = {13, 23, 25, 537}
+
 
 def _fiducial_observations(walk_dir: Path, graph: map_pb2.Graph) -> dict[int, list[dict]]:
     """Every fiducial sighting in the map, with its pose in the robot's frame."""
@@ -87,8 +92,16 @@ def _tag_in_body(obj) -> tuple[float, float, float] | None:
     return None
 
 
+# The fiducials are mounted low, at about knee height, and the equipment they
+# mark hangs above them: extinguishers roughly here, first aid boxes and hose
+# reels higher again. Aiming at the tag itself frames the tag and the floor,
+# which is of no use to a detector looking for a red cylinder. The camera is
+# pointed at a spot above the tag instead.
+EQUIPMENT_RISE_M = 0.85
+
+
 def _aim(pose: tuple[float, float, float]) -> tuple[float, float]:
-    """Pan and tilt, in degrees, that point the PTZ at a body-frame point."""
+    """Pan and tilt, in degrees, that frame the equipment above a fiducial."""
     x, y, z = pose
     # Body frame is x forward, y left. The PTZ measures pan clockwise from the
     # front, so the sign on y is flipped.
@@ -96,7 +109,7 @@ def _aim(pose: tuple[float, float, float]) -> tuple[float, float]:
     flat = math.sqrt(x * x + y * y)
     # The PTZ sits about 0.5 m above the body origin, so a tag at body height
     # is slightly below the camera rather than level with it.
-    tilt = math.degrees(math.atan2(z - 0.5, flat)) if flat > 1e-6 else 0.0
+    tilt = math.degrees(math.atan2((z + EQUIPMENT_RISE_M) - 0.5, flat)) if flat > 1e-6 else 0.0
     return (
         min(max(pan, PAN_RANGE[0]), PAN_RANGE[1]),
         min(max(tilt, TILT_RANGE[0]), TILT_RANGE[1]),
@@ -107,7 +120,8 @@ def _raw_tilt(pose: tuple[float, float, float]) -> float:
     """Tilt before clamping, so a sighting the PTZ cannot reach is visible."""
     x, y, z = pose
     flat = math.sqrt(x * x + y * y)
-    return math.degrees(math.atan2(z - 0.5, flat)) if flat > 1e-6 else 0.0
+    return (math.degrees(math.atan2((z + EQUIPMENT_RISE_M) - 0.5, flat))
+            if flat > 1e-6 else 0.0)
 
 
 def _clamps(pose: tuple[float, float, float]) -> bool:
@@ -199,13 +213,14 @@ def main() -> int:
         if _clamps(best["pose"]):
             clamped += 1
 
-        print(f"  tag {tag:4}  at {best['name']:12}  "
+        mark = "EXT" if tag in EXTINGUISHER_TAGS else "   "
+        print(f"  tag {tag:4} {mark}  at {best['name']:12}  "
               f"{best['range']:5.1f} m  pan {pan:6.1f}  tilt {tilt:5.1f}  zoom {zoom:.1f}x")
 
         if not args.dry_run:
             action_library.add_action(
                 mission_id, best["waypoint"], "ptz_capture",
-                name=f"HSSE fiducial {tag}",
+                name=("HSSE extinguisher " if tag in EXTINGUISHER_TAGS else "HSSE fiducial ") + str(tag),
                 params={"pan": pan, "tilt": tilt, "zoom": zoom},
             )
         made += 1
