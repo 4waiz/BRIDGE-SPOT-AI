@@ -47,6 +47,21 @@ UPLOAD_TIMEOUT = 60.0
 PLAY_LEASE_SECONDS = 15.0
 POLL_INTERVAL = 1.0
 
+# How long the robot may be unreachable before a mission is given up on.
+#
+# The robot rides the same wifi as everyone else and roams between access
+# points as it walks, and a roam drops packets. Measured on site: at the dock
+# the link is 0% loss at 3 ms, and out on the route it reached 75% loss. A
+# single failed RPC is therefore an ordinary event on a long walk, not a reason
+# to abandon a robot in a corridor, which is exactly what happened when one
+# UnableToConnectToRobotError ended a run mid-route.
+#
+# Twenty seconds is long enough to cover a roam and a retry, short enough that
+# a genuinely dead link is still reported while the operator is watching. It
+# sits under the robot's own comms-loss behaviour rather than replacing it:
+# supervision still cuts motor power on its own schedule.
+COMMS_GRACE_SECONDS = 20.0
+
 
 class MissionError(RuntimeError):
     """Raised for expected, reportable mission failures."""
@@ -182,6 +197,7 @@ class MissionMixin:
     def _init_missions(self):
         self._mission_thread = None
         self._mission_cancel = threading.Event()
+        self._outage_started = None
         self._mission_state = {
             "running": False,
             "mission": None,
@@ -339,7 +355,8 @@ class MissionMixin:
             })
             thread.start()
 
-        logging.warning("Mission %s started — robot is moving autonomously", target)
+        self._outage_started = None
+        logging.warning("Mission %s started - robot is moving autonomously", target)
         return {"running": True, "mission": target}
 
     def _run_mission(self, mission_id, mission_client, lease_client, cancel):
@@ -350,8 +367,22 @@ class MissionMixin:
         after the whole route.
         """
         try:
-            state = mission_client.get_state()
-            while state.status in (mission_pb2.State.STATUS_NONE, mission_pb2.State.STATUS_RUNNING):
+            # STATUS_PAUSED belongs here. Pausing is how this class stops a
+            # mission, so any mission stopped or blocked earlier is sitting in
+            # that state, still loaded and still resumable. Reading the state
+            # before the first play_mission and excluding PAUSED meant the loop
+            # fell straight through: play reported "finished" without ever
+            # having sent a play command, and the only reason the robot moved
+            # at all was the docking element.
+            RESUMABLE = (mission_pb2.State.STATUS_NONE,
+                         mission_pb2.State.STATUS_RUNNING,
+                         mission_pb2.State.STATUS_PAUSED)
+
+            state = self._mission_state_with_grace(mission_client, cancel)
+            if state is None:
+                return
+
+            while state.status in RESUMABLE:
                 if cancel.is_set():
                     mission_client.pause_mission()
                     self._set_mission(running=False, status="stopped", message="Stopped by operator")
@@ -368,10 +399,21 @@ class MissionMixin:
                                       message=f"Mission is asking: {text}")
                     return
 
-                lease = lease_client.lease_wallet.advance()
-                mission_client.play_mission(time.time() + PLAY_LEASE_SECONDS, [lease])
+                try:
+                    lease = lease_client.lease_wallet.advance()
+                    mission_client.play_mission(time.time() + PLAY_LEASE_SECONDS, [lease])
+                except Exception as exc:
+                    # A dropped tick is survivable: the robot keeps running the
+                    # mission on the authorisation it already has, and the next
+                    # tick renews it. Only a sustained outage is fatal.
+                    if not self._ride_out_outage(exc, cancel):
+                        return
+                    continue
+
                 cancel.wait(POLL_INTERVAL)
-                state = mission_client.get_state()
+                state = self._mission_state_with_grace(mission_client, cancel)
+                if state is None:
+                    return
 
             name = mission_pb2.State.Status.Name(state.status)
             ok = state.status in (mission_pb2.State.STATUS_SUCCESS, mission_pb2.State.STATUS_PAUSED)
@@ -380,6 +422,43 @@ class MissionMixin:
         except Exception as exc:
             logging.exception("Mission %s failed", mission_id)
             self._set_mission(running=False, status="failed", message=str(exc))
+
+    def _ride_out_outage(self, exc, cancel):
+        """Wait through a comms dropout. False once it has gone on too long."""
+        started = self._outage_started or time.time()
+        self._outage_started = started
+        waited = time.time() - started
+
+        if waited > COMMS_GRACE_SECONDS:
+            logging.error("Robot unreachable for %.0fs, giving up: %s", waited, exc)
+            self._set_mission(
+                running=False, status="failed",
+                message=f"Robot unreachable for {waited:.0f}s. {exc}")
+            return False
+
+        logging.warning("Robot unreachable (%.0fs of %.0fs grace): %s",
+                        waited, COMMS_GRACE_SECONDS, exc)
+        self._set_mission(status="running",
+                          message=f"Comms lost, retrying ({waited:.0f}s)")
+        cancel.wait(POLL_INTERVAL)
+        return not cancel.is_set()
+
+    def _mission_state_with_grace(self, mission_client, cancel):
+        """Mission state, retried through a dropout. None means give up."""
+        while True:
+            try:
+                state = mission_client.get_state()
+            except Exception as exc:
+                if not self._ride_out_outage(exc, cancel):
+                    return None
+                continue
+
+            # Reached the robot, so any outage is over.
+            if self._outage_started is not None:
+                logging.info("Comms restored after %.0fs",
+                             time.time() - self._outage_started)
+                self._outage_started = None
+            return state
 
     def pause_mission(self):
         with self._lock:

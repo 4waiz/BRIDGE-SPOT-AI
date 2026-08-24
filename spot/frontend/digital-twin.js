@@ -17,9 +17,17 @@
     "use strict";
 
     var MODEL_URL = "spot_twin_web.glb";
-    // 10 Hz: fast enough that the twin tracks a walking robot rather
-    // than teleporting between poses.
-    var STATE_POLL_MS = 100;
+    // 5 Hz is fast enough that the twin tracks a walking robot rather than
+    // teleporting between poses. It used to be 10 Hz, which is ten requests a
+    // second reaching the robot over the same wifi carrying the lease renewals
+    // and mission commands. On site that link runs at 0% loss beside the dock
+    // and was measured at 75% out on the route, so a hero animation is not
+    // worth the share of it.
+    var STATE_POLL_MS = 200;
+    // On failure the poll backs off rather than hammering: an unreachable
+    // robot is exactly when adding retries makes things worse. Reset on the
+    // first success.
+    var STATE_POLL_MAX_MS = 3000;
     var CDN = "https://cdn.jsdelivr.net/npm/three@0.160.0";
 
     var host = document.querySelector("[data-role='twin-host']");
@@ -158,11 +166,27 @@
         current = null;
     }
 
+    var pollDelay = STATE_POLL_MS;
+
+    function schedulePoll() {
+        if (disposed) return;
+        poll = window.setTimeout(pollJoints, pollDelay);
+    }
+
+    function pollBackedOff() {
+        pollDelay = Math.min(STATE_POLL_MAX_MS, Math.round(pollDelay * 2));
+    }
+
+    function pollRecovered() {
+        pollDelay = STATE_POLL_MS;
+    }
+
     function pollJoints() {
         fetch("/api/robot/joints")
             .then(function (res) { return res.ok ? res.json() : null; })
             .then(function (data) {
                 if (disposed) return;
+                pollRecovered();
                 if (previewing) {
                     setBadge("Previewing pose", false);
                     return;
@@ -176,7 +200,11 @@
                     setBadge("Digital twin", false);
                 }
             })
-            .catch(function () { /* hold the last pose */ });
+            .catch(function () {
+                // Hold the last pose and ask less often until it comes back.
+                pollBackedOff();
+            })
+            .then(schedulePoll);
     }
 
 
@@ -776,7 +804,6 @@
             setupViewer();
 
             pollJoints();
-            poll = setInterval(pollJoints, STATE_POLL_MS);
             loop();
         }, undefined, function () {
             // Model missing or corrupt: leave the photo in place.
@@ -801,7 +828,7 @@
     function teardown() {
         disposed = true;
         if (frame) cancelAnimationFrame(frame);
-        if (poll) clearInterval(poll);
+        if (poll) window.clearTimeout(poll);
         if (renderer) renderer.dispose();
         if (canvas) canvas.hidden = true;
         if (fallback) fallback.style.display = "";
