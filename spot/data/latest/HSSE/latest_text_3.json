@@ -1,19 +1,40 @@
 {
-  "result_values": [
-    "Fire Extinguisher"
-  ],
-  "box_vectors": [
-    [
-      272.349365234375,
-      241.26168823242188,
-      427.8633728027344,
-      720.0
-    ]
-  ],
-  "confidences": [
-    0.4167342185974121
-  ],
-  "output_text": "1 Fire Extinguisher(s), 1 First Aid(s) not detected",
-  "output_boolean": "NOK",
-  "source": "ex3.jpeg"
+    "result_values": [
+        "Fire Extinguisher",
+        "Fire Extinguisher",
+        "Fire Extinguisher"
+    ],
+    "box_vectors": [
+        [
+            [
+                352.4671325683594,
+                372.6933288574219,
+                663.71142578125,
+                1080.0
+            ]
+        ],
+        [
+            [
+                35.13807678222656,
+                301.04205322265625,
+                423.6475524902344,
+                1079.7579345703125
+            ]
+        ],
+        [
+            [
+                13.181991577148438,
+                195.19775390625,
+                614.3907470703125,
+                1080.0
+            ]
+        ]
+    ],
+    "confidences": [
+        0.14561980962753296,
+        0.0808485820889473,
+        0.0781245157122612
+    ],
+    "output_text": "Found 3 Fire Extinguisher, 0 First Aid at fiducial 23. Short: 1 First Aid.",
+    "output_boolean": "NOK"
 }

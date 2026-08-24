@@ -44,7 +44,20 @@ MISSION_DIR = SPOT_ROOT / "data" / "missions"
 UPLOAD_TIMEOUT = 60.0
 # How far ahead the robot is allowed to run before it needs another play call.
 # Short enough that pausing feels immediate, long enough to survive a slow poll.
-PLAY_LEASE_SECONDS = 15.0
+# How far ahead each tick authorises the robot to keep running.
+#
+# This is the robot's autonomy budget, not a polling rate. The mission itself
+# executes on the robot; this loop only keeps extending permission. At 15s a
+# wifi dropout longer than fifteen seconds expired that permission and the
+# robot stopped mid-route, which is what ended every run so far on the stretch
+# between the dock and tag 23. Ninety seconds lets it walk through a blackout
+# and carry on, and the loop re-extends the moment comms return.
+#
+# Granting autonomy this far ahead is only reasonable because the robot has its
+# own guards underneath: controller supervision cuts motor power on its own
+# schedule, and AutoReturn backtracks to re-establish comms. Stopping on demand
+# is unaffected while comms are up, since pause is an immediate RPC.
+PLAY_LEASE_SECONDS = 90.0
 POLL_INTERVAL = 1.0
 
 # How long the robot may be unreachable before a mission is given up on.
@@ -56,11 +69,13 @@ POLL_INTERVAL = 1.0
 # to abandon a robot in a corridor, which is exactly what happened when one
 # UnableToConnectToRobotError ended a run mid-route.
 #
-# Twenty seconds is long enough to cover a roam and a retry, short enough that
-# a genuinely dead link is still reported while the operator is watching. It
+# It has to outlast PLAY_LEASE_SECONDS, or the loop would give up while the
+# robot still had permission to run and was making progress. Measured dropouts
+# on this site lasted tens of seconds, so this covers one comfortably while
+# still reporting a genuinely dead link before the operator loses patience. It
 # sits under the robot's own comms-loss behaviour rather than replacing it:
 # supervision still cuts motor power on its own schedule.
-COMMS_GRACE_SECONDS = 20.0
+COMMS_GRACE_SECONDS = 150.0
 
 
 class MissionError(RuntimeError):
