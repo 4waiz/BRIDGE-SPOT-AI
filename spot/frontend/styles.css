@@ -4096,13 +4096,25 @@ table.data tbody tr.is-clickable {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
     gap: 1rem;
-    align-items: start;
+    /* stretch (grid default): every card in the row takes the tallest
+       card's height, so the row's bottom edge is one continuous line. The
+       card's own flex column then decides which child sinks to that
+       bottom -- see the margin-top:auto rules below. */
+    align-items: stretch;
 }
 
 .hb__card { display: flex; flex-direction: column; gap: 0.6rem; }
 .hb__card h2 { margin: 0; font-size: 1.05rem; }
 .hb__card > p { margin: 0; font-size: 0.86rem; color: var(--text-soft); line-height: 1.5; }
 .hb__card .bs-menu-host { margin-top: auto; }
+/* Voice Control card: its CTA is a bare .btn, not a menu-host, so it needs
+   the same push to keep the button pinned to the bottom of the (now taller)
+   card. Anything after it -- the "Spot is not connected..." foot line --
+   rides along underneath. */
+.hb__card > .btn { margin-top: auto; }
+/* Recent missions card: no CTA at all, just a header and a list. Let the
+   list fill the free space instead of leaving a dead band under it. */
+.hb__card .hb__list { margin-top: auto; margin-bottom: auto; }
 
 .hb__points { list-style: none; margin: 0.2rem 0 0.4rem; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
 .hb__points li { display: flex; align-items: center; gap: 0.45rem; font-size: 0.8rem; color: var(--text-soft); }

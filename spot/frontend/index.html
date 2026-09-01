@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>Bridge Spot - Home</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" type="text/css" href="styles.css?v=20260819o">
+    <link rel="stylesheet" type="text/css" href="styles.css?v=20260901c">
     <link rel="stylesheet" href="voice_assistant_simple.css?v=20260819c">
     <link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
@@ -13,6 +13,26 @@
     <link rel="mask-icon" href="favicon/safari-pinned-tab.svg" color="#ff5622">
     <meta name="msapplication-TileColor" content="#da532c">
     <meta name="theme-color" content="#ffffff">
+    <script>
+        // If the operator opened this via localhost, hop the tab to the
+        // machine's wifi IP so the URL bar shows something anyone else on the
+        // network can type. Same physical server; the redirect only affects
+        // what appears in the address bar.
+        (function () {
+            var h = window.location.hostname;
+            if (h !== 'localhost' && h !== '127.0.0.1') return;
+            fetch('/api/lan-ip', { cache: 'no-store' })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (d) {
+                    if (!d || !d.ip || d.ip === h) return;
+                    var loc = window.location;
+                    var port = loc.port ? ':' + loc.port : '';
+                    window.location.replace(loc.protocol + '//' + d.ip + port +
+                        loc.pathname + loc.search + loc.hash);
+                })
+                .catch(function () { /* keep localhost, no network answer */ });
+        })();
+    </script>
 </head>
 <body>
     <!-- The sidebar and top bar are injected by bridge-shell.js so every page
@@ -198,7 +218,7 @@
     </script>
     <!-- Falls back to the still image if WebGL, the CDN or the model are
          unavailable. -->
-    <script type="module" src="digital-twin.js?v=20260819s"></script>
+    <script type="module" src="digital-twin.js?v=20260901b"></script>
     <script src="smartassistant.js?v=20260805"></script>
 </body>
 </html>

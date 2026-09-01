@@ -9,6 +9,7 @@ from starlette.responses import RedirectResponse
 from exceptions import NoDataOnSpotException
 from fastapi.responses import PlainTextResponse
 import os
+import socket
 import bridge_logger
 import logging
 from bosdyn.client.exceptions import UnableToConnectToRobotError
@@ -48,6 +49,29 @@ app.include_router(labeling_api.router)
 async def forward():
     url = "/static/index.html"
     return RedirectResponse(url)
+
+
+@app.get("/api/lan-ip")
+def lan_ip():
+    """Return the outbound LAN address of this host.
+
+    The Home page reads this to swap a `localhost` URL for the same server's
+    wifi IP, so anyone else on the network can type what they see in the URL
+    bar and reach the same page. Uses a UDP socket to a public address as
+    the interface probe: no packet is actually sent, but the OS fills in the
+    source IP it would use, which is the one we want. `gethostbyname` is
+    unreliable on Windows -- it often returns 127.0.0.1 or an APIPA address
+    depending on how the hosts file is configured.
+    """
+    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        probe.connect(("8.8.8.8", 80))
+        ip = probe.getsockname()[0]
+    except OSError:
+        ip = None
+    finally:
+        probe.close()
+    return {"ip": ip}
 
 
 @app.get("/analyzefromspot")

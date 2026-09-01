@@ -88,26 +88,33 @@
        ------------------------------------------------------------------ */
 
     /*
-     * Calibrated against the robot rather than derived from the docs.
+     * Per-leg because the rig's bind pose is NOT symmetric: front and hind
+     * thighs rest at different angles (rig_mapping.json in the twin project),
+     * so a single offset per joint kind cannot line up all four legs. The
+     * table comes straight from that file; the sign column comes from the
+     * rig's sign_conventions block:
      *
-     * With Spot sitting on the dock, the SDK reported kn = -2.64 while the
-     * model's own `sit` clip holds that bone at -2.57: the same value, so the
-     * knee maps straight through. The earlier attempt subtracted the shin bind
-     * angle and flipped the sign, which put the bone 5.2 rad (~300 degrees)
-     * away from the clip and folded the leg backwards.
-     *
-     * The rig's `stand` clip agrees: kn = -1.555, which is Spot's nominal
-     * standing knee.
-     *
-     * hx and hy are pass-through on the same convention. They are NOT verified:
-     * every baked clip in the asset leaves those bones at exactly 0, including
-     * `walk`, so the file offers no reference pose to calibrate against. They
-     * need checking with the robot standing.
+     *   hx: rig_rot = +sdk_hx                 (pass-through, same for all legs)
+     *   hy: rig_rot = -(sdk_hy - thigh_bind)  (sign flip + per-leg bind angle)
+     *   kn: rig_rot = +sdk_kn                 (empirically matches; the sit
+     *                                          test on the dock reported
+     *                                          sdk_kn -2.64 vs the sit clip's
+     *                                          shin at -2.57, which the
+     *                                          pass-through reproduces.)
      */
     var JOINT_MAP = {
-        hx: { sign: 1, offset: 0 },
-        hy: { sign: 1, offset: 0 },
-        kn: { sign: 1, offset: 0 }
+        fl: { hx: { sign:  1, offset: 0 },
+              hy: { sign: -1, offset: -0.5923 },
+              kn: { sign:  1, offset: 0 } },
+        fr: { hx: { sign:  1, offset: 0 },
+              hy: { sign: -1, offset: -0.6009 },
+              kn: { sign:  1, offset: 0 } },
+        hl: { hx: { sign:  1, offset: 0 },
+              hy: { sign: -1, offset: -1.0468 },
+              kn: { sign:  1, offset: 0 } },
+        hr: { hx: { sign:  1, offset: 0 },
+              hy: { sign: -1, offset: -1.0472 },
+              kn: { sign:  1, offset: 0 } }
     };
 
     var bones = {};
@@ -126,8 +133,9 @@
             var boneName = name.replace(".", "_");
             var bone = bones[boneName];
             if (!bone) return;
-            var kind = name.split(".")[1];
-            var rule = JOINT_MAP[kind];
+            var parts = name.split(".");
+            var legRules = JOINT_MAP[parts[0]];
+            var rule = legRules && legRules[parts[1]];
             if (!rule) return;
             bone.rotation.x = rule.sign * (data.joints[name] - rule.offset);
             applied++;
@@ -806,13 +814,116 @@
             pollJoints();
             loop();
         }, undefined, function () {
-            // Model missing or corrupt: leave the photo in place.
-            teardown();
+            // Rigged glb missing (spot_twin_web.glb is a 21 MB asset copied
+            // in from the spot-digital-twin project; on machines without it
+            // we get here). Build a stylised placeholder from primitives so
+            // the hero shows a 3D robot instead of falling back to the still
+            // photo, and so drag/turntable/overlay all still work. The real
+            // rig takes over automatically once the file is dropped in.
+            if (disposed) return;
+            buildPlaceholderSpot(THREE);
         });
 
         // size() re-runs frameCamera, and the fit is analytic, so a new aspect
         // ratio is handled without re-measuring anything.
         window.addEventListener("resize", size);
+    }
+
+    /* Stylised Spot built from primitives -- no external assets. Same shape
+       language as the real robot (yellow body, four articulated legs) so an
+       operator recognises what it is at a glance, but the joint chain does
+       NOT match the SDK naming, so live mirroring stays off and the badge
+       says "Placeholder" rather than "Digital twin". */
+    function buildPlaceholderSpot(THREE) {
+        var yellow = new THREE.MeshStandardMaterial({
+            color: 0xF5C400, roughness: 0.45, metalness: 0.15
+        });
+        var dark = new THREE.MeshStandardMaterial({
+            color: 0x1c1c1c, roughness: 0.6, metalness: 0.2
+        });
+        var lens = new THREE.MeshStandardMaterial({
+            color: 0x111111, roughness: 0.15, metalness: 0.6
+        });
+
+        var root = new THREE.Group();
+
+        // Torso: a rounded slab. Slightly compressed on Y so the profile
+        // reads as a body, not a shipping crate.
+        var torso = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.42, 0.72), yellow);
+        torso.position.y = 0.90;
+        root.add(torso);
+
+        // Head module up front, with a black lens strip where Spot's cameras
+        // sit. Purely cosmetic; no articulation.
+        var head = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.32, 0.62), yellow);
+        head.position.set(0.85, 0.94, 0);
+        root.add(head);
+        var visor = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.14, 0.5), lens);
+        visor.position.set(1.02, 0.96, 0);
+        root.add(visor);
+
+        // Four legs. Each leg is a short thigh + longer shin, joined at a
+        // knee, hanging from a hip on the torso corner. Angles roughly match
+        // a standing pose so nothing looks buckled.
+        var HIP_X = 0.62, HIP_Z = 0.30, HIP_Y = 0.82;
+        var THIGH_LEN = 0.34, SHIN_LEN = 0.44;
+        var thighGeom = new THREE.CylinderGeometry(0.06, 0.06, THIGH_LEN, 12);
+        thighGeom.translate(0, -THIGH_LEN / 2, 0);
+        var shinGeom = new THREE.CylinderGeometry(0.045, 0.04, SHIN_LEN, 12);
+        shinGeom.translate(0, -SHIN_LEN / 2, 0);
+        var footGeom = new THREE.SphereGeometry(0.055, 12, 10);
+
+        [[ 1,  1], [ 1, -1], [-1,  1], [-1, -1]].forEach(function (s) {
+            var hip = new THREE.Group();
+            hip.position.set(HIP_X * s[0], HIP_Y, HIP_Z * s[1]);
+            // Splay each leg outwards slightly and forwards/backwards.
+            hip.rotation.z = 0.12 * -s[0];
+            hip.rotation.x = 0.18 * s[1];
+            root.add(hip);
+
+            var thigh = new THREE.Mesh(thighGeom, dark);
+            hip.add(thigh);
+
+            var knee = new THREE.Group();
+            knee.position.y = -THIGH_LEN;
+            knee.rotation.x = -0.35 * s[1];
+            hip.add(knee);
+
+            var shin = new THREE.Mesh(shinGeom, dark);
+            knee.add(shin);
+
+            var foot = new THREE.Mesh(footGeom, dark);
+            foot.position.y = -SHIN_LEN;
+            knee.add(foot);
+        });
+
+        model = root;
+        scene.add(model);
+
+        var box = new THREE.Box3().setFromObject(model);
+        var centre = box.getCenter(new THREE.Vector3());
+        var span = box.getSize(new THREE.Vector3());
+        var scale = 1.6 / Math.max(span.x, span.y, span.z);
+        model.scale.setScalar(scale);
+        model.position.sub(centre.multiplyScalar(scale));
+        model.rotation.y = -0.5;
+
+        var fitted = new THREE.Box3().setFromObject(model);
+        var sphere = fitted.getBoundingSphere(new THREE.Sphere());
+        fitCentre = sphere.center.clone();
+        fitRadius = sphere.radius;
+        VIEW_DIR = new THREE.Vector3(0.62, 0.30, 0.72).normalize();
+        scratch = new THREE.Vector3();
+        frameCamera();
+
+        canvas.hidden = false;
+        if (fallback) fallback.style.display = "none";
+        setBadge("Placeholder twin", false);
+        setupViewer();
+
+        // No joint feed and no baked clips -- the placeholder just spins.
+        // Live mirroring stays off; the badge tells the operator so.
+        loop();
     }
 
     function loop() {

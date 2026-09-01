@@ -75,9 +75,8 @@ while ($true) {
     Start-Sleep -Seconds 5
 }
 
-# Enable this block if you want Edge to launch automatically after services are up.
-# $openEdge = $false
-# if ($openEdge) {
-#     Start-Process "msedge.exe" "http://localhost:4000 http://localhost:3001"
-#     Write-Log "Launched Edge with local sites."
-# }
+# The Home page decides for itself whether to keep the localhost URL or
+# hop to the machine's LAN IP (see spot/frontend/index.html). That side of
+# the redirect lives with the page it affects, and needs no admin rights;
+# rewriting Edge's own startup URLs from here would need
+# HKCU\SOFTWARE\Policies\Microsoft\Edge, which is ACL'd to Administrators.
