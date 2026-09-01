@@ -55,9 +55,12 @@ UPLOAD_TIMEOUT = 60.0
 #
 # Granting autonomy this far ahead is only reasonable because the robot has its
 # own guards underneath: controller supervision cuts motor power on its own
-# schedule, and AutoReturn backtracks to re-establish comms. Stopping on demand
-# is unaffected while comms are up, since pause is an immediate RPC.
-PLAY_LEASE_SECONDS = 90.0
+# schedule, and AutoReturn backtracks to re-establish comms. Note also what a
+# longer window does NOT cost. Stopping on demand is unaffected while comms are
+# up, because pause is an immediate RPC; and while comms are down there was
+# never any way to stop it from here anyway. The window only decides whether a
+# blackout kills the mission, not whether the operator keeps control.
+PLAY_LEASE_SECONDS = 300.0
 POLL_INTERVAL = 1.0
 
 # How long the robot may be unreachable before a mission is given up on.
@@ -75,7 +78,7 @@ POLL_INTERVAL = 1.0
 # still reporting a genuinely dead link before the operator loses patience. It
 # sits under the robot's own comms-loss behaviour rather than replacing it:
 # supervision still cuts motor power on its own schedule.
-COMMS_GRACE_SECONDS = 150.0
+COMMS_GRACE_SECONDS = 420.0
 
 
 class MissionError(RuntimeError):

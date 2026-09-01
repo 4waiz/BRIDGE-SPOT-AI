@@ -2,145 +2,145 @@
   "mission": "HSSE_BRIDGE.walk",
   "actions": [
     {
-      "id": "2b70f50f",
+      "id": "756cb69f",
       "template": "ptz_capture",
       "name": "HSSE fiducial 1",
       "waypoint": "inapt-husky-wyd3Hv2j9F2uoSUyOZ543w==",
       "params": {
         "pan": 320.2207454186761,
-        "tilt": -14.313688038210227,
+        "tilt": 9.842204878116071,
         "zoom": 1.0
       }
     },
     {
-      "id": "a74e011d",
+      "id": "36ce1cab",
       "template": "ptz_capture",
       "name": "HSSE fiducial 2",
       "waypoint": "oaken-leech-qja.teUZsBudrwIHI727lg==",
       "params": {
         "pan": 160.95092469376613,
-        "tilt": -17.07575052968388,
+        "tilt": 7.450457759988474,
         "zoom": 1.0
       }
     },
     {
-      "id": "3447b60f",
+      "id": "c1ff27e5",
       "template": "ptz_capture",
       "name": "HSSE fiducial 10",
       "waypoint": "struck-mudcat-9lXjnDVLgOwvddI5lNF3rw==",
       "params": {
         "pan": 270.7199535546165,
-        "tilt": -16.792333181535092,
+        "tilt": 5.0637448941146985,
         "zoom": 1.1
       }
     },
     {
-      "id": "d7a219cf",
+      "id": "2fd7236d",
       "template": "ptz_capture",
       "name": "HSSE fiducial 12",
       "waypoint": "satiny-beagle-qdLrCG7yxx3jDVyXkfCqig==",
       "params": {
         "pan": 132.99418142992513,
-        "tilt": -15.952587358084603,
+        "tilt": 8.018204611047356,
         "zoom": 1.0
       }
     },
     {
-      "id": "ffd74dce",
+      "id": "8c8ff9b0",
       "template": "ptz_capture",
-      "name": "HSSE fiducial 13",
+      "name": "HSSE extinguisher 13",
       "waypoint": "chance-grub-Qv0HisJBwHmrGKVOj2ibDQ==",
       "params": {
         "pan": 7.368336528732682,
-        "tilt": -9.066364347873508,
+        "tilt": 15.221848660435073,
         "zoom": 1.0
       }
     },
     {
-      "id": "a62069b2",
+      "id": "23fcb2b6",
       "template": "ptz_capture",
-      "name": "HSSE fiducial 23",
+      "name": "HSSE extinguisher 23",
       "waypoint": "buff-sloth-Ichhee8WVisQhD9.7EhEyw==",
       "params": {
         "pan": 295.1989585150391,
-        "tilt": -8.69089447631508,
+        "tilt": 16.396616234336648,
         "zoom": 1.0
       }
     },
     {
-      "id": "55f92ac2",
+      "id": "ce32095a",
       "template": "ptz_capture",
-      "name": "HSSE fiducial 25",
+      "name": "HSSE extinguisher 25",
       "waypoint": "oaken-leech-qja.teUZsBudrwIHI727lg==",
       "params": {
         "pan": 242.6853697177708,
-        "tilt": -5.5877349588129475,
+        "tilt": 19.93472302417858,
         "zoom": 1.0
       }
     },
     {
-      "id": "114d3ecb",
+      "id": "720085fd",
       "template": "ptz_capture",
       "name": "HSSE fiducial 520",
       "waypoint": "squab-marlin-Rv76qNi1VgDvoDsDC+rnIw==",
       "params": {
         "pan": 230.10326041818792,
-        "tilt": -20.415182947695868,
+        "tilt": 5.744395092034393,
         "zoom": 1.0
       }
     },
     {
-      "id": "a19b8b65",
+      "id": "ab9e7916",
       "template": "ptz_capture",
       "name": "HSSE fiducial 529",
       "waypoint": "boring-chunga-hVnnZGPfMrx9ICF3gkTrAw==",
       "params": {
         "pan": 292.6703427579498,
-        "tilt": -14.198285740993427,
+        "tilt": 10.699696541781407,
         "zoom": 1.0
       }
     },
     {
-      "id": "6a27d2db",
+      "id": "f76d0406",
       "template": "ptz_capture",
       "name": "HSSE fiducial 535",
       "waypoint": "phoney-spider-nfFlCg45Y6SVX613wQSL6g==",
       "params": {
         "pan": 328.7638510970705,
-        "tilt": -21.577184656535167,
+        "tilt": 9.47488274961208,
         "zoom": 1.0
       }
     },
     {
-      "id": "076605cb",
+      "id": "de213b30",
       "template": "ptz_capture",
       "name": "HSSE fiducial 536",
       "waypoint": "whippy-gaur-cYTPENfE7.+GEwtTPyZaVw==",
       "params": {
         "pan": 62.70342886565134,
-        "tilt": -19.685590884186112,
+        "tilt": 8.916807389856569,
         "zoom": 1.0
       }
     },
     {
-      "id": "97bc5942",
+      "id": "c0459a07",
       "template": "ptz_capture",
-      "name": "HSSE fiducial 537",
+      "name": "HSSE extinguisher 537",
       "waypoint": "stagey-lizard-jx3CquVx5MQV9YvRI.tFBQ==",
       "params": {
         "pan": 230.30523028083047,
-        "tilt": -14.111038332257706,
+        "tilt": 7.527439348626093,
         "zoom": 1.1
       }
     },
     {
-      "id": "1dfdd589",
+      "id": "3e739a4c",
       "template": "ptz_capture",
       "name": "HSSE fiducial 538",
       "waypoint": "parky-hornet-05LuLRLz27WhzsAQgCiB5A==",
       "params": {
         "pan": 319.0051799920756,
-        "tilt": -21.079114759356415,
+        "tilt": 9.820168913877225,
         "zoom": 1.0
       }
     }

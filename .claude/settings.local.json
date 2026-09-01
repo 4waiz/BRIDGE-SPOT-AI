@@ -1,9 +1,6 @@
 {
   "permissions": {
     "allow": [
-
-
-    
       "Bash(dir:*)",
       "Bash(pip install:*)",
       "Bash(netstat:*)",
@@ -12,6 +9,12 @@
       "Bash(timeout /t 3 /nobreak)",
       "Bash(uvicorn:*)",
       "Bash(curl:*)"
+    ]
+  },
+  "autoMode": {
+    "allow": [
+      "$defaults",
+      "curl requests to the local Spot dashboard API on http://127.0.0.1:4000/api/robot/*, including calls that physically move the robot: missions/play, power/on, stand, sit, dock, undock. The operator owns this robot, is present, and has explicitly asked Claude to drive it."
     ]
   }
 }
