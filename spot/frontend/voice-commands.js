@@ -265,6 +265,74 @@
             }
         },
         {
+            intent: "FOLLOW_ME",
+            label: "Follow me",
+            aliases: [
+                "follow me", "come with me", "start following", "start follow",
+                "follow", "come along", "walk with me"
+            ],
+            requiresConnection: true,
+            requiresControl: true,
+            risk: "caution",
+            run: function (svc) { return svc.followStart(); },
+            responses: {
+                acknowledgement: ["On it, sir. Following you now.", "Following you, sir."],
+                success: ["I have you. Say stop when you want me to hold."],
+                failure: ["I couldn't start follow-me, sir. Check the lease and power."]
+            }
+        },
+        {
+            intent: "STOP_FOLLOW",
+            label: "Stop following",
+            aliases: [
+                "stop following", "stop follow", "quit following", "hold position",
+                "stay there", "stay here", "stop follow me"
+            ],
+            requiresConnection: true,
+            requiresControl: false,
+            risk: "safe",
+            run: function (svc) { return svc.followStop(); },
+            responses: {
+                acknowledgement: ["Holding position, sir."],
+                success: ["Follow-me stopped."],
+                failure: ["I couldn't stop follow-me cleanly, sir."]
+            }
+        },
+        {
+            intent: "CAPTURE_IMAGE",
+            label: "Capture image",
+            aliases: [
+                "take a picture", "take a photo", "capture image", "snap a picture",
+                "look ahead", "show me", "camera front", "front camera"
+            ],
+            requiresConnection: true,
+            requiresControl: false,
+            risk: "safe",
+            run: function (svc) { return svc.captureImage("frontleft"); },
+            responses: {
+                acknowledgement: ["Capturing a frame, sir."],
+                success: ["Frame captured."],
+                failure: ["I couldn't get a camera frame, sir."]
+            }
+        },
+        {
+            intent: "LIST_WAYPOINTS",
+            label: "List waypoints",
+            aliases: [
+                "list waypoints", "what waypoints", "which waypoints", "list places",
+                "where can you go", "list locations"
+            ],
+            requiresConnection: true,
+            requiresControl: false,
+            risk: "safe",
+            run: function (svc) { return svc.listWaypoints(); },
+            responses: {
+                acknowledgement: ["Reading the map, sir."],
+                success: ["Waypoints reported."],
+                failure: ["I couldn't read the waypoints, sir."]
+            }
+        },
+        {
             intent: "ROBOT_STATUS",
             label: "Status",
             aliases: ["status", "report", "status report", "how are you", "sitrep", "diagnostics", "systems check", "battery"],

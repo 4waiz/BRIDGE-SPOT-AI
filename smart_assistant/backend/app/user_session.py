@@ -393,6 +393,18 @@ class UserSession:
 
         user_session_queue.put(self)
 
+    def disable_openai(self):
+        """Stop using OpenAI for the rest of this session.
+
+        Called when the API returns 401. Every connector reads
+        `session.client` per call rather than caching it, so clearing it here
+        immediately routes GPT, STT and TTS to their local equivalents --
+        otherwise each of the three keeps re-discovering the same dead key,
+        with retry backoff, on every single question."""
+        if self.client is not None:
+            logging.error(f"session {self.session_id}: OpenAI disabled for this session; running fully local.")
+        self.client = None
+
     # Catch errors occuring with server side audio without frontend
     async def send_json(self, json):
         try:

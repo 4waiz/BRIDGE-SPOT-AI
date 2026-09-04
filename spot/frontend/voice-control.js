@@ -62,8 +62,8 @@
        ================================================================== */
 
     var STATE_TEXT = {
-        idle: "Ready for command",
-        listening: "Listening…",
+        idle: "Tap to keep listening",
+        listening: "Listening for “Spot …”",
         processing: "Understanding command…",
         executing: "Executing",
         speaking: "Spot is responding…",
@@ -88,23 +88,31 @@
         label.textContent = text;
 
         if (hint) {
-            if (next.type === "listening") hint.textContent = "Speak now, tap again to cancel";
-            else if (next.type === "idle") hint.textContent = "Tap the microphone, or press Space";
+            if (next.type === "listening") hint.textContent = "Say “Spot, stand up”, “Spot, dock”, or ask a question. Tap to stop.";
+            else if (next.type === "idle") hint.textContent = "One tap keeps the mic on. Prefix commands with “Spot”.";
             else hint.textContent = "";
         }
 
-        var listening = next.type === "listening";
-        mic.classList.toggle("is-listening", listening);
-        mic.setAttribute("aria-label", listening
-            ? "Stop listening"
-            : "Start listening for a Spot command");
-        // Busy states must not accept another press.
-        mic.disabled = (next.type === "processing" || next.type === "executing");
+        // The mic keeps listening in continuous mode even while a command
+        // is running, so the ring animation should reflect the microphone,
+        // not the state machine.
+        var micLive = !!(recognizer && recognizer.isListening && recognizer.isListening());
+        mic.classList.toggle("is-listening", micLive || next.type === "listening");
+        mic.setAttribute("aria-label", micLive
+            ? "Stop always-on listening"
+            : "Start always-on listening for Spot");
+        // Never disable the button in continuous mode: the operator has to
+        // be able to tap it to stop, even mid-command.
+        mic.disabled = false;
 
         if (resetTimer) { clearTimeout(resetTimer); resetTimer = null; }
         if (next.type === "success" || next.type === "error") {
             resetTimer = setTimeout(function () {
-                if (state.type === "success" || state.type === "error") setState({ type: "idle" });
+                if (state.type === "success" || state.type === "error") {
+                    // Drop back to the "still listening" state if the mic is
+                    // held open, not to "idle" (which reads as 'mic off').
+                    setState({ type: micLive ? "listening" : "idle" });
+                }
             }, next.type === "error" ? 6000 : 2600);
         }
     }
@@ -307,8 +315,75 @@
     }
 
     /* ==================================================================
+       Wake word
+
+       The mic stays open across utterances so the operator can talk to the
+       room, take a phone call, tell a colleague to fetch a wrench, without
+       Spot trying to execute any of it. Only utterances that begin with
+       the robot's name are treated as commands:
+
+           "spot stand up"           -> STAND
+           "hey spot, dock"          -> DOCK
+           "ok spot what is bridge?" -> AI question
+
+       Emergency stop is exempt below in handleTranscript: a safety word
+       has to work without a prefix, even if the operator is panicked and
+       forgets the wake word. Everything else falls silent unless "spot"
+       is heard.
+       ================================================================== */
+
+    var WAKE_RE = /^\s*(?:hey\s+|hi\s+|ok(?:ay)?\s+|hello\s+)?spot(?:\s+the\s+dog|\s+the\s+robot)?[\s,.:;!?-]+/i;
+    var BARE_WAKE_RE = /^\s*(?:hey\s+|hi\s+|ok(?:ay)?\s+|hello\s+)?spot[\s.!?]*$/i;
+
+    function extractAfterWake(text) {
+        var trimmed = (text || "").trim();
+        if (!trimmed) return { matched: false };
+        if (BARE_WAKE_RE.test(trimmed)) return { matched: true, command: "" };
+        var m = WAKE_RE.exec(trimmed);
+        if (!m) return { matched: false };
+        return { matched: true, command: trimmed.slice(m[0].length).trim() };
+    }
+
+    /* ==================================================================
        Handling a transcript
        ================================================================== */
+
+    /* Rolling conversation memory used when we ask the AI backend, so a
+       follow-up question can reference the previous one ("what about the
+       hind knee?"). Capped so it doesn't grow forever. */
+    var askHistory = [];
+    var ASK_HISTORY_MAX = 6;
+
+    function answerWithAi(text) {
+        setState({ type: "processing", transcript: text });
+        var payload = { question: text, history: askHistory.slice(-ASK_HISTORY_MAX) };
+        fetch("/api/ask", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        }).then(function (r) {
+            if (!r.ok) throw new Error("HTTP " + r.status);
+            return r.json();
+        }).then(function (data) {
+            var reply = (data && data.answer) || "I don't have an answer for that yet, sir.";
+            var source = (data && data.source) || "local";
+            askHistory.push({ role: "user", content: text });
+            askHistory.push({ role: "assistant", content: reply });
+            if (askHistory.length > ASK_HISTORY_MAX * 2) {
+                askHistory = askHistory.slice(-ASK_HISTORY_MAX * 2);
+            }
+            var label = source === "openai" ? "Answered" : "Answered (offline)";
+            logEntry({ said: text, reply: reply, status: "ok", statusLabel: label });
+            setState({ type: "success", label: "Answered" });
+            say(reply);
+        }).catch(function (err) {
+            log("ai answer failed", err);
+            var reply = "I couldn't reach the assistant just now, sir.";
+            logEntry({ said: text, reply: reply, status: "warn", statusLabel: "AI unavailable" });
+            setState({ type: "error", message: "AI unavailable" });
+            say(reply);
+        });
+    }
 
     function handleTranscript(text) {
         if (!text) return;
@@ -316,10 +391,10 @@
 
         var match = Commands.resolve(text);
         if (!match) {
-            var reply = "I don't have that command available, sir.";
-            logEntry({ said: text, reply: reply, status: "warn", statusLabel: "Not recognised" });
-            setState({ type: "error", message: "Command not recognized" });
-            say(reply);
+            // Not a Spot control command -- forward to the assistant so the
+            // operator can ask general questions ("what is spot?", "how much
+            // battery does spot have on paper?") without leaving the page.
+            answerWithAi(text);
             return;
         }
         log("resolved", text, "->", match.command.intent, "via", match.matched);
@@ -332,7 +407,6 @@
 
     function startListening() {
         if (!recognizer) return;
-        if (state.type === "processing" || state.type === "executing") return;
 
         // Taking the microphone always wins over Spot talking, so the operator
         // can cut in mid-sentence.
@@ -349,10 +423,16 @@
 
     function stopListening() {
         if (recognizer) recognizer.stop();
+        if (meter) meter.stop();
+        setVoiceFact("mic", "Idle");
+        setState({ type: "idle" });
     }
 
     function toggleListening() {
-        if (state.type === "listening") stopListening();
+        // In continuous mode the session outlives individual utterances, so
+        // use the recogniser's own listening flag as the source of truth --
+        // state.type flips through processing/executing/success in between.
+        if (recognizer && recognizer.isListening()) stopListening();
         else startListening();
     }
 
@@ -497,6 +577,43 @@
         });
     }
 
+    /* Type-to-speak fallback. Feeds handleTranscript so a typed command
+       goes through the same intent resolution + robot safety checks as a
+       spoken one, and a typed question falls through to the AI path.
+       This is the mic-off alternative, not a second control surface. */
+    function wireChat() {
+        var form = $("[data-role='vc-chat']");
+        var input = $("[data-role='vc-chat-input']");
+        var send = $("[data-role='vc-chat-send']");
+        if (!form || !input) return;
+
+        function submit(event) {
+            if (event) event.preventDefault();
+            var text = input.value.trim();
+            if (!text) return;
+            // Cutting the speaker mirrors the mic path -- if Spot is
+            // mid-sentence and the operator types a new command, the new
+            // command wins.
+            Engine.speaker.cancel();
+            input.value = "";
+            input.blur();
+            handleTranscript(text);
+        }
+
+        form.addEventListener("submit", submit);
+
+        // Send button is inside the form so submit already fires; the
+        // explicit handler is just so a click without focus in the field
+        // still works on browsers that don't map Enter cleanly.
+        if (send) send.addEventListener("click", submit);
+
+        // Space is the mic hotkey elsewhere on the page; make sure typing
+        // in the chat input does not toggle listening on every space.
+        input.addEventListener("keydown", function (event) {
+            event.stopPropagation();
+        });
+    }
+
     /* ==================================================================
        Cleanup
        ================================================================== */
@@ -523,6 +640,7 @@
         }
 
         renderQuick();
+        wireChat();
         setState({ type: "idle" });
 
         // -- voice system panel --
@@ -551,9 +669,44 @@
                 onFinal: function (text) {
                     var el = $("[data-role='vc-live-text']");
                     if (el) el.textContent = text;
-                    handleTranscript(text);
+
+                    // While Spot is speaking a reply, the mic often picks
+                    // up the tail of it as a transcript. Discard those so
+                    // the assistant does not answer its own voice.
+                    if (Engine.speaker.isSpeaking()) {
+                        log("continuous: ignoring self-echo:", text);
+                        return;
+                    }
+
+                    var wake = extractAfterWake(text);
+                    // Safety exception: emergency-stop matches always fire,
+                    // wake word or not. A panicked operator cannot be asked
+                    // to say "spot" first.
+                    var estopMatch = Commands.resolve(text);
+                    if (estopMatch && estopMatch.command.intent === "EMERGENCY_STOP") {
+                        handleTranscript(text);
+                        return;
+                    }
+
+                    if (!wake.matched) {
+                        // Heard something, not addressed to Spot. Stay
+                        // listening; don't clutter the log.
+                        log("continuous: no wake word, ignoring:", text);
+                        setState({ type: "listening" });
+                        return;
+                    }
+                    if (!wake.command) {
+                        // "Spot?" on its own -- acknowledge, then keep
+                        // listening for the actual command.
+                        say("Yes, sir?");
+                        return;
+                    }
+                    handleTranscript(wake.command);
                 },
                 onNoSpeech: function () {
+                    // In continuous mode silence is normal; only surface
+                    // "didn't catch that" on a one-shot press-to-talk.
+                    if (recognizer && recognizer.isContinuous && recognizer.isContinuous()) return;
                     setState({ type: "error", message: "I didn't catch that, sir." });
                     say("I didn't catch that, sir.");
                 },
@@ -562,12 +715,16 @@
                     setState({ type: "error", message: "Microphone error" });
                 },
                 onEnd: function () {
+                    // Continuous mode: engine auto-restarts, keep the UI
+                    // in the listening state instead of dropping to idle.
+                    if (recognizer && recognizer.isContinuous && recognizer.isContinuous() && recognizer.isListening()) {
+                        return;
+                    }
                     if (meter) meter.stop();
                     setVoiceFact("mic", "Idle");
-                    // Only fall back to idle if nothing downstream took over.
                     if (state.type === "listening") setState({ type: "idle" });
                 }
-            });
+            }, { continuous: true });
         }
 
         // -- microphone button --

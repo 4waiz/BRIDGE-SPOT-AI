@@ -3383,6 +3383,28 @@ table.data tbody tr.is-clickable {
 
 .vc-quick { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
+/* Type-to-speak fallback. Same intent path as the mic, so the input has to
+   look like a first-class control -- not a demo textbox tucked to the side. */
+.vc-chat { display: flex; gap: 0.5rem; align-items: stretch; }
+.vc-chat__input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0.65rem 0.9rem;
+    font: inherit;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.6rem;
+    outline: none;
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.vc-chat__input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft, rgba(255, 86, 34, 0.18));
+}
+.vc-chat__send { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 0.4rem; }
+.vc-chat__send[disabled] { opacity: 0.55; cursor: not-allowed; }
+
 .vc-chip {
     padding: 0.5rem 0.95rem;
     border-radius: var(--pill);

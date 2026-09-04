@@ -4,8 +4,15 @@ import openai
 import tiktoken
 import pandas as pd
 import numpy as np
-from sentence_transformers import CrossEncoder, SentenceTransformer
+from sentence_transformers import CrossEncoder
 import settings
+from . import local_ai
+
+
+# When OpenAI is unreachable (no internet, invalid key, hit quota) the answer
+# comes from connectors/local_ai.py instead of an error banner. See that module
+# for the offline chain: local LLM if one is running, otherwise semantic
+# retrieval over the bundled knowledge base.
 
 
 language_names = {"en": "english", "ar": "arabic", "hi": "hindi", "de": "german", "es": "spanish", "pt": "portuguese", "sv": "swedish", "nl": "dutch", "ru": "russian", "fr": "french", "zh": "chinese"}
@@ -14,14 +21,16 @@ language_names = {"en": "english", "ar": "arabic", "hi": "hindi", "de": "german"
 class GPT_Chat:
     def __init__(self, user_session):
         self.session = user_session
-        self.client = self.session.client
         self.websocket = self.session.websocket
         self.dialogue = []
         self.name = ""
         self.user_prompt = ""
         self.base_prompt = (
-            "You are the BRIDGE Spot assistant. BRIDGE is the Edge Learning and Innovation Factory in Abu Dhabi. "
-            "Spot is the Boston Dynamics robot dog. Answer only questions related to BRIDGE or Spot. "
+            "You are the BRIDGE Spot assistant. BRIDGE (bridgeuae.com) is an entity of EDGE Group, "
+            "the UAE advanced technology and defence conglomerate based in Abu Dhabi. BRIDGE is EDGE's "
+            "function for innovation, operational excellence and industrialisation, focused on Industry "
+            "4.0 upskilling and reshaping defence manufacturing (formerly Learning & Innovation Factory, LIF). "
+            "Spot is the Boston Dynamics robot dog used at BRIDGE. Answer only questions related to BRIDGE or Spot. "
             "If a question is unrelated, say you can help with BRIDGE or Spot and ask a concise follow-up. "
             "Keep replies very short (1-2 sentences)."
         )
@@ -31,7 +40,9 @@ class GPT_Chat:
         self.max_response_tokens = 256
         self.temperature = 0.5
         self.content = "none"
-        self.embeddings_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+        # Shared across sessions -- every websocket connection used to load its
+        # own 90 MB copy of the same weights.
+        self.embeddings_model = local_ai.get_embedder()
         self.crossencoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
         self.token_encoding = tiktoken.get_encoding("cl100k_base")
         self.new_sentence: list  # sentences to be sent to frontend
@@ -86,21 +97,19 @@ class GPT_Chat:
             )
             logging.info(f"session {self.session.session_id}, request {request.id}: Question: {question}")
 
-            if self.client is None:
-                logging.error(f"session {self.session.session_id}, request {request.id}: OpenAI client not configured.")
-                await self.session.send_json(
-                    json={
-                        "finish": "error in GPT",
-                        "request_id": request.id,
-                    }
+            if self.session.client is None:
+                logging.info(
+                    f"session {self.session.session_id}, request {request.id}: "
+                    "OpenAI unavailable -- answering locally."
                 )
+                await self._serve_local(question, request, play_locally)
                 return
 
             while self.num_tokens_from_messages() > self.maxtoken:
                 del self.dialogue[1:3]
 
             # the embeddings search
-            if self.content != "none":
+            if self.content != "none" and self.embeddings_model is not None:
                 # get the paragraphs of the source
                 df = pd.read_csv(f"sources/{self.content}.csv")
                 # narrow the paragraphs down to num_candidates amount of candidates
@@ -200,16 +209,44 @@ class GPT_Chat:
                     return
         except Exception as exc:
             logging.exception(f"session {self.session.session_id}, request {request.id}: error in GPT: {exc}")
+            # Anything OpenAI threw at us (401, timeout, quota, network) --
+            # instead of surfacing "There has been an error", answer from the
+            # local Q&A. The frontend can't tell the difference.
             try:
-                await self.session.send_json(
-                    json={
-                        "finish": "error in GPT",
-                        "request_id": request.id,
-                    }
-                )
+                await self._serve_local(question, request, play_locally)
                 self.session.finish = False
             except Exception as wsexc:
                 logging.exception(f"session {self.session.session_id}, request {request.id}: error in GPT ws: {wsexc}")
+
+    async def _serve_local(self, question, request, play_locally):
+        """Send a local answer through the same websocket protocol the
+        GPT streaming path uses: `question`, one `sentence`, then
+        `finish: success`. Nothing downstream distinguishes it from an
+        online reply, so the frontend renders the answer normally instead
+        of showing an error banner."""
+        # Prior turns only: the failed online attempt may already have pushed
+        # this question onto the dialogue, and local_ai appends it itself.
+        history = [turn for turn in self.dialogue if turn.get("content") != question]
+        answer = local_ai.answer(question, history)
+        # Roll the answer into the dialogue history so multi-turn context
+        # stays coherent if the online path later recovers.
+        if not self.dialogue or self.dialogue[-1].get("role") != "user":
+            self.dialogue.append({"role": "user", "content": question})
+        self.dialogue.append({"role": "assistant", "content": answer})
+
+        await self.session.send_json({"sentence": answer, "request_id": request.id})
+
+        # Speak it too: TTS falls back to the offline Windows voice, so the
+        # answer is still heard with no OpenAI key at all.
+        try:
+            await self.session.tts_module.speak(answer, request, play_locally)
+        except Exception as ttsexc:
+            logging.info(
+                f"session {self.session.session_id}, request {request.id}: "
+                f"local answer TTS skipped ({ttsexc})."
+            )
+
+        await self.session.send_json({"finish": "success", "request_id": request.id})
 
     # the requests are timed out after 5 seconds and retried with exponential backoff
     def answer_with_retry(self, request):
@@ -217,8 +254,11 @@ class GPT_Chat:
         base = 2
         max_retries = 2
         for retries in range(1, max_retries + 1):
+            client = self.session.client
+            if client is None:
+                raise RuntimeError("OpenAI client not configured")
             try:
-                return self.client.chat.completions.create(
+                return client.chat.completions.create(
                     model=self.model,
                     messages=self.dialogue,
                     temperature=self.temperature,
@@ -226,6 +266,14 @@ class GPT_Chat:
                     timeout=5,
                     max_tokens=self.max_response_tokens,
                 )
+            except openai.AuthenticationError as exc:
+                # A rejected key will be rejected again. Give up on OpenAI for
+                # this session so the next question goes straight to the local
+                # engine instead of burning two more round trips and 1.5s of
+                # backoff on every single answer.
+                logging.error("OpenAI rejected the API key; this session is now fully local.")
+                self.session.disable_openai()
+                raise exc
             except (openai.RateLimitError, openai.APIError, openai.APITimeoutError) as exc:
                 logging.exception(exc)
                 time.sleep(delay)

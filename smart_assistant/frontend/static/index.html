@@ -10,10 +10,10 @@
     <link rel="icon" href="icon/cropped-Bridge_favicon-192x192.png" sizes="192x192">
     <link rel="stylesheet" href="css/style.css?v=240423">
     <script>
-        // Match the Spot Home behaviour: if opened via localhost, replace the
-        // URL with the machine's wifi IP so the address bar shows something
-        // anyone on the network can type. The Spot API on :4000 owns the
-        // /api/lan-ip probe; this static server on :3001 borrows it.
+        // Match the Spot Home behaviour: hop from localhost to the machine's
+        // wifi IP so the URL bar shows a shareable address. Mic still works
+        // because Edge is launched with --unsafely-treat-insecure-origin-as-
+        // secure covering both LAN URLs (see autostart_localhosts.ps1).
         (function () {
             var h = window.location.hostname;
             if (h !== 'localhost' && h !== '127.0.0.1') return;

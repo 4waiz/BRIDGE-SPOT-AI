@@ -1,0 +1,210 @@
+{
+  "_comment": "Offline knowledge base for the local answer engine (connectors/local_ai.py). Sits alongside local_qa.json, which covers greetings, small talk and Spot hardware trivia; this file covers the Industry 4.0/5.0 and AI topics visitors actually ask about during a BRIDGE demo. Entries are matched semantically, so 'aliases' only needs to cover phrasings the embedding model would otherwise rank far away -- it is not a keyword list.",
+  "entries": [
+    {
+      "question": "whats up",
+      "aliases": ["what's up", "how is it going", "how's it going", "how are things", "what's happening", "you good"],
+      "answer": "All systems nominal and ready to talk. Ask me about Spot, this facility, or anything around Industry 4.0 and 5.0."
+    },
+    {
+      "question": "what is industry 5.0",
+      "aliases": ["industry 5.0", "explain industry five point zero", "what does industry 5.0 mean", "what is the fifth industrial revolution", "industry 5.0 definition"],
+      "answer": "Industry 5.0 is the next step after Industry 4.0: instead of automating people out of the factory, it puts them back at the centre and has robots and AI work alongside them. It is usually described with three goals - human-centric, sustainable, and resilient production."
+    },
+    {
+      "question": "what is the difference between industry 4.0 and industry 5.0",
+      "aliases": ["industry 4.0 vs industry 5.0", "how is industry 5.0 different", "compare industry 4.0 and 5.0"],
+      "answer": "Industry 4.0 asked what machines can do on their own - connectivity, data and automation. Industry 5.0 asks what people and machines do better together, adding sustainability and resilience to the efficiency goal."
+    },
+    {
+      "question": "what are the pillars of industry 5.0",
+      "aliases": ["industry 5.0 principles", "three pillars of industry 5.0", "goals of industry 5.0"],
+      "answer": "Three of them: human-centricity, so technology serves the worker; sustainability, so production stays within environmental limits; and resilience, so supply chains survive disruption."
+    },
+    {
+      "question": "what is a cobot",
+      "aliases": ["what is a collaborative robot", "cobots", "what are collaborative robots"],
+      "answer": "A cobot is a collaborative robot built to share a workspace with people safely - force-limited, sensor-guarded, and easy to teach by hand instead of by code. They are a core building block of Industry 5.0."
+    },
+    {
+      "question": "what is human robot collaboration",
+      "aliases": ["how do humans and robots work together", "human machine collaboration", "working alongside robots"],
+      "answer": "It means people and robots sharing a task rather than being fenced apart - the robot takes the repetitive, heavy or hazardous part, the person keeps the judgement and dexterity. That is exactly the split I use on inspection rounds."
+    },
+    {
+      "question": "what is a digital twin",
+      "aliases": ["digital twin", "explain digital twins", "what does digital twin mean"],
+      "answer": "A digital twin is a live virtual copy of a real asset or process, fed by sensor data so it stays in sync. You can test changes and predict failures on the twin before touching the real machine."
+    },
+    {
+      "question": "what is a smart factory",
+      "aliases": ["smart manufacturing", "what makes a factory smart", "connected factory"],
+      "answer": "A smart factory connects its machines, sensors and software so the plant can monitor itself and adapt without waiting for a person to notice. Data flows from the shop floor to the decision, and back again as a control action."
+    },
+    {
+      "question": "what is predictive maintenance",
+      "aliases": ["predictive maintenance", "how do you predict machine failure", "condition based maintenance"],
+      "answer": "Predictive maintenance uses sensor data - vibration, temperature, sound - to spot a machine drifting toward failure and fix it before it stops the line. It beats both fixing things late and replacing parts that were still fine."
+    },
+    {
+      "question": "what is edge computing",
+      "aliases": ["edge computing", "why process data at the edge", "edge versus cloud"],
+      "answer": "Edge computing runs the processing next to where the data is created instead of shipping everything to the cloud. It keeps latency low and works even when the network does not - which is why a robot carries its own compute."
+    },
+    {
+      "question": "what is big data",
+      "aliases": ["big data", "what is data analytics", "industrial data analytics"],
+      "answer": "Big data is data too large or too fast to handle with traditional tools - in a factory that is millions of sensor readings a day. The value is not the volume, it is the patterns you can only see at that scale."
+    },
+    {
+      "question": "what is additive manufacturing",
+      "aliases": ["3d printing", "what is 3d printing", "additive manufacturing"],
+      "answer": "Additive manufacturing, or 3D printing, builds a part layer by layer instead of cutting it out of a block. It makes one-off and complex geometries cheap, which is why prototyping shops adopted it first."
+    },
+    {
+      "question": "what is augmented reality in manufacturing",
+      "aliases": ["augmented reality", "what is ar", "what is virtual reality", "ar and vr in industry"],
+      "answer": "Augmented reality overlays instructions, readings or a work order onto what a technician is actually looking at, while virtual reality builds the whole environment for training. Both cut the time between seeing a problem and knowing what to do about it."
+    },
+    {
+      "question": "what is industrial cybersecurity",
+      "aliases": ["cybersecurity", "operational technology security", "how do you secure a factory network", "is a smart factory secure"],
+      "answer": "Connecting machines to networks also exposes them, so industrial cybersecurity segments the plant network, controls who can talk to a controller, and monitors for traffic that should not exist. In operational technology, availability and safety come before confidentiality."
+    },
+    {
+      "question": "what is sustainability in manufacturing",
+      "aliases": ["sustainable manufacturing", "green manufacturing", "circular economy", "what is the circular economy"],
+      "answer": "It means designing production so material and energy stay in use - reuse, remanufacture and recycle - rather than ending as waste. That circular thinking is one of the three pillars of Industry 5.0."
+    },
+    {
+      "question": "what is mass personalisation",
+      "aliases": ["mass customization", "mass personalization", "custom manufacturing at scale"],
+      "answer": "Mass personalisation is building products to individual specification while keeping mass-production cost. Flexible cells and quick changeovers are what make a batch size of one affordable."
+    },
+    {
+      "question": "what is lean manufacturing",
+      "aliases": ["lean production", "six sigma", "what is six sigma", "continuous improvement"],
+      "answer": "Lean removes work that does not add value - waiting, excess stock, unnecessary motion. Six Sigma pairs with it by attacking variation, so the process is both quick and repeatable."
+    },
+    {
+      "question": "what is overall equipment effectiveness",
+      "aliases": ["what is oee", "oee", "how do you measure equipment performance"],
+      "answer": "OEE, overall equipment effectiveness, multiplies availability, performance and quality into one number for how well a machine is really being used. Anything in the high eighties is considered strong for a discrete line."
+    },
+    {
+      "question": "what is a plc",
+      "aliases": ["programmable logic controller", "what is scada", "scada system"],
+      "answer": "A PLC is the ruggedised controller that runs a machine's real-time logic on the shop floor. SCADA sits above it, supervising and logging many controllers so operators can see the whole process."
+    },
+    {
+      "question": "what is robotic process automation",
+      "aliases": ["what is rpa", "software robots"],
+      "answer": "RPA automates repetitive software work - moving data between systems, filling forms - with a script that drives the same interfaces a person would. It is a software robot, no hardware involved."
+    },
+    {
+      "question": "what is a supply chain",
+      "aliases": ["supply chain resilience", "what is supply chain management"],
+      "answer": "The supply chain is everything that gets raw material to a finished product in a customer's hands. Resilience - the ability to keep running when one link breaks - became a headline concern after recent global disruptions."
+    },
+    {
+      "question": "what is deep learning",
+      "aliases": ["what is a neural network", "neural networks", "how do neural networks work"],
+      "answer": "Deep learning trains neural networks - layers of simple units - to find patterns in data on their own, instead of a human writing the rules. It is what makes modern vision and speech systems work, including mine."
+    },
+    {
+      "question": "what is generative ai",
+      "aliases": ["what is a large language model", "what is an llm", "what is chatgpt", "what is a transformer model"],
+      "answer": "Generative AI produces new content - text, images, code - rather than just classifying existing data. Large language models are the text version, trained to predict the next word well enough that they can answer questions and hold a conversation."
+    },
+    {
+      "question": "what is natural language processing",
+      "aliases": ["what is nlp", "how do you understand speech"],
+      "answer": "Natural language processing is how a machine turns human language into something it can act on. In my case, speech becomes text, the text becomes an intent, and the intent picks an answer."
+    },
+    {
+      "question": "what is reinforcement learning",
+      "aliases": ["how do robots learn to walk", "learning by trial and error"],
+      "answer": "Reinforcement learning trains a policy by trial and error against a reward instead of labelled examples. It is how modern legged robots learn gaits that would be very hard to hand-code."
+    },
+    {
+      "question": "what is the robot operating system",
+      "aliases": ["what is ros", "ros2"],
+      "answer": "ROS, the Robot Operating System, is not an OS but a middleware - it gives robot software a common way to pass messages between sensing, planning and control nodes. It is the default plumbing in robotics research."
+    },
+    {
+      "question": "what is a digital thread",
+      "aliases": ["digital thread", "traceability in manufacturing"],
+      "answer": "The digital thread is the unbroken record that follows a product from design through production to service. It is what lets you trace a field failure back to the exact batch and machine setting that caused it."
+    },
+    {
+      "question": "what is a fiducial marker",
+      "aliases": ["what is a fiducial", "what is an april tag", "what are the markers on the wall"],
+      "answer": "A fiducial is a printed marker with a known pattern and size that a camera can recognise from a distance. I use them to fix my position precisely - the dock and several inspection points carry one."
+    },
+    {
+      "question": "what is autonomous navigation",
+      "aliases": ["how do you move on your own", "path planning"],
+      "answer": "I build a map of the route once while being walked through it, then localise against that map and plan a path around whatever has moved since. Obstacle avoidance runs continuously on top of the plan."
+    },
+    {
+      "question": "what is bridge",
+      "aliases": ["tell me about bridge", "what does bridge do", "where is bridge", "what is the bridge facility", "what is bridge uae", "bridge edge group"],
+      "answer": "BRIDGE (bridgeuae.com) is an entity of EDGE Group - the UAE advanced technology and defence conglomerate in Abu Dhabi - focused on innovation, operational excellence and industrialisation, including Industry 4.0 upskilling and defence manufacturing. It was formerly called the Learning & Innovation Factory (LIF)."
+    },
+    {
+      "question": "what technologies can i see at bridge",
+      "aliases": ["what is on show here", "what can i see in this facility", "what is in the factory"],
+      "answer": "Robotics and autonomous inspection, computer vision, digital factory monitoring, and the safety systems that tie them together. Ask me about any of them and I will go deeper."
+    },
+    {
+      "question": "how do you answer without the internet",
+      "aliases": ["are you offline", "do you need internet to answer", "are you using chatgpt", "where do your answers come from"],
+      "answer": "Right now I am answering from a knowledge base that lives on this machine, matched by a language model running locally - no cloud call involved. That is why I keep working when the network or the API key does not."
+    },
+    {
+      "question": "how do you inspect with cameras",
+      "aliases": ["what does your vision detect", "what is object detection", "computer vision in inspection"],
+      "answer": "The camera feed runs through an object detector trained on what matters here - fire extinguishers, exit signs, gauges, equipment states - and logs where and when each one was seen. A human reviews the flagged frames rather than the whole video."
+    },
+    {
+      "question": "what is anomaly detection",
+      "aliases": ["how do you spot something unusual", "outlier detection"],
+      "answer": "Anomaly detection learns what normal looks like and raises a flag when new data does not fit, without needing examples of every possible fault. It is how you catch problems nobody thought to label."
+    },
+    {
+      "question": "what is the industrial internet of things",
+      "aliases": ["what is iiot", "industrial iot"],
+      "answer": "The Industrial Internet of Things is IoT applied to plant equipment - sensors and controllers reporting condition and output continuously. The point is the decisions that data enables, not the connectivity itself."
+    },
+    {
+      "question": "what is a smart sensor",
+      "aliases": ["smart sensors", "what sensors are used in industry 4.0"],
+      "answer": "A smart sensor does some processing on board - filtering, thresholding, sometimes classification - and reports a result rather than a raw stream. That cuts network load and gets a decision out faster."
+    },
+    {
+      "question": "will automation take jobs",
+      "aliases": ["does industry 5.0 replace workers", "are robots replacing people"],
+      "answer": "The Industry 5.0 argument is the opposite: automate the dull, dirty and dangerous parts and let people do the work that needs judgement. In practice the roles shift toward supervising, maintaining and improving the systems."
+    },
+    {
+      "question": "what skills do i need for industry 5.0",
+      "aliases": ["what should i learn", "what skills are needed in a smart factory", "how do i get into robotics"],
+      "answer": "Data literacy, some programming, and enough understanding of the physical process to know when a model is wrong. The rarest combination is someone comfortable in both the software and the shop floor."
+    },
+    {
+      "question": "what is a robot cell",
+      "aliases": ["what is a work cell", "automation cell"],
+      "answer": "A robot cell is one self-contained station - robot, tooling, fixtures and safety guarding - that performs a defined task. Lines are built by chaining cells, so one can be re-tooled without stopping the rest."
+    },
+    {
+      "question": "how does ai check quality",
+      "aliases": ["ai quality control", "automated visual inspection"],
+      "answer": "A trained vision model checks every part instead of a sample, at line speed and without fatigue. Humans then focus on the borderline cases the model is unsure about."
+    },
+    {
+      "question": "what is energy efficiency in a factory",
+      "aliases": ["energy management", "how do factories save energy", "reduce energy consumption"],
+      "answer": "It starts with measuring - most plants cannot say which machine burns what. Once consumption is metered per asset, scheduling, idle shutdown and maintenance usually recover a double-digit percentage."
+    }
+  ]
+}

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>Bridge Spot - Home</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" type="text/css" href="styles.css?v=20260901c">
+    <link rel="stylesheet" type="text/css" href="styles.css?v=20260901d">
     <link rel="stylesheet" href="voice_assistant_simple.css?v=20260819c">
     <link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
@@ -17,7 +17,11 @@
         // If the operator opened this via localhost, hop the tab to the
         // machine's wifi IP so the URL bar shows something anyone else on the
         // network can type. Same physical server; the redirect only affects
-        // what appears in the address bar.
+        // what appears in the address bar. Mic access on the LAN URL relies
+        // on Edge being launched with --unsafely-treat-insecure-origin-as-
+        // secure=http://<ip>:4000,http://<ip>:3001 -- that flag is written
+        // to the MicrosoftEdgeAutoLaunch_... Run entry by autostart, so a
+        // fresh Edge session after reboot has it applied.
         (function () {
             var h = window.location.hostname;
             if (h !== 'localhost' && h !== '127.0.0.1') return;
@@ -30,7 +34,7 @@
                     window.location.replace(loc.protocol + '//' + d.ip + port +
                         loc.pathname + loc.search + loc.hash);
                 })
-                .catch(function () { /* keep localhost, no network answer */ });
+                .catch(function () { /* stay on localhost if the probe fails */ });
         })();
     </script>
 </head>

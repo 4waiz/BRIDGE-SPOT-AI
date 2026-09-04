@@ -132,7 +132,38 @@
         dance:          function (moveId) {
             return call("dance", "/choreography/play", { body: { move: moveId }, timeoutMs: NORMAL });
         },
-        stopDance:      function () { return call("dance_stop", "/choreography/stop", { timeoutMs: NORMAL }); }
+        stopDance:      function () { return call("dance_stop", "/choreography/stop", { timeoutMs: NORMAL }); },
+
+        // -- follow-me (from spot-voice-master) --
+        followStart:    function () { return call("follow_start", "/follow/start", { timeoutMs: NORMAL }); },
+        followStop:     function () { return call("follow_stop", "/follow/stop", { timeoutMs: NORMAL }); },
+        followStatus:   function () { return call("follow_status", "/follow/status", { method: "GET", timeoutMs: NORMAL }); },
+
+        // -- navigation --
+        listWaypoints:  function () { return call("waypoints", "/waypoints", { method: "GET", timeoutMs: NORMAL }); },
+        navigateTo:     function (waypoint) {
+            return call("navigate", "/navigate", { body: { waypoint: waypoint }, timeoutMs: SLOW });
+        },
+
+        // -- misc --
+        captureImage:   function (view) {
+            // /camera/{view} returns raw JPEG, not JSON -- wrap in a promise
+            // that matches the shape the voice controller expects.
+            var url = view ? ("/api/robot/camera/" + encodeURIComponent(view || "frontleft")) : "/api/robot/camera/frontleft";
+            var t0 = Date.now();
+            return fetch(url, { cache: "no-store" }).then(function (r) {
+                var elapsed = Date.now() - t0;
+                if (!r.ok) return { ok: false, action: "capture", status: r.status, durationMs: elapsed };
+                return r.blob().then(function (blob) {
+                    return { ok: true, action: "capture", data: { size: blob.size, view: view || "frontleft" }, durationMs: elapsed };
+                });
+            }).catch(function (err) {
+                return { ok: false, action: "capture", error: String(err) };
+            });
+        },
+        speak:          function (text) {
+            return call("speak", "/speak", { body: { text: text }, timeoutMs: NORMAL });
+        }
     };
 
     /**

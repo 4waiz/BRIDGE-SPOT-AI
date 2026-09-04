@@ -16,7 +16,10 @@ import threading
 import wave
 
 import numpy as np
+import openai
 from scipy.signal import resample
+
+from . import local_tts
 
 # OpenAI TTS settings
 TTS_MODEL = os.getenv("OPENAI_TTS_MODEL", "gpt-4o-mini-tts")
@@ -149,23 +152,48 @@ class TextToSpeechModule:
         self.websocket = user_session.websocket  # websocket of the current connection
         self.playback_speed = "1"
         self.session = user_session
-        self.client = self.session.client
         self.gender = "female"
         self.playback_thread = None
 
+    def render_audio(self, text, request):
+        """Wav bytes for `text`: OpenAI when it is usable, the offline Windows
+        voice otherwise, None if neither can speak."""
+        client = self.session.client
+        if client is not None:
+            try:
+                voice = TTS_VOICE_FEMALE if self.gender == "female" else TTS_VOICE_MALE
+                response = client.audio.speech.create(
+                    model=TTS_MODEL,
+                    voice=voice,
+                    input=text,
+                    response_format="wav",
+                )
+                return extract_audio_bytes(response)
+            except openai.AuthenticationError as exc:
+                # A bad key stays bad. Drop the client for the whole session so
+                # GPT, STT and TTS all stop paying the round trip.
+                logging.error("OpenAI rejected the API key in TTS (%s); switching to local voice.", exc)
+                self.session.disable_openai()
+            except Exception as exc:
+                logging.warning(
+                    f"session {self.session.session_id}, request {request.id}: "
+                    f"OpenAI TTS failed ({exc}); falling back to local voice."
+                )
+
+        return local_tts.synthesize(text, self.gender)
+
     async def speak(self, text, request, play_locally=False):
         try:
-            if self.client is None:
-                logging.error("OpenAI client not configured; skipping TTS playback.")
+            audio_bytes = self.render_audio(text, request)
+            if audio_bytes is None:
+                # Nothing on this machine can speak. The answer text is already
+                # on screen, so go quiet rather than reporting a failure the
+                # frontend would turn into an error banner over the answer.
+                logging.error(
+                    f"session {self.session.session_id}, request {request.id}: "
+                    "no speech engine available; answering in text only."
+                )
                 return time.time(), 0.0
-            voice = TTS_VOICE_FEMALE if self.gender == "female" else TTS_VOICE_MALE
-            response = self.client.audio.speech.create(
-                model=TTS_MODEL,
-                voice=voice,
-                input=text,
-                response_format="wav",
-            )
-            audio_bytes = extract_audio_bytes(response)
             samplerate, pcm_data = decode_wav_bytes(audio_bytes)
             audio_duration = len(pcm_data) / float(samplerate) if samplerate else 0.0
             blenddata = build_blenddata(audio_duration)
@@ -196,12 +224,12 @@ class TextToSpeechModule:
             return start_time, audio_duration
 
         except Exception as exc:
+            # Deliberately no {"finish": "error in TTS"} here. The frontend
+            # reacts to a finish:error by wiping #answer and printing "There
+            # has been an error", which used to destroy a perfectly good
+            # answer whenever only the audio leg had failed.
             logging.exception(f"session {self.session.session_id}, request {request.id}: error in TTS: {exc}")
             traceback.print_exc()
-            try:
-                await self.session.send_json(json={"finish": "error in TTS", "request_id": request.id})
-            except Exception as wsexc:
-                logging.exception(f"session {self.session.session_id}, request {request.id}: error in TTS ws: {wsexc}")
             return time.time(), 0.0
 
     async def no_question(self, request, play_locally=False):

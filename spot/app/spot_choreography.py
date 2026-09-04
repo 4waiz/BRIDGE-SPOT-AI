@@ -162,9 +162,17 @@ def _centre(t):
     return _pose()
 
 
+# Payload-safe subset. This Spot carries the CAM+ 360 payload (caged PTZ
+# camera + electronics module + isolator-mounted base plate) on its back
+# rails. Bounces, whip-fast turns and repeated foot impacts oscillate the
+# payload on its isolators and put shear load on the rail clamps -- which
+# is fine for the robot but not for a ~$40k camera. So the routines that
+# used to be here (twerk, bounce, wave, spin, shimmy, tap_step, disco) are
+# deliberately left out of the exposed catalogue. Their _fn helpers stay
+# defined below in case a future payload-off configuration wants to opt
+# back in; ALL_MOVES only maps what's in this list, so the API refuses to
+# play the removed ones even if the frontend gets stale.
 DANCES = [
-    {"id": "twerk", "label": "Twerk", "emoji": "🍑", "fn": _twerk, "energy": "medium",
-     "blurb": "Dips the hips down and back up on a fast beat.", "travels": False},
     {"id": "sway", "label": "Sway", "emoji": "🌊", "fn": _sway, "energy": "low",
      "blurb": "Rolls the body smoothly side to side.", "travels": False},
     {"id": "body_roll", "label": "Body Roll", "emoji": "🌀", "fn": _body_roll, "energy": "medium",
@@ -173,20 +181,8 @@ DANCES = [
      "blurb": "Pitches forward into a bow, then rises.", "travels": False},
     {"id": "peek", "label": "Peek-a-boo", "emoji": "👀", "fn": _peek, "energy": "low",
      "blurb": "Looks left and right with a lift on each turn.", "travels": False},
-    {"id": "bounce", "label": "Bounce", "emoji": "🎈", "fn": _bounce, "energy": "medium",
-     "blurb": "Rides up and down on all four legs.", "travels": False},
-    {"id": "wave", "label": "Wave", "emoji": "👋", "fn": _wave, "energy": "medium",
-     "blurb": "Roll and height offset, rippling through the body.", "travels": False},
     {"id": "figure8", "label": "Figure 8", "emoji": "8️⃣", "fn": _figure8, "energy": "medium",
      "blurb": "Traces a figure of eight with the body.", "travels": False},
-    {"id": "spin", "label": "Spin", "emoji": "💫", "fn": _spin, "energy": "high",
-     "blurb": "Turns one way then unwinds back.", "travels": True},
-    {"id": "shimmy", "label": "Shimmy", "emoji": "✨", "fn": _shimmy, "energy": "high",
-     "blurb": "Quick sidesteps left and right.", "travels": True},
-    {"id": "tap_step", "label": "Tap Step", "emoji": "👣", "fn": _tap_step, "energy": "high",
-     "blurb": "Steps forward and back on the beat.", "travels": True},
-    {"id": "disco", "label": "Disco", "emoji": "🕺", "fn": _disco, "energy": "high",
-     "blurb": "Strafe and spin together. The loud one.", "travels": True},
 ]
 
 BASICS = [

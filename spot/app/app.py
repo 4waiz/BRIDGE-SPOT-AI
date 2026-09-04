@@ -7,9 +7,15 @@ import spot_file_copy
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import RedirectResponse
 from exceptions import NoDataOnSpotException
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
+from pydantic import BaseModel
+import asyncio
+import json
 import os
 import socket
+import ssl
+import urllib.error
+import urllib.request
 import bridge_logger
 import logging
 from bosdyn.client.exceptions import UnableToConnectToRobotError
@@ -49,6 +55,58 @@ app.include_router(labeling_api.router)
 async def forward():
     url = "/static/index.html"
     return RedirectResponse(url)
+
+
+# ---------------------------------------------------------------------------
+# Q&A proxy for Voice Control.
+#
+# The Voice Control page lives on this origin (:4000). Rather than making it
+# fetch cross-origin to the assistant backend (:4001) -- which would need the
+# operator to accept the self-signed cert on a second port before the fetch
+# would even be attempted -- we forward the request server-side. The
+# assistant backend does the real work (gpt-4o-mini when OPENAI_API_KEY is
+# valid, otherwise a local retrieval answer). The reply is designed to be
+# short enough to speak.
+# ---------------------------------------------------------------------------
+
+_ASSISTANT_ASK_URL = os.getenv("ASSISTANT_ASK_URL", "https://127.0.0.1:4001/api/ask")
+
+
+class AskRequest(BaseModel):
+    question: str
+    history: list[dict] | None = None
+
+
+def _post_to_assistant(payload: dict) -> dict:
+    """Blocking POST to the assistant's /api/ask -- runs off the event loop
+    via asyncio.to_thread. verify_mode=CERT_NONE because this is our own
+    self-signed cert reached over the loopback; there is no MITM surface
+    to protect against here."""
+    body = json.dumps(payload).encode("utf-8")
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    req = urllib.request.Request(
+        _ASSISTANT_ASK_URL,
+        data=body,
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, timeout=12, context=ctx) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+@app.post("/api/ask")
+async def api_ask(req: AskRequest):
+    payload = req.dict()
+    try:
+        result = await asyncio.to_thread(_post_to_assistant, payload)
+        return result
+    except Exception as exc:
+        logging.warning("Assistant /api/ask proxy failed: %s", exc)
+        return JSONResponse(
+            {"answer": "I cannot reach the assistant right now.", "source": "error"},
+            status_code=200,
+        )
 
 
 @app.get("/api/lan-ip")

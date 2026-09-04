@@ -376,3 +376,61 @@ def camera(view: str):
             "Cache-Control": "no-store",
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# spot-voice-master integration: follow-me, on-robot speech, GraphNav.
+# All the interesting logic lives in spot_voice_bridge.py; this section is
+# just the HTTP shape.
+# ---------------------------------------------------------------------------
+
+import spot_voice_bridge
+
+
+class SpeakRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=500)
+
+
+class NavigateRequest(BaseModel):
+    waypoint: str = Field(..., min_length=1)
+
+
+@router.post("/follow/start")
+def follow_start():
+    """Start the person-following background loop. Requires connect + lease + power."""
+    return _guard(spot_voice_bridge.follow_session.start)
+
+
+@router.post("/follow/stop")
+def follow_stop():
+    """Kill the follow loop and any in-flight velocity command."""
+    return _guard(spot_voice_bridge.follow_session.stop)
+
+
+@router.get("/follow/status")
+def follow_status():
+    """Whether follow-me is currently running and when it started."""
+    return spot_voice_bridge.follow_session.status()
+
+
+@router.post("/speak")
+def speak(req: SpeakRequest):
+    """Say `text` through Spot's own speaker if the payload supports it.
+
+    Falls back to `{spoken_by: "none"}` when the CAM speaker is absent -- the
+    UI plays the text through browser TTS in that case.
+    """
+    result = spot_voice_bridge.speak_over_spot(req.text)
+    return {"text": req.text, **result}
+
+
+@router.get("/waypoints")
+def waypoints():
+    """Named GraphNav waypoints uploaded to the robot. Empty when no map."""
+    return {"waypoints": spot_voice_bridge.list_waypoints()}
+
+
+@router.post("/navigate")
+def navigate(req: NavigateRequest):
+    """Autonomously walk to a named waypoint using GraphNav."""
+    return _guard(spot_voice_bridge.navigate_to_waypoint, req.waypoint)

@@ -142,13 +142,20 @@
     var SILENCE_MS = 3500;
     var MAX_LISTEN_MS = 12000;
 
-    function createRecognizer(handlers) {
+    function createRecognizer(handlers, options) {
         var hooks = handlers || {};
+        var opts = options || {};
         if (!SpeechRecognitionImpl) return null;
+
+        // Continuous mode holds the mic open across utterances and quietly
+        // restarts if the browser ends the session anyway (Chromium stops
+        // recognition every ~60s to save power; without a restart the tab
+        // would go silent halfway through a demo).
+        var continuous = !!opts.continuous;
 
         var recognition = new SpeechRecognitionImpl();
         recognition.lang = "en-US";
-        recognition.continuous = false;
+        recognition.continuous = continuous;
         recognition.interimResults = true;
         recognition.maxAlternatives = 1;
 
@@ -157,6 +164,7 @@
         var gotSpeech = false;
         var silenceTimer = null;
         var hardTimer = null;
+        var restartTimer = null;
 
         function clearTimers() {
             if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
@@ -164,6 +172,7 @@
         }
 
         function armSilence() {
+            if (continuous) return;   // in continuous mode, silence is fine
             if (silenceTimer) clearTimeout(silenceTimer);
             silenceTimer = setTimeout(function () { api.stop(); }, SILENCE_MS);
         }
@@ -172,7 +181,9 @@
             listening = true;
             gotSpeech = false;
             armSilence();
-            hardTimer = setTimeout(function () { api.stop(); }, MAX_LISTEN_MS);
+            if (!continuous) {
+                hardTimer = setTimeout(function () { api.stop(); }, MAX_LISTEN_MS);
+            }
             if (hooks.onStart) hooks.onStart();
         };
 
@@ -236,7 +247,15 @@
         recognition.onend = function () {
             listening = false;
             clearTimers();
-            // Push to talk: never auto-restart. Ending is a normal outcome.
+            // Continuous mode auto-restarts so a browser-initiated end (Chromium
+            // stops recognition every ~60s) does not silently kill the mic. A
+            // short delay avoids the InvalidStateError "recognition has already
+            // started" you get if you call start() from inside onend.
+            if (continuous && !stoppedByUs) {
+                restartTimer = setTimeout(function () {
+                    try { recognition.start(); } catch (err) { /* already up */ }
+                }, 250);
+            }
             if (hooks.onEnd) hooks.onEnd(gotSpeech);
         };
 
@@ -256,15 +275,18 @@
                 if (!listening) return;
                 stoppedByUs = true;
                 clearTimers();
+                if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }
                 try { recognition.stop(); } catch (err) { /* already stopping */ }
             },
             abort: function () {
                 stoppedByUs = true;
                 clearTimers();
+                if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }
                 try { recognition.abort(); } catch (err) { /* already stopped */ }
                 listening = false;
             },
             isListening: function () { return listening; },
+            isContinuous: function () { return continuous; },
             dispose: function () {
                 api.abort();
                 recognition.onstart = recognition.onresult = recognition.onerror =

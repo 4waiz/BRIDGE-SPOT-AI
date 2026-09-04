@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>Bridge Spot - Voice Control</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" type="text/css" href="styles.css?v=20260819o">
+    <link rel="stylesheet" type="text/css" href="styles.css?v=20260901d">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
 </head>
 <body>
@@ -102,6 +102,29 @@
                     </div>
                 </div>
 
+                <!-- ============ type-to-speak fallback ============
+                     Same pipeline as the mic. If the microphone is not
+                     available (blocked, muted, missing) or the operator
+                     just prefers to type, this feeds the exact same
+                     handleTranscript() the speech recognizer does, so a
+                     typed "stand up" runs the STAND intent and a typed
+                     question falls through to the AI answer path. -->
+                <section class="card">
+                    <div class="ctl-panel-head">
+                        <h2 class="card__title">Type a command or question</h2>
+                        <span class="ctl-note" style="margin:0">Reply is spoken aloud</span>
+                    </div>
+                    <form class="vc-chat" data-role="vc-chat" autocomplete="off">
+                        <input type="text" class="vc-chat__input" data-role="vc-chat-input"
+                               placeholder='e.g. "stand up" or "what is BRIDGE?"'
+                               aria-label="Type a command or question for Spot">
+                        <button type="submit" class="btn btn--accent vc-chat__send" data-role="vc-chat-send">
+                            <span data-icon="arrowRight"></span>
+                            <span>Send</span>
+                        </button>
+                    </form>
+                </section>
+
                 <!-- ============ quick commands ============ -->
                 <section class="card">
                     <div class="ctl-panel-head">
@@ -126,9 +149,9 @@
     </div>
 
     <script src="bridge-shell.js?v=20260819a"></script>
-    <script src="robot-service.js?v=20260817"></script>
-    <script src="voice-engine.js?v=20260817"></script>
-    <script src="voice-commands.js?v=20260817"></script>
-    <script src="voice-control.js?v=20260817"></script>
+    <script src="robot-service.js?v=20260901svc"></script>
+    <script src="voice-engine.js?v=20260901wake"></script>
+    <script src="voice-commands.js?v=20260901svc"></script>
+    <script src="voice-control.js?v=20260901wake"></script>
 </body>
 </html>
