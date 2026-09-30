@@ -4460,3 +4460,94 @@ table.data tbody tr.is-clickable {
     .btn { min-height: 2.75rem; }
     .btn--sm { min-height: 2.4rem; }
 }
+
+/* ==========================================================================
+   Custom routine (missions.html)
+   ========================================================================== */
+
+/* Stop is the one control on this card that has to be found without reading,
+   so it gets the alarm colour rather than a neutral button. */
+.btn--danger {
+    background: var(--bad);
+    border-color: var(--bad);
+    color: #fff;
+}
+
+.btn--danger:hover:not(:disabled) {
+    filter: brightness(0.92);
+    box-shadow: 0 10px 22px rgba(224, 72, 59, 0.28);
+}
+
+.btn--danger:disabled {
+    background: var(--surface-alt);
+    border-color: var(--border);
+    color: var(--muted);
+}
+
+.badge--live {
+    background: rgba(22, 163, 74, 0.1);
+    border-color: rgba(22, 163, 74, 0.35);
+    color: var(--ok);
+}
+
+/* A refusal names the clause it could not read, so it has to be readable at a
+   glance rather than looking like one more step. */
+.step-error {
+    padding: 0.75rem 0.85rem;
+    border-radius: var(--r-md);
+    border: 1px solid rgba(224, 72, 59, 0.4);
+    background: rgba(224, 72, 59, 0.07);
+    color: var(--bad);
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+
+.step .step__meta svg { width: 1rem; height: 1rem; }
+
+.chip--clickable {
+    cursor: pointer;
+    text-align: left;
+    white-space: normal;
+    font: inherit;
+    font-size: 0.8rem;
+}
+
+.chip--clickable:hover { border-color: var(--accent); color: var(--accent-strong); }
+
+.routine-captures {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+    gap: 0.6rem;
+}
+
+.routine-capture {
+    margin: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    overflow: hidden;
+    background: var(--surface-alt);
+}
+
+.routine-capture img,
+.routine-capture video {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    background: #000;
+}
+
+.routine-capture figcaption {
+    padding: 0.35rem 0.55rem;
+    font-size: 0.74rem;
+    color: var(--muted);
+}
+
+.routine-confirm {
+    margin: 0.6rem 0 0.9rem;
+    padding-left: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.3rem;
+    font-size: 0.9rem;
+}

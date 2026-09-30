@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>Bridge Spot - Missions</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" type="text/css" href="styles.css?v=20260819o">
+    <link rel="stylesheet" type="text/css" href="styles.css?v=20260916a">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
 </head>
 <body>
@@ -170,26 +170,32 @@
 
                     <section class="card" id="builder">
                         <div class="section-head">
-                            <h2 class="section-title">Digital Twin + Natural Language Mission Builder</h2>
-                            <span class="badge">Demo</span>
+                            <h2 class="section-title">Custom Routine</h2>
+                            <span class="badge badge--live">Runs on the robot</span>
                         </div>
                         <p class="card__text" style="margin-bottom: 0.9rem;">
-                            Describe the mission the way you would to a colleague. The builder extracts the tasks,
-                            maps them to waypoints in the digital twin, and simulates the run.
+                            Tell Spot what to do from where it is standing, in plain steps: how far to walk,
+                            which way to turn, what to photograph or film, and to come back. No map needed.
+                            Build it first to check how it was read, then run it.
                         </p>
 
                         <div class="grid-2" style="align-items: start;">
                             <div class="stack" style="gap: 0.9rem;">
                                 <div class="field">
-                                    <label class="field__label" for="mission-input">Mission instruction</label>
+                                    <label class="field__label" for="mission-input">What should Spot do?</label>
                                     <textarea class="textarea" id="mission-input" data-role="mission-input"
-                                        placeholder="Inspect the east server room and the loading dock, then log any open panels."></textarea>
-                                    <span class="field__hint">Try one of the examples below, or write your own.</span>
+                                        placeholder="5 steps forward, capture footage and take a photo, come back"></textarea>
+                                    <span class="field__hint">
+                                        Steps: forward / back / left / right with metres or steps, turn left or right by degrees,
+                                        take a photo, record N seconds, wait N seconds, come back.
+                                        Say "thermal" or "panoramic" to pick the camera.
+                                    </span>
                                 </div>
                                 <div class="toolbar" style="margin: 0;" data-role="samples"></div>
                                 <div class="page-head__actions">
-                                    <button type="button" class="btn btn--dark" data-role="build"><span data-icon="sparkle"></span> Build Mission</button>
-                                    <button type="button" class="btn btn--accent" data-role="run" disabled><span data-icon="play"></span> Run Mission</button>
+                                    <button type="button" class="btn btn--dark" data-role="build"><span data-icon="sparkle"></span> Build</button>
+                                    <button type="button" class="btn btn--accent" data-role="run" disabled><span data-icon="play"></span> Run on robot</button>
+                                    <button type="button" class="btn btn--danger" data-role="stop" disabled><span data-icon="stop"></span> Stop</button>
                                     <button type="button" class="btn btn--ghost" data-role="clear">Clear</button>
                                 </div>
                             </div>
@@ -197,11 +203,11 @@
                             <div class="stack" style="gap: 0.9rem;">
                                 <div>
                                     <div class="section-head" style="margin-bottom: 0.5rem;">
-                                        <h3 class="section-title" style="font-size: 0.95rem;">Parsed mission</h3>
+                                        <h3 class="section-title" style="font-size: 0.95rem;">How it was read</h3>
                                         <span class="chip chip--plain" data-role="step-count">0 steps</span>
                                     </div>
                                     <ul class="step-list" data-role="steps">
-                                        <li class="empty-state">No mission built yet.</li>
+                                        <li class="empty-state">No routine built yet.</li>
                                     </ul>
                                 </div>
                                 <div>
@@ -210,8 +216,9 @@
                                         <span class="chip chip--plain" data-role="run-state">Idle</span>
                                     </div>
                                     <div class="progress"><span class="progress__fill" data-role="progress"></span></div>
-                                    <div class="log-box" data-role="log"><p>Waiting for a mission…</p></div>
+                                    <div class="log-box" data-role="log"><p>Waiting for a routine…</p></div>
                                 </div>
+                                <div class="routine-captures" data-role="captures" hidden></div>
                             </div>
                         </div>
                     </section>
@@ -235,6 +242,7 @@
     <script src="usecases.data.js?v=20260805"></script>
     <script src="usecases.js?v=20260805"></script>
     <script src="platform.data.js?v=20260805"></script>
-    <script src="missions.js?v=20260805"></script>
+    <script src="missions.js?v=20260916a"></script>
+    <script src="routine-builder.js?v=20260916a"></script>
 </body>
 </html>

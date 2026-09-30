@@ -18,9 +18,11 @@ from pydantic import BaseModel, Field
 
 import action_library
 import missions as mission_service
+import routines
 import spot_control
 from action_library import ActionError
 from missions import MissionError
+from routines import RoutineError
 from spot_choreography import ChoreographyError
 from spot_control import LeaseHeldByOtherError, SpotControlError, controller
 
@@ -54,7 +56,7 @@ def _guard(fn, *args, **kwargs):
     """Run a controller call, turning expected failures into clean HTTP errors."""
     try:
         return fn(*args, **kwargs)
-    except (ChoreographyError, MissionError, ActionError) as exc:
+    except (ChoreographyError, MissionError, ActionError, RoutineError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except LeaseHeldByOtherError as exc:
         # 423 Locked, kept distinct from the generic 409 so the UI knows it can
@@ -202,6 +204,60 @@ def dock(request: DockRequest | None = None):
 @router.post("/undock")
 def undock():
     return _guard(controller.undock)
+
+
+# -- routines ---------------------------------------------------------------
+
+
+class RoutineRequest(BaseModel):
+    """A short errand written in plain words."""
+
+    text: str = Field(..., description="e.g. '5 steps forward, take a photo, come back'")
+
+
+@router.post("/routine/parse")
+def routine_parse(request: RoutineRequest):
+    """Read an instruction into steps without touching the robot.
+
+    Separate from running it so the operator can see exactly what was
+    understood, and correct it, before a 32 kg machine acts on it.
+    """
+    try:
+        return {"steps": routines.parse(request.text)}
+    except RoutineError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/routine")
+def routine_status():
+    return controller.routine_status()
+
+
+@router.post("/routine/run")
+def routine_run(request: RoutineRequest):
+    return _guard(controller.run_routine, request.text)
+
+
+@router.post("/routine/stop")
+def routine_stop():
+    return _guard(controller.stop_routine)
+
+
+@router.get("/routine/capture/{stamp}/{name}")
+def routine_capture(stamp: str, name: str):
+    """Serve a photo or clip a routine saved."""
+    # Both parts are path segments from the client, so anything that could
+    # climb out of the capture directory is refused rather than sanitised.
+    if any(part in ("..", "") or "/" in part or "\\" in part for part in (stamp, name)):
+        raise HTTPException(status_code=400, detail="Bad capture path.")
+
+    path = (routines.CAPTURE_DIR / stamp / name).resolve()
+    if not path.is_file() or routines.CAPTURE_DIR.resolve() not in path.parents:
+        raise HTTPException(status_code=404, detail="No such capture.")
+
+    kind = "video/mp4" if path.suffix == ".mp4" else "image/jpeg"
+    return Response(content=path.read_bytes(), media_type=kind,
+                    headers={"Cache-Control": "no-store"})
 
 
 # -- cameras ----------------------------------------------------------------

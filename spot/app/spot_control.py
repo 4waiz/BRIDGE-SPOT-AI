@@ -48,6 +48,7 @@ from bosdyn.client.robot_command import RobotCommandBuilder, RobotCommandClient
 from bosdyn.client.robot_state import RobotStateClient
 
 import missions as mission_service
+import routines
 import spot_choreography
 from bosdyn.client.autowalk import AutowalkClient
 from bosdyn.client.graph_nav import GraphNavClient
@@ -83,7 +84,14 @@ CAMERAS = {
     # Spot CAM payload
     "cam-ptz": ("spotcam", "ptz", 0),               # 1920x1080 colour PTZ
     "cam-stream": ("spotcam", "stream", 0),         # 1280x720 composited stream
-    "cam-ir": ("spotcam", "ir", 0),                 # 640x512 thermal
+    # Thermal. The payload offers four, and they are not interchangeable:
+    # "ir" is the fixed wide thermal head, while the ptz-ir family looks
+    # through the PTZ optics, so those follow the aim and zoom with it. For
+    # inspecting a specific panel or motor the PTZ ones are what you want; the
+    # fixed head is for seeing the whole scene at once.
+    "cam-ir": ("spotcam", "ir", 0),                 # 640x512 fixed thermal
+    "cam-ptz-ir": ("spotcam", "ptz-ir", 0),         # 640x512 thermal, aims and zooms
+    "cam-ptz-ir-color": ("spotcam", "ptz-ir-color", 0),  # same, colourised palette
     "cam-ir-overlay": ("spotcam", "ptz-ir-overlay", 0),  # thermal over visible
     "cam-pano": ("spotcam", "pano", 0),             # 9600x1080 panoramic, large
 }
@@ -139,7 +147,8 @@ def _clamp(value, limit):
     return max(-limit, min(limit, value))
 
 
-class SpotController(spot_choreography.ChoreographyMixin, mission_service.MissionMixin):
+class SpotController(spot_choreography.ChoreographyMixin, mission_service.MissionMixin,
+                     routines.RoutineMixin):
     """Single owner of the robot connection, lease and E-stop.
 
     One instance per process. Every public method takes `_lock`, because the
@@ -168,6 +177,7 @@ class SpotController(spot_choreography.ChoreographyMixin, mission_service.Missio
         # Dance and mission state, so status can be reported before connecting.
         self._init_choreography()
         self._init_missions()
+        self._init_routines()
 
     # -- connection ---------------------------------------------------------
 

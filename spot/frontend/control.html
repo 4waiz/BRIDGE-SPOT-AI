@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>Bridge Spot - Robot Control</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" type="text/css" href="styles.css?v=20260819o">
+    <link rel="stylesheet" type="text/css" href="styles.css?v=20260916a">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
 </head>
 <body>
@@ -64,7 +64,9 @@
                                 <optgroup label="Spot CAM" data-group="spotcam">
                                     <option value="cam-ptz" selected>PTZ (1920×1080)</option>
                                     <option value="cam-stream">Stream (1280×720)</option>
-                                    <option value="cam-ir">Thermal</option>
+                                    <option value="cam-ir">Thermal (fixed)</option>
+                                    <option value="cam-ptz-ir">Thermal PTZ</option>
+                                    <option value="cam-ptz-ir-color">Thermal PTZ colour</option>
                                     <option value="cam-ir-overlay">Thermal overlay</option>
                                     <option value="cam-pano">Panoramic</option>
                                 </optgroup>
@@ -222,6 +224,6 @@
 
     <script src="bridge-shell.js?v=20260819a"></script>
     <script src="robot-service.js?v=20260817"></script>
-    <script src="control.js?v=20260817"></script>
+    <script src="control.js?v=20260916a"></script>
 </body>
 </html>
